@@ -1,0 +1,8 @@
+rc: ~/.lefthookrc
+pre-commit:
+  parallel: false
+  commands:
+    dart-format:
+      glob: "*.dart"
+      run: fvm dart format . {staged_files}
+      stage_fixed: true
