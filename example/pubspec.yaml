@@ -10,6 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  go_router: ^14.6.2
+  resizable_navigator:
+    path: ../
 
 dev_dependencies:
   flutter_test:
