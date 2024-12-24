@@ -31,6 +31,25 @@ mixin ResizableNavigatorRouteMixin<T> on ModalRoute<T> {
   }
 }
 
+class ResizableMaterialPageRoute<T> extends MaterialPageRoute<T> {
+  ResizableMaterialPageRoute({
+    required super.builder,
+    super.settings,
+    super.requestFocus,
+    super.maintainState,
+    super.fullscreenDialog,
+    super.allowSnapshotting,
+    super.barrierDismissible,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return ResizableNavigatorRouteContentBoundary(
+      child: builder(context),
+    );
+  }
+}
+
 class ResizableMaterialPage<T> extends MaterialPage<T> {
   const ResizableMaterialPage({
     super.key,
