@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart' as p;
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
 
 import 'navigator_size_notifier.dart';
@@ -62,25 +63,17 @@ class NavigatorResizableState extends State<NavigatorResizable>
   void didChangeTransitionStatus(RouteTransitionStatus transition) {
     _preferredSizeNotifier.didChangeTransitionStatus(transition);
   }
-  
+
   void didAddRoute(ModalRoute<dynamic> route) {
     _preferredSizeNotifier.addRoute(route);
   }
-  
+
   void didRemoveRoute(ModalRoute<dynamic> route) {
     _preferredSizeNotifier.removeRoute(route);
   }
 
   void didRouteContentSizeChange(ModalRoute<dynamic> route, Size contentSize) {
     _preferredSizeNotifier.didRouteContentSizeChange(route, contentSize);
-  }
-
-  void didRouteContentMarkedNeedsLayout(ModalRoute<dynamic> route) {
-    if (route.isCurrent) {
-      final renderObject = context.findRenderObject();
-      assert(renderObject is _RenderNavigatorResizable?);
-      renderObject?.markNeedsLayout();
-    }
   }
 
   static NavigatorResizableState of(BuildContext context) {
@@ -134,8 +127,11 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
           alignment: Alignment.topCenter,
           textDirection: null,
         ) {
-    preferredSize.addListener(markNeedsLayout);
+    preferredSize.addListener(_onPreferredSizeChanged);
   }
+
+  @override
+  bool get sizedByParent => false;
 
   /// The visible area of the descendant Navigator.
   ///
@@ -148,19 +144,37 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   // ignore: avoid_setters_without_getters
   set preferredSize(ValueListenable<Size> value) {
     if (value != _preferredSize) {
-      _preferredSize.removeListener(markNeedsLayout);
-      _preferredSize = value..addListener(markNeedsLayout);
+      _preferredSize.removeListener(_onPreferredSizeChanged);
+      _preferredSize = value..addListener(_onPreferredSizeChanged);
     }
   }
 
-  @override
-  void dispose() {
-    _preferredSize.removeListener(markNeedsLayout);
-    super.dispose();
+  void _onPreferredSizeChanged() {
+    switch (SchedulerBinding.instance.schedulerPhase) {
+      // If the change is triggered during the layout phase,
+      // it's too late to apply the new size to this render box
+      // in the current frame. Instead, we schedule a new frame
+      // to ensure the new size is eventually applied in the
+      // following frame.
+      case SchedulerPhase.persistentCallbacks:
+        SchedulerBinding.instance.scheduleFrameCallback((_) {
+          if (!_disposed) markNeedsLayout();
+        });
+      // Otherwise, schedule a layout immediately.
+      case _:
+        markNeedsLayout();
+    }
   }
 
+  bool _disposed = false;
+
   @override
-  bool get sizedByParent => false;
+  void dispose() {
+    assert(!_disposed);
+    _preferredSize.removeListener(_onPreferredSizeChanged);
+    _disposed = true;
+    super.dispose();
+  }
 
   @override
   Size computeDryLayout(covariant BoxConstraints constraints) {
@@ -170,6 +184,7 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   @override
   void performLayout() {
     assert(child != null);
+    assert(!constraints.isTight);
     // Pass the parent constraints directly to the child Navigator,
     // allowing it to overflow this render box if necessary.
     child!.layout(constraints, parentUsesSize: true);
@@ -180,7 +195,7 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    assert(_visibleBounds.size.nearEqual(_preferredSize.value));
+    assert(_visibleBounds.size.nearEqual(size));
     layer = context.pushClipRect(
       needsCompositing,
       offset,
@@ -192,7 +207,7 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
 
   @override
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
-    assert(_visibleBounds.size.nearEqual(_preferredSize.value));
+    assert(_visibleBounds.size.nearEqual(size));
     return _visibleBounds.contains(position) &&
         super.hitTest(result, position: position);
   }
@@ -210,10 +225,9 @@ class ResizableNavigatorRouteContentBoundary
     final parentRoute = ModalRoute.of(context)!;
     final navigatorResizable = NavigatorResizableState.of(context);
     return _RenderRouteContentBoundary(
-      didRouteContentSizeChangeCallback: (size) =>
-          navigatorResizable.didRouteContentSizeChange(parentRoute, size),
-      didRouteContentMarkedNeedsLayoutCallback: () =>
-          navigatorResizable.didRouteContentMarkedNeedsLayout(parentRoute),
+      didRouteContentSizeChangeCallback: (size) {
+        navigatorResizable.didRouteContentSizeChange(parentRoute, size);
+      },
     );
   }
 
@@ -222,27 +236,18 @@ class ResizableNavigatorRouteContentBoundary
     final parentRoute = ModalRoute.of(context)!;
     final navigatorResizable = NavigatorResizableState.of(context);
     (renderObject as _RenderRouteContentBoundary)
-      ..didRouteContentSizeChangeCallback = ((size) =>
-          navigatorResizable.didRouteContentSizeChange(parentRoute, size))
-      ..didRouteContentMarkedNeedsLayoutCallback = () =>
-          navigatorResizable.didRouteContentMarkedNeedsLayout(parentRoute);
+        .didRouteContentSizeChangeCallback = (size) {
+      navigatorResizable.didRouteContentSizeChange(parentRoute, size);
+    };
   }
 }
 
 class _RenderRouteContentBoundary extends RenderPositionedBox {
   _RenderRouteContentBoundary({
-    required this.didRouteContentMarkedNeedsLayoutCallback,
     required this.didRouteContentSizeChangeCallback,
   }) : super(alignment: Alignment.topCenter);
 
-  VoidCallback didRouteContentMarkedNeedsLayoutCallback;
   ValueSetter<Size> didRouteContentSizeChangeCallback;
-
-  @override
-  void markNeedsLayout() {
-    super.markNeedsLayout();
-    didRouteContentMarkedNeedsLayoutCallback();
-  }
 
   @override
   void performLayout() {
