@@ -5,10 +5,10 @@
   "version": "0.1.0",
   "configurations": [
     {
-      "name": "Resizable Navigator Example",
+      "name": "Declarative Example",
       "request": "launch",
       "type": "dart",
-      "program": "lib/main.dart",
+      "program": "lib/declarative_example.dart",
       "cwd": "./example"
     },
   ]
