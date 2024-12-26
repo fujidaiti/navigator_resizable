@@ -59,7 +59,7 @@ class NavigatorSizeNotifier extends ChangeNotifier
   }
 
   void didRouteContentSizeChange(ModalRoute<dynamic> route, Size contentSize) {
-    // assert(_routeContentSizes.containsKey(route));
+    assert(_routeContentSizes.containsKey(route));
     final oldPreferredSize = value;
     _routeContentSizes[route] = contentSize;
     if (value != oldPreferredSize) {
@@ -71,10 +71,9 @@ class NavigatorSizeNotifier extends ChangeNotifier
     assert(!_routeContentSizes.containsKey(route));
   }
 
-  // TODO: Call this when the route is about to be disposed.
   void removeRoute(ModalRoute<dynamic> route) {
     assert(_routeContentSizes.containsKey(route));
-    // _routeContentSizes.remove(route);
+    _routeContentSizes.remove(route);
     if (route == _currentRoute) {
       _currentRoute = null;
     }
