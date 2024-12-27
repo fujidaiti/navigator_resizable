@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 
 class VariableHeightPage extends StatefulWidget {
   const VariableHeightPage({
-
     super.key,
     required this.onNext,
   });

@@ -52,7 +52,10 @@ final _router = GoRouter(
                         key: state.pageKey,
                         child: FormPage(
                           autoFocus: false,
-                          onNext: () => context.go('/a/b/c/d'),
+                          submitButton: FilledButton(
+                            onPressed: () => context.go('/a/b/c/d'),
+                            child: Text('Next'),
+                          ),
                         ),
                       ),
                       routes: [
@@ -63,7 +66,10 @@ final _router = GoRouter(
                             key: state.pageKey,
                             child: FormPage(
                               autoFocus: true,
-                              onNext: () => context.go('/a/b/c/d/e'),
+                              submitButton: FilledButton(
+                                onPressed: () => context.go('/a/b/c/d/e'),
+                                child: Text('Next'),
+                              ),
                             ),
                           ),
                           routes: [

@@ -5,11 +5,11 @@ class FormPage extends StatelessWidget {
   const FormPage({
     super.key,
     required this.autoFocus,
-    required this.onNext,
+    required this.submitButton,
   });
 
   final bool autoFocus;
-  final VoidCallback onNext;
+  final Widget submitButton;
 
   @override
   Widget build(BuildContext context) {
@@ -40,10 +40,7 @@ class FormPage extends StatelessWidget {
                 onPressed: () => Navigator.pop(context),
                 child: Text('Back'),
               ),
-              FilledButton(
-                onPressed: onNext,
-                child: Text('Next'),
-              ),
+              submitButton,
             ],
           ),
         ],

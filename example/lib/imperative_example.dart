@@ -68,7 +68,10 @@ void pushFormPage(BuildContext context) {
     ResizableMaterialPageRoute(
       builder: (context) => FormPage(
         autoFocus: false,
-        onNext: () => pushFormPageWithAutoFocus(context),
+        submitButton: FilledButton(
+          onPressed: () => pushFormPageWithAutoFocus(context),
+          child: Text('Next'),
+        ),
       ),
     ),
   );
@@ -80,7 +83,10 @@ void pushFormPageWithAutoFocus(BuildContext context) {
     ResizableMaterialPageRoute(
       builder: (_) => FormPage(
         autoFocus: true,
-        onNext: () {},
+        submitButton: FilledButton(
+          onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+          child: Text('Submit'),
+        ),
       ),
     ),
   );
