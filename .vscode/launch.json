@@ -11,5 +11,12 @@
       "program": "lib/declarative_example.dart",
       "cwd": "./example"
     },
+    {
+      "name": "Imperative Example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/imperative_example.dart",
+      "cwd": "./example"
+    },
   ]
 }

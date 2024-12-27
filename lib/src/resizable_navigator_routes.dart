@@ -31,7 +31,8 @@ mixin ResizableNavigatorRouteMixin<T> on ModalRoute<T> {
   }
 }
 
-class ResizableMaterialPageRoute<T> extends MaterialPageRoute<T> {
+class ResizableMaterialPageRoute<T> extends MaterialPageRoute<T>
+    with ResizableNavigatorRouteMixin<T>, MaterialRouteTransitionMixin<T> {
   ResizableMaterialPageRoute({
     required super.builder,
     super.settings,

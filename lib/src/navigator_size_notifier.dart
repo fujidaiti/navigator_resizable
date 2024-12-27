@@ -69,6 +69,7 @@ class NavigatorSizeNotifier extends ChangeNotifier
 
   void addRoute(ModalRoute<dynamic> route) {
     assert(!_routeContentSizes.containsKey(route));
+    _routeContentSizes[route] = _defaultPreferredSize;
   }
 
   void removeRoute(ModalRoute<dynamic> route) {
