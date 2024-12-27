@@ -5,6 +5,13 @@
   "version": "0.1.0",
   "configurations": [
     {
+      "name": "Minimal Example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/minimal_example.dart",
+      "cwd": "./example"
+    },
+    {
       "name": "Declarative Example",
       "request": "launch",
       "type": "dart",
