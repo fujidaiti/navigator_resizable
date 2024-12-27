@@ -82,15 +82,24 @@ mixin RouteTransitionAwareStateMixin<T extends RouteTransitionAwareWidgetMixin>
       // are pushed at the same time without transition animation.
       _notify(TransitionCompleted(currentRoute: route));
     } else if (route.isCurrent && currentStatus is TransitionCompleted) {
-      // Notify the listener when the push animation starts and ends.
+      void notifyTransitionStarted() {
+        _notify(ForwardTransition(
+          originRoute: currentStatus.currentRoute,
+          destinationRoute: route,
+          animation: route.animation!,
+        ));
+      }
+
+      if (route.animation!.status == AnimationStatus.forward) {
+        // Notify the listener immediately if the animation is already started.
+        // Otherwise, wait for the animation to start.
+        notifyTransitionStarted();
+      }
+
       void transitionStatusListener(AnimationStatus status) {
         if (status == AnimationStatus.forward) {
           assert(_transitionStatus is! ForwardTransition);
-          _notify(ForwardTransition(
-            originRoute: currentStatus.currentRoute,
-            destinationRoute: route,
-            animation: route.animation!,
-          ));
+          notifyTransitionStarted();
         } else if (status == AnimationStatus.completed && !route.offstage) {
           route.animation!.removeStatusListener(transitionStatusListener);
           if (transitionStatus is ForwardTransition) {
