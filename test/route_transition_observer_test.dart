@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,61 +28,48 @@ void main() {
     return () => progress.removeListener(listener);
   }
 
-  group('Imperative Navigator API test', () {
+  group('Transition event capturing test with imperative navigator API', () {
     late Widget testWidget;
+    late GlobalKey<NavigatorState> navigatorKey;
 
     setUp(() {
-      Route<dynamic> createSecondRoute() {
-        return MaterialPageRoute(
-          settings: const RouteSettings(name: 'second'),
-          builder: (context) {
-            return _TestRouteWidget(
-              onBack: () => Navigator.pop(context),
-            );
-          },
-        );
-      }
-
-      Route<dynamic> createFirstRoute() {
-        return MaterialPageRoute(
-          settings: const RouteSettings(name: 'first'),
-          builder: (context) {
-            return _TestRouteWidget(
-              onNext: () => Navigator.push(context, createSecondRoute()),
-            );
-          },
-        );
-      }
-
+      navigatorKey = GlobalKey<NavigatorState>();
       testWidget = MaterialApp(
-        home: _TestRouteTransitionObserverWidget(
-          onTransitionStatusChanged: transitionStatusHistory.add,
-          transitionObserver: transitionObserver,
-          child: _ImperativeNavigator(
-            observer: transitionObserver,
-            initialRouteBuilder: createFirstRoute,
-          ),
-        ),
+        navigatorObservers: [transitionObserver],
+        navigatorKey: navigatorKey,
+        initialRoute: '/a',
+        routes: {
+          '/a': (_) => const Scaffold(),
+          '/b': (_) => const Scaffold(),
+        },
+        builder: (context, navigator) {
+          return _TestRouteTransitionObserverWidget(
+            onTransitionStatusChanged: transitionStatusHistory.add,
+            transitionObserver: transitionObserver,
+            child: navigator!,
+          );
+        },
       );
     });
 
-    testWidgets('Detect initial build', (tester) async {
+    testWidgets('On initial build', (tester) async {
       await tester.pumpWidget(testWidget);
       expect(transitionStatusHistory, [
         isTransitionCompleted(
-          currentRoute: isModalRoute(name: 'first'),
+          currentRoute: isModalRoute(name: '/a'),
         ),
       ]);
     });
 
-    testWidgets('Detect push events', (tester) async {
+    testWidgets('When pushing a route', (tester) async {
       await tester.pumpWidget(testWidget);
       transitionStatusHistory.clear();
-      await tester.tap(find.text('Next'));
+      unawaited(navigatorKey.currentState!.pushNamed('/b'));
+      await tester.pump();
       expect(transitionStatusHistory, [
         isForwardTransition(
-          originRoute: isModalRoute(name: 'first'),
-          destinationRoute: isModalRoute(name: 'second'),
+          originRoute: isModalRoute(name: '/a'),
+          destinationRoute: isModalRoute(name: '/b'),
         ),
       ]);
 
@@ -92,22 +81,23 @@ void main() {
       await tester.pumpAndSettle();
       expect(transitionStatusHistory, [
         isTransitionCompleted(
-          currentRoute: isModalRoute(name: 'second'),
+          currentRoute: isModalRoute(name: '/b'),
         ),
       ]);
       expect(transitionProgressHistory, isMonotonic(increasing: true));
     });
 
-    testWidgets('Detect pop events', (tester) async {
+    testWidgets('When popping a route', (tester) async {
       await tester.pumpWidget(testWidget);
-      await tester.tap(find.text('Next'));
+      unawaited(navigatorKey.currentState!.pushNamed('/b'));
       await tester.pumpAndSettle();
       transitionStatusHistory.clear();
-      await tester.tap(find.text('Back'));
+      navigatorKey.currentState!.pop();
+      await tester.pump();
       expect(transitionStatusHistory, [
         isBackwardTransition(
-          originRoute: isModalRoute(name: 'second'),
-          destinationRoute: isModalRoute(name: 'first'),
+          originRoute: isModalRoute(name: '/b'),
+          destinationRoute: isModalRoute(name: '/a'),
         ),
       ]);
 
@@ -119,17 +109,17 @@ void main() {
       await tester.pumpAndSettle();
       expect(transitionStatusHistory, [
         isTransitionCompleted(
-          currentRoute: isModalRoute(name: 'first'),
+          currentRoute: isModalRoute(name: '/a'),
         ),
       ]);
       expect(transitionProgressHistory, isMonotonic(increasing: true));
     });
 
-    testWidgets('Detect swipe back gesture events on iOS', (tester) async {
+    testWidgets('When iOS swipe back gesture is performed', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
       await tester.pumpWidget(testWidget);
-      await tester.tap(find.text('Next'));
+      unawaited(navigatorKey.currentState!.pushNamed('/b'));
       await tester.pumpAndSettle();
       transitionStatusHistory.clear();
       // Start a swipe back gesture
@@ -139,8 +129,8 @@ void main() {
 
       expect(transitionStatusHistory, [
         isUserGestureTransition(
-          currentRoute: isModalRoute(name: 'second'),
-          previousRoute: isModalRoute(name: 'first'),
+          currentRoute: isModalRoute(name: '/b'),
+          previousRoute: isModalRoute(name: '/a'),
         ),
       ]);
 
@@ -167,11 +157,11 @@ void main() {
 
       expect(transitionStatusHistory, [
         isBackwardTransition(
-          originRoute: isModalRoute(name: 'second'),
-          destinationRoute: isModalRoute(name: 'first'),
+          originRoute: isModalRoute(name: '/b'),
+          destinationRoute: isModalRoute(name: '/a'),
         ),
         isTransitionCompleted(
-          currentRoute: isModalRoute(name: 'first'),
+          currentRoute: isModalRoute(name: '/a'),
         ),
       ]);
 
@@ -179,77 +169,69 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     });
 
-    testWidgets(
-      'Detect swipe back gesture events on iOS (canceled)',
-      (tester) async {
-        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    testWidgets('When iOS swipe back gesture is canceled', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
-        await tester.pumpWidget(testWidget);
-        await tester.tap(find.text('Next'));
-        await tester.pumpAndSettle();
-        // Start a swipe back gesture
-        final gesture = await tester.startGesture(const Offset(0, 200));
-        await gesture.moveBy(const Offset(50, 0));
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(testWidget);
+      unawaited(navigatorKey.currentState!.pushNamed('/b'));
+      await tester.pumpAndSettle();
+      // Start a swipe back gesture
+      final gesture = await tester.startGesture(const Offset(0, 200));
+      await gesture.moveBy(const Offset(50, 0));
+      await tester.pumpAndSettle();
 
-        startTrackingTransitionProgress(
-          (transitionStatusHistory.last as UserGestureTransition).animation,
-        );
-        transitionStatusHistory.clear();
+      startTrackingTransitionProgress(
+        (transitionStatusHistory.last as UserGestureTransition).animation,
+      );
+      transitionStatusHistory.clear();
 
-        // Cancel the swipe back gesture.
-        await gesture.up();
-        await tester.pumpAndSettle();
+      // Cancel the swipe back gesture.
+      await gesture.up();
+      await tester.pumpAndSettle();
 
-        expect(transitionStatusHistory, [
-          isTransitionCompleted(
-            currentRoute: isModalRoute(name: 'second'),
-          ),
-        ]);
-        expect(transitionProgressHistory, isMonotonic(increasing: false));
+      expect(transitionStatusHistory, [
+        isTransitionCompleted(
+          currentRoute: isModalRoute(name: '/b'),
+        ),
+      ]);
+      expect(transitionProgressHistory, isMonotonic(increasing: false));
 
-        // Reset the default target platform.
-        debugDefaultTargetPlatformOverride = null;
-      },
-    );
+      // Reset the default target platform.
+      debugDefaultTargetPlatformOverride = null;
+    });
   });
 
-  group('Declarative Navigator API test', () {
+  group('Transition event capturing test with declarative navigator API', () {
     late Widget testWidget;
+    late GlobalKey<NavigatorState> navigatorKey;
 
     setUp(() {
+      navigatorKey = GlobalKey<NavigatorState>();
       // TODO: Do not use GoRouter.
       final router = GoRouter(
         observers: [transitionObserver],
+        navigatorKey: navigatorKey,
         initialLocation: '/a',
         routes: [
           GoRoute(
             path: '/a',
-            builder: (context, _) => _TestRouteWidget(
-              onNext: () => context.go('/a/b'),
-            ),
+            builder: (_, __) => const Scaffold(),
             routes: [
               GoRoute(
                 path: 'b',
-                builder: (context, _) => _TestRouteWidget(
-                  onNext: () => context.go('/a/b/c'),
-                  onBack: () => context.go('/a'),
-                ),
+                builder: (_, __) => const Scaffold(),
                 routes: [
                   GoRoute(
                     path: 'c',
-                    builder: (context, _) => _TestRouteWidget(
-                      onNext: () => context.go('/A'),
-                      onBack: () => context.go('/a/b'),
-                    ),
+                    builder: (_, __) => const Scaffold(),
                   ),
                 ],
               ),
             ],
           ),
           GoRoute(
-            path: '/A',
-            builder: (context, _) => const _TestRouteWidget(),
+            path: '/d',
+            builder: (context, _) => const Scaffold(),
           ),
         ],
       );
@@ -266,7 +248,7 @@ void main() {
       );
     });
 
-    testWidgets('Detect initial build', (tester) async {
+    testWidgets('On initial build', (tester) async {
       await tester.pumpWidget(testWidget);
       expect(transitionStatusHistory, [
         isTransitionCompleted(
@@ -275,10 +257,10 @@ void main() {
       ]);
     });
 
-    testWidgets('Detect push events', (tester) async {
+    testWidgets('When pushing a route', (tester) async {
       await tester.pumpWidget(testWidget);
       transitionStatusHistory.clear();
-      await tester.tap(find.text('Next'));
+      navigatorKey.currentContext!.go('/a/b');
       await tester.pump();
       expect(transitionStatusHistory, [
         isForwardTransition(
@@ -301,12 +283,64 @@ void main() {
       expect(transitionProgressHistory, isMonotonic(increasing: true));
     });
 
-    testWidgets('Detect pop events', (tester) async {
+    testWidgets('When pushing multiple routes simultaneously', (tester) async {
       await tester.pumpWidget(testWidget);
-      await tester.tap(find.text('Next'));
+      transitionStatusHistory.clear();
+      navigatorKey.currentContext!.go('/a/b/c');
+      await tester.pump();
+      expect(transitionStatusHistory, [
+        isForwardTransition(
+          originRoute: isModalRoute(name: '/a'),
+          destinationRoute: isModalRoute(name: 'c'),
+        ),
+      ]);
+
+      startTrackingTransitionProgress(
+        (transitionStatusHistory.first as ForwardTransition).animation,
+      );
+      transitionStatusHistory.clear();
+
+      await tester.pumpAndSettle();
+      expect(transitionStatusHistory, [
+        isTransitionCompleted(
+          currentRoute: isModalRoute(name: 'c'),
+        ),
+      ]);
+      expect(transitionProgressHistory, isMonotonic(increasing: true));
+    });
+
+    testWidgets('When replacing the entire page stack', (tester) async {
+      await tester.pumpWidget(testWidget);
+      transitionStatusHistory.clear();
+      navigatorKey.currentContext!.go('/d');
+      await tester.pump();
+      expect(transitionStatusHistory, [
+        isForwardTransition(
+          originRoute: isModalRoute(name: '/a'),
+          destinationRoute: isModalRoute(name: '/d'),
+        ),
+      ]);
+
+      startTrackingTransitionProgress(
+        (transitionStatusHistory.first as ForwardTransition).animation,
+      );
+      transitionStatusHistory.clear();
+
+      await tester.pumpAndSettle();
+      expect(transitionStatusHistory, [
+        isTransitionCompleted(
+          currentRoute: isModalRoute(name: '/d'),
+        ),
+      ]);
+      expect(transitionProgressHistory, isMonotonic(increasing: true));
+    });
+
+    testWidgets('When popping a route', (tester) async {
+      await tester.pumpWidget(testWidget);
+      navigatorKey.currentContext!.go('/a/b');
       await tester.pumpAndSettle();
       transitionStatusHistory.clear();
-      await tester.tap(find.text('Back'));
+      navigatorKey.currentContext!.go('/a');
       await tester.pump();
       expect(transitionStatusHistory, [
         isBackwardTransition(
@@ -329,11 +363,39 @@ void main() {
       expect(transitionProgressHistory, isMonotonic(increasing: true));
     });
 
-    testWidgets('Detect swipe back gesture events on iOS', (tester) async {
+    testWidgets('When popping multiple routes simultaneously', (tester) async {
+      await tester.pumpWidget(testWidget);
+      navigatorKey.currentContext!.go('/a/b/c');
+      await tester.pumpAndSettle();
+      transitionStatusHistory.clear();
+      navigatorKey.currentContext!.go('/a');
+      await tester.pump();
+      expect(transitionStatusHistory, [
+        isBackwardTransition(
+          originRoute: isModalRoute(name: 'c'),
+          destinationRoute: isModalRoute(name: '/a'),
+        ),
+      ]);
+
+      startTrackingTransitionProgress(
+        (transitionStatusHistory.first as BackwardTransition).animation,
+      );
+      transitionStatusHistory.clear();
+
+      await tester.pumpAndSettle();
+      expect(transitionStatusHistory, [
+        isTransitionCompleted(
+          currentRoute: isModalRoute(name: '/a'),
+        ),
+      ]);
+      expect(transitionProgressHistory, isMonotonic(increasing: true));
+    });
+
+    testWidgets('When iOS swipe back gesture is performed', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
       await tester.pumpWidget(testWidget);
-      await tester.tap(find.text('Next'));
+      navigatorKey.currentContext!.go('/a/b');
       await tester.pumpAndSettle();
       transitionStatusHistory.clear();
       // Start a swipe back gesture
@@ -383,39 +445,37 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     });
 
-    testWidgets(
-      'Detect swipe back gesture events on iOS (canceled)',
-      (tester) async {
-        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    testWidgets('When iOS swipe back gesture is canceled on iOS',
+        (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
-        await tester.pumpWidget(testWidget);
-        await tester.tap(find.text('Next'));
-        await tester.pumpAndSettle();
-        // Start a swipe back gesture
-        final gesture = await tester.startGesture(const Offset(0, 200));
-        await gesture.moveBy(const Offset(50, 0));
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(testWidget);
+      navigatorKey.currentContext!.go('/a/b');
+      await tester.pumpAndSettle();
+      // Start a swipe back gesture
+      final gesture = await tester.startGesture(const Offset(0, 200));
+      await gesture.moveBy(const Offset(50, 0));
+      await tester.pumpAndSettle();
 
-        startTrackingTransitionProgress(
-          (transitionStatusHistory.last as UserGestureTransition).animation,
-        );
-        transitionStatusHistory.clear();
+      startTrackingTransitionProgress(
+        (transitionStatusHistory.last as UserGestureTransition).animation,
+      );
+      transitionStatusHistory.clear();
 
-        // Cancel the swipe back gesture.
-        await gesture.up();
-        await tester.pumpAndSettle();
+      // Cancel the swipe back gesture.
+      await gesture.up();
+      await tester.pumpAndSettle();
 
-        expect(transitionStatusHistory, [
-          isTransitionCompleted(
-            currentRoute: isModalRoute(name: 'b'),
-          ),
-        ]);
-        expect(transitionProgressHistory, isMonotonic(increasing: false));
+      expect(transitionStatusHistory, [
+        isTransitionCompleted(
+          currentRoute: isModalRoute(name: 'b'),
+        ),
+      ]);
+      expect(transitionProgressHistory, isMonotonic(increasing: false));
 
-        // Reset the default target platform.
-        debugDefaultTargetPlatformOverride = null;
-      },
-    );
+      // Reset the default target platform.
+      debugDefaultTargetPlatformOverride = null;
+    });
   });
 }
 
@@ -449,53 +509,5 @@ class _TestRouteTransitionObserverWidgetState
   @override
   Widget build(BuildContext context) {
     return widget.child;
-  }
-}
-
-class _ImperativeNavigator extends StatelessWidget {
-  const _ImperativeNavigator({
-    this.observer,
-    required this.initialRouteBuilder,
-  });
-
-  final NavigatorObserver? observer;
-  final Route<dynamic> Function() initialRouteBuilder;
-
-  @override
-  Widget build(BuildContext context) {
-    return Navigator(
-      observers: [if (observer != null) observer!],
-      onGenerateInitialRoutes: (_, __) => [initialRouteBuilder()],
-    );
-  }
-}
-
-class _TestRouteWidget extends StatelessWidget {
-  const _TestRouteWidget({
-    this.onNext,
-    this.onBack,
-  });
-
-  final VoidCallback? onNext;
-  final VoidCallback? onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.white,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          TextButton(
-            onPressed: onNext,
-            child: const Text('Next'),
-          ),
-          TextButton(
-            onPressed: onBack,
-            child: const Text('Back'),
-          ),
-        ],
-      ),
-    );
   }
 }

@@ -33,7 +33,7 @@ final _router = GoRouter(
                 key: state.pageKey,
                 child: WelcomePage(
                   onNext: () => context.go('/a/b'),
-                  onJumpToLast: () => context.go('/a/b/c/d/e'),
+                  onJumpToLast: () => context.go('/x'),
                 ),
               ),
               routes: [
@@ -98,6 +98,21 @@ final _router = GoRouter(
                 ),
               ],
             ),
+            GoRoute(
+              path: 'x',
+              pageBuilder: (context, state) => ResizableMaterialPage(
+                key: state.pageKey,
+                child: PortalPage(
+                  destinations: [
+                    '/a/b/c/d',
+                    '/a/b/c',
+                    '/a/b',
+                    '/a',
+                  ],
+                  onGoToDestination: (destination) => context.go(destination),
+                ),
+              ),
+            ),
           ],
         ),
       ],
@@ -113,7 +128,7 @@ class Home extends StatelessWidget {
     return Scaffold(
       body: Center(
         child: TextButton(
-          onPressed: () => context.go('/a'),
+          onPressed: () => context.go('/A'),
           child: const Text('Open Dialog'),
         ),
       ),
