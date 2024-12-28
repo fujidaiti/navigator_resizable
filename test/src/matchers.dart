@@ -82,15 +82,13 @@ TypeMatcher<TransitionCompleted> isTransitionCompleted({
   return result;
 }
 
-TypeMatcher<ModalRoute<dynamic>> isModalRoute({
-  RouteSettings? settings,
-}) {
+TypeMatcher<ModalRoute<dynamic>> isModalRoute({String? name}) {
   var result = isA<ModalRoute<dynamic>>();
-  if (settings != null) {
+  if (name != null) {
     result = result.having(
-      (it) => it.settings,
-      'settings',
-      settings,
+      (it) => it.settings.name,
+      'settings.name',
+      name,
     );
   }
   return result;

@@ -20,6 +20,7 @@ dev_dependencies:
     sdk: flutter
   pedantic_mono: ^1.29.0
   flutter_lints: ^5.0.0
+  go_router: ^14.6.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
