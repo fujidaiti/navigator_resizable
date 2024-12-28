@@ -83,11 +83,13 @@ mixin RouteTransitionAwareStateMixin<T extends RouteTransitionAwareWidgetMixin>
       _notify(TransitionCompleted(currentRoute: route));
     } else if (route.isCurrent && currentStatus is TransitionCompleted) {
       void notifyTransitionStarted() {
-        _notify(ForwardTransition(
-          originRoute: currentStatus.currentRoute,
-          destinationRoute: route,
-          animation: route.animation!,
-        ));
+        _notify(
+          ForwardTransition(
+            originRoute: currentStatus.currentRoute,
+            destinationRoute: route,
+            animation: _TransitionProgress(animationOwner: route),
+          ),
+        );
       }
 
       if (route.animation!.status == AnimationStatus.forward) {
@@ -97,8 +99,8 @@ mixin RouteTransitionAwareStateMixin<T extends RouteTransitionAwareWidgetMixin>
       }
 
       void transitionStatusListener(AnimationStatus status) {
-        if (status == AnimationStatus.forward) {
-          assert(_transitionStatus is! ForwardTransition);
+        if (status == AnimationStatus.forward &&
+            _transitionStatus is! ForwardTransition) {
           notifyTransitionStarted();
         } else if (status == AnimationStatus.completed && !route.offstage) {
           route.animation!.removeStatusListener(transitionStatusListener);
@@ -173,4 +175,22 @@ mixin RouteTransitionAwareStateMixin<T extends RouteTransitionAwareWidgetMixin>
     _notify(const NoRoute());
     super.dispose();
   }
+}
+
+class _TransitionProgress extends Animation<double>
+    with AnimationWithParentMixin<double> {
+  _TransitionProgress({required this.animationOwner});
+
+  final ModalRoute<dynamic> animationOwner;
+  @override
+  Animation<double> get parent => animationOwner.animation!;
+
+  // During the first frame of a route's entrance transition, the route is
+  // built with `offstage=true` and an animation progress value of 1.0.
+  // This causes a discontinuity in the animation progress, as the route
+  // visually appears inactive but is technically at the end of the animation.
+  // To address this, the value is set to 0.0 when the route is offstage.
+  @override
+  double get value =>
+      animationOwner.offstage ? 0.0 : animationOwner.animation!.value;
 }
