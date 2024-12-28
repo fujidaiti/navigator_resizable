@@ -63,16 +63,13 @@ void main() {
 
     testWidgets('Detect initial build', (tester) async {
       await tester.pumpWidget(testWidget);
-      expect(
-        transitionStatusHistory,
-        [
-          isTransitionCompleted(
-            currentRoute: isModalRoute(
-              settings: const RouteSettings(name: 'first'),
-            ),
+      expect(transitionStatusHistory, [
+        isTransitionCompleted(
+          currentRoute: isModalRoute(
+            settings: const RouteSettings(name: 'first'),
           ),
-        ],
-      );
+        ),
+      ]);
     });
 
     testWidgets('Detect push events', (tester) async {
