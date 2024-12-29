@@ -118,6 +118,9 @@ class _IsMonotonic extends Matcher {
     while (iterator.moveNext()) {
       itemCount++;
       final current = iterator.current;
+      if (current.isNaN) {
+        return false;
+      }
       final diff = current - (previous ?? current);
       if ((increasing && diff < 0) || (!increasing && diff > 0)) {
         return false;
