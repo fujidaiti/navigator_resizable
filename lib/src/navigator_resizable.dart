@@ -124,7 +124,7 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
     required ValueListenable<Size> preferredSize,
   })  : _preferredSize = preferredSize,
         super(
-          alignment: Alignment.topCenter,
+          alignment: Alignment.topLeft,
           textDirection: null,
         ) {
     preferredSize.addListener(_onPreferredSizeChanged);
@@ -245,7 +245,7 @@ class ResizableNavigatorRouteContentBoundary
 class _RenderRouteContentBoundary extends RenderPositionedBox {
   _RenderRouteContentBoundary({
     required this.didRouteContentSizeChangeCallback,
-  }) : super(alignment: Alignment.topCenter);
+  }) : super(alignment: Alignment.topLeft);
 
   ValueSetter<Size> didRouteContentSizeChangeCallback;
 

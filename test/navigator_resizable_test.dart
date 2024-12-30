@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:resizable_navigator/src/navigator_resizable.dart';
@@ -116,7 +117,6 @@ void main() {
       expect(getBox(tester).size, const Size(100, 200));
     });
 
-    /*
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
@@ -124,52 +124,75 @@ void main() {
       unawaited(navigatorKey.currentState!.pushNamed('b'));
       await tester.pumpAndSettle();
 
-      expect(navigatorKey.currentState!.currentRoute.settings.name, 'b');
-      await tester.tap(find.text('hello'));
-      // expect(navigatorKey.currentState!.currentRoute.popGestureEnabled, isTrue);
-      final gesture = await tester.startGesture(const Offset(310, 300));
-      await gesture.moveBy(const Offset(50, 0));
-      await tester.pumpAndSettle();
-      expect(getBox(tester).size, const Size(200, 300));
-      expect(navigatorKey.currentState!.userGestureInProgress, isTrue);
-
       final transitionProgress =
           navigatorKey.currentState!.currentRoute.animation!;
 
-      // Size interpolatedSize() {
-      //   return Size.lerp(
-      //     const Size(100, 200),
-      //     const Size(200, 300),
-      //     transitionProgress.value,
-      //   )!;
-      // }
+      final gesture = await tester.startGesture(const Offset(300, 300));
+      await gesture.moveBy(const Offset(80, 0));
+      await tester.pump();
+      expect(navigatorKey.currentState!.userGestureInProgress, isTrue);
+      expect(transitionProgress.value, moreOrLessEquals(0.9));
+      expect(getBox(tester).size, const Size(190, 290));
 
-      // await gesture.moveBy(const Offset(100, 0));
-      // await tester.pump();
-      // expect(getBox(tester).size, interpolatedSize());
+      await gesture.moveBy(const Offset(80, 0));
+      await tester.pump();
+      expect(transitionProgress.value, moreOrLessEquals(0.8));
+      expect(getBox(tester).size, const Size(180, 280));
 
-      // await gesture.moveBy(const Offset(100, 0));
-      // await tester.pump();
-      // expect(getBox(tester).size, interpolatedSize());
+      await gesture.moveBy(const Offset(80, 0));
+      await tester.pump();
+      expect(transitionProgress.value, moreOrLessEquals(0.7));
+      expect(getBox(tester).size, const Size(170, 270));
 
-      // await gesture.moveBy(const Offset(100, 0));
-      // await tester.pump();
-      // expect(getBox(tester).size, interpolatedSize());
+      await gesture.moveBy(const Offset(80, 0));
+      await tester.pump();
+      expect(transitionProgress.value, moreOrLessEquals(0.6));
+      expect(getBox(tester).size, const Size(160, 260));
 
-      // await gesture.moveBy(const Offset(200, 0));
-      // await tester.pump();
-      // expect(getBox(tester).size, interpolatedSize());
-      // expect(transitionProgress.value, 0.4);
+      await gesture.moveBy(const Offset(80, 0));
+      await tester.pump();
+      expect(transitionProgress.value, moreOrLessEquals(0.5));
+      expect(getBox(tester).size, const Size(150, 250));
 
-      // await gesture.up();
-      // await tester.pumpAndSettle();
-      // expect(navigatorKey.currentState!.userGestureInProgress, isFalse);
-      // expect(getBox(tester).size, const Size(100, 200));
+      await gesture.moveBy(const Offset(80, 0));
+      await tester.pump();
+      expect(transitionProgress.value, moreOrLessEquals(0.4));
+      expect(getBox(tester).size, const Size(140, 240));
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(navigatorKey.currentState!.userGestureInProgress, isFalse);
+      expect(getBox(tester).size, const Size(100, 200));
 
       // Reset the default target platform.
       debugDefaultTargetPlatformOverride = null;
     });
-    */
+
+    testWidgets('When iOS swipe back gesture is canceled', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+      await tester.pumpWidget(testWidget);
+      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      await tester.pumpAndSettle();
+
+      final transitionProgress =
+          navigatorKey.currentState!.currentRoute.animation!;
+
+      final gesture = await tester.startGesture(const Offset(300, 300));
+      await gesture.moveBy(const Offset(80, 0));
+      await tester.pump();
+      expect(navigatorKey.currentState!.userGestureInProgress, isTrue);
+      expect(transitionProgress.value, moreOrLessEquals(0.9));
+      expect(getBox(tester).size, const Size(190, 290));
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(navigatorKey.currentState!.userGestureInProgress, isFalse);
+      expect(getBox(tester).size, const Size(200, 300));
+
+      // Reset the default target platform.
+      debugDefaultTargetPlatformOverride = null;
+    });
   });
 }
 
