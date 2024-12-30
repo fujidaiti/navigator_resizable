@@ -11,31 +11,30 @@ class ExampleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: ColoredBox(color: Colors.white),
-      // home: Scaffold(
-      //   body: Align(
-      //     // Try changing the alignment for fun!
-      //     alignment: Alignment.center,
-      //     child: ColoredBox(
-      //       color: Colors.purple,
-      //       // STEP1: Wrap the navigator with NavigatorResizable.
-      //       child: NavigatorResizable(
-      //         transitionObserver: transitionObserver,
-      //         child: Navigator(
-      //           observers: [transitionObserver],
-      //           onGenerateInitialRoutes: (_, __) => [
-      //             // STEP2: Use ResizableMaterialPageRoute instead of MaterialPageRoute.
-      //             //
-      //             // That's it!
-      //             ResizableMaterialPageRoute(
-      //               builder: (context) => const SmallPage(),
-      //             ),
-      //           ],
-      //         ),
-      //       ),
-      //     ),
-      //   ),
-      // ),
+      home: Scaffold(
+        body: Align(
+          // Try changing the alignment for fun!
+          alignment: Alignment.center,
+          child: ColoredBox(
+            color: Colors.purple,
+            // STEP1: Wrap the navigator with NavigatorResizable.
+            child: NavigatorResizable(
+              transitionObserver: transitionObserver,
+              child: Navigator(
+                observers: [transitionObserver],
+                onGenerateInitialRoutes: (_, __) => [
+                  // STEP2: Use ResizableMaterialPageRoute instead of MaterialPageRoute.
+                  //
+                  // That's it!
+                  ResizableMaterialPageRoute(
+                    builder: (context) => const SmallPage(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
