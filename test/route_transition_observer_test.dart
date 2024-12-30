@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 import 'package:resizable_navigator/src/route_transition_observer.dart';
 import 'package:resizable_navigator/src/route_transition_status.dart';
 
@@ -202,47 +201,55 @@ void main() {
   });
 
   group('Transition event capturing test with declarative navigator API', () {
+    late ValueSetter<String> setLocation;
     late Widget testWidget;
-    late GlobalKey<NavigatorState> navigatorKey;
 
     setUp(() {
-      navigatorKey = GlobalKey<NavigatorState>();
-      // TODO: Do not use GoRouter.
-      final router = GoRouter(
-        observers: [transitionObserver],
-        navigatorKey: navigatorKey,
-        initialLocation: '/a',
-        routes: [
-          GoRoute(
-            path: '/a',
-            builder: (_, __) => const Scaffold(),
-            routes: [
-              GoRoute(
-                path: 'b',
-                builder: (_, __) => const Scaffold(),
-                routes: [
-                  GoRoute(
-                    path: 'c',
-                    builder: (_, __) => const Scaffold(),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          GoRoute(
-            path: '/d',
-            builder: (context, _) => const Scaffold(),
-          ),
-        ],
+      const pageA = MaterialPage<dynamic>(
+        name: 'a',
+        key: ValueKey('a'),
+        child: Scaffold(),
+      );
+      const pageB = MaterialPage<dynamic>(
+        name: 'b',
+        key: ValueKey('b'),
+        child: Scaffold(),
+      );
+      const pageC = MaterialPage<dynamic>(
+        name: 'c',
+        key: ValueKey('c'),
+        child: Scaffold(),
+      );
+      const pageD = MaterialPage<dynamic>(
+        name: 'd',
+        key: ValueKey('d'),
+        child: Scaffold(),
       );
 
-      testWidget = MaterialApp.router(
-        routerConfig: router,
-        builder: (context, child) {
-          return _TestRouteTransitionObserverWidget(
-            onTransitionStatusChanged: transitionStatusHistory.add,
-            transitionObserver: transitionObserver,
-            child: child!,
+      var location = '/a';
+      testWidget = StatefulBuilder(
+        builder: (_, setState) {
+          setLocation = (newLocation) {
+            location = newLocation;
+            setState(() {});
+          };
+
+          return MaterialApp(
+            home: _TestRouteTransitionObserverWidget(
+              onTransitionStatusChanged: transitionStatusHistory.add,
+              transitionObserver: transitionObserver,
+              child: Navigator(
+                observers: [transitionObserver],
+                onDidRemovePage: (page) {},
+                pages: switch (location) {
+                  '/a' => [pageA],
+                  '/a/b' => [pageA, pageB],
+                  '/a/b/c' => [pageA, pageB, pageC],
+                  '/d' => [pageD],
+                  _ => throw StateError('Unknown location: $location'),
+                },
+              ),
+            ),
           );
         },
       );
@@ -252,7 +259,7 @@ void main() {
       await tester.pumpWidget(testWidget);
       expect(transitionStatusHistory, [
         isTransitionCompleted(
-          currentRoute: isModalRoute(name: '/a'),
+          currentRoute: isModalRoute(name: 'a'),
         ),
       ]);
     });
@@ -260,11 +267,11 @@ void main() {
     testWidgets('When pushing a route', (tester) async {
       await tester.pumpWidget(testWidget);
       transitionStatusHistory.clear();
-      navigatorKey.currentContext!.go('/a/b');
+      setLocation('/a/b');
       await tester.pump();
       expect(transitionStatusHistory, [
         isForwardTransition(
-          originRoute: isModalRoute(name: '/a'),
+          originRoute: isModalRoute(name: 'a'),
           destinationRoute: isModalRoute(name: 'b'),
         ),
       ]);
@@ -286,11 +293,11 @@ void main() {
     testWidgets('When pushing multiple routes simultaneously', (tester) async {
       await tester.pumpWidget(testWidget);
       transitionStatusHistory.clear();
-      navigatorKey.currentContext!.go('/a/b/c');
+      setLocation('/a/b/c');
       await tester.pump();
       expect(transitionStatusHistory, [
         isForwardTransition(
-          originRoute: isModalRoute(name: '/a'),
+          originRoute: isModalRoute(name: 'a'),
           destinationRoute: isModalRoute(name: 'c'),
         ),
       ]);
@@ -312,12 +319,12 @@ void main() {
     testWidgets('When replacing the entire page stack', (tester) async {
       await tester.pumpWidget(testWidget);
       transitionStatusHistory.clear();
-      navigatorKey.currentContext!.go('/d');
+      setLocation('/d');
       await tester.pump();
       expect(transitionStatusHistory, [
         isForwardTransition(
-          originRoute: isModalRoute(name: '/a'),
-          destinationRoute: isModalRoute(name: '/d'),
+          originRoute: isModalRoute(name: 'a'),
+          destinationRoute: isModalRoute(name: 'd'),
         ),
       ]);
 
@@ -329,7 +336,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(transitionStatusHistory, [
         isTransitionCompleted(
-          currentRoute: isModalRoute(name: '/d'),
+          currentRoute: isModalRoute(name: 'd'),
         ),
       ]);
       expect(transitionProgressHistory, isMonotonic(increasing: true));
@@ -337,15 +344,15 @@ void main() {
 
     testWidgets('When popping a route', (tester) async {
       await tester.pumpWidget(testWidget);
-      navigatorKey.currentContext!.go('/a/b');
+      setLocation('/a/b');
       await tester.pumpAndSettle();
       transitionStatusHistory.clear();
-      navigatorKey.currentContext!.go('/a');
+      setLocation('/a');
       await tester.pump();
       expect(transitionStatusHistory, [
         isBackwardTransition(
           originRoute: isModalRoute(name: 'b'),
-          destinationRoute: isModalRoute(name: '/a'),
+          destinationRoute: isModalRoute(name: 'a'),
         ),
       ]);
 
@@ -357,7 +364,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(transitionStatusHistory, [
         isTransitionCompleted(
-          currentRoute: isModalRoute(name: '/a'),
+          currentRoute: isModalRoute(name: 'a'),
         ),
       ]);
       expect(transitionProgressHistory, isMonotonic(increasing: true));
@@ -365,15 +372,15 @@ void main() {
 
     testWidgets('When popping multiple routes simultaneously', (tester) async {
       await tester.pumpWidget(testWidget);
-      navigatorKey.currentContext!.go('/a/b/c');
+      setLocation('/a/b/c');
       await tester.pumpAndSettle();
       transitionStatusHistory.clear();
-      navigatorKey.currentContext!.go('/a');
+      setLocation('/a');
       await tester.pump();
       expect(transitionStatusHistory, [
         isBackwardTransition(
           originRoute: isModalRoute(name: 'c'),
-          destinationRoute: isModalRoute(name: '/a'),
+          destinationRoute: isModalRoute(name: 'a'),
         ),
       ]);
 
@@ -385,7 +392,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(transitionStatusHistory, [
         isTransitionCompleted(
-          currentRoute: isModalRoute(name: '/a'),
+          currentRoute: isModalRoute(name: 'a'),
         ),
       ]);
       expect(transitionProgressHistory, isMonotonic(increasing: true));
@@ -395,7 +402,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
       await tester.pumpWidget(testWidget);
-      navigatorKey.currentContext!.go('/a/b');
+      setLocation('/a/b');
       await tester.pumpAndSettle();
       transitionStatusHistory.clear();
       // Start a swipe back gesture
@@ -406,7 +413,7 @@ void main() {
       expect(transitionStatusHistory, [
         isUserGestureTransition(
           currentRoute: isModalRoute(name: 'b'),
-          previousRoute: isModalRoute(name: '/a'),
+          previousRoute: isModalRoute(name: 'a'),
         ),
       ]);
 
@@ -434,10 +441,10 @@ void main() {
       expect(transitionStatusHistory, [
         isBackwardTransition(
           originRoute: isModalRoute(name: 'b'),
-          destinationRoute: isModalRoute(name: '/a'),
+          destinationRoute: isModalRoute(name: 'a'),
         ),
         isTransitionCompleted(
-          currentRoute: isModalRoute(name: '/a'),
+          currentRoute: isModalRoute(name: 'a'),
         ),
       ]);
 
@@ -450,7 +457,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
       await tester.pumpWidget(testWidget);
-      navigatorKey.currentContext!.go('/a/b');
+      setLocation('/a/b');
       await tester.pumpAndSettle();
       // Start a swipe back gesture
       final gesture = await tester.startGesture(const Offset(0, 200));
