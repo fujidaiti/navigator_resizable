@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'navigator_resizable.dart';
 
+@optionalTypeArgs
 mixin ResizableNavigatorRouteMixin<T> on ModalRoute<T> {
   NavigatorResizableState? _navigatorResizable;
 
@@ -31,6 +32,7 @@ mixin ResizableNavigatorRouteMixin<T> on ModalRoute<T> {
   }
 }
 
+@optionalTypeArgs
 class ResizableMaterialPageRoute<T> extends MaterialPageRoute<T>
     with ResizableNavigatorRouteMixin<T>, MaterialRouteTransitionMixin<T> {
   ResizableMaterialPageRoute({
@@ -51,6 +53,7 @@ class ResizableMaterialPageRoute<T> extends MaterialPageRoute<T>
   }
 }
 
+@optionalTypeArgs
 class ResizableMaterialPage<T> extends MaterialPage<T> {
   const ResizableMaterialPage({
     super.key,
