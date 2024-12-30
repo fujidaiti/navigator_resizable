@@ -187,10 +187,10 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
     assert(
       !constraints.isTight,
       'The NavigatorResizable widget was given an tight constraint. '
-      'This is not allowed because it needs to be resized dynamically '
-      'based on the size of the current route. '
-      'Consider wrapping the NavigatorResizable with a widget that '
-      'provides non-tight constraints, such as Align and Center. \n'
+      'This is not allowed because it needs to size itself to fit '
+      'the current route content. Consider wrapping the NavigatorResizable '
+      'with a widget that provides non-tight constraints, such as Align '
+      'and Center. \n'
       'The given constraints were: $constraints which was given by '
       'the parent: ${parent.runtimeType}',
     );
