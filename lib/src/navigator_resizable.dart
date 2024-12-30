@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart' as p;
@@ -7,11 +6,45 @@ import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
 
 import 'navigator_size_notifier.dart';
+import 'resizable_navigator_routes.dart';
 import 'route_transition_observer.dart';
 import 'route_transition_status.dart';
 
+/// Thin wrapper around [Navigator] that **visually** resizes it to fit
+/// the current route content.
+///
+/// Roughly equivalent to the combination of [OverflowBox] and [ClipRect],
+/// but more specialized for this purpose. More specifically, this widget
+/// changes its size, its hit test area, and its painting area to match
+/// the size of the widget displayed in the current route of the [child]
+/// navigator. The navigator, on the other hand, can overflow this widget
+/// so that the navigator can be as large as the parent constraints allow
+/// and can keep the same size unless the constraints change, reducing
+/// unnecessary layout work for the navigator and its routes.
+///
+/// ### Example
+///
+/// ### Caveats
+/// - Do not wrap the navigator with a widget that adds extra space around
+///   it, such as [Padding]. Zero volume widgets, however, like
+///   [GestureDetector] and [InheritedWidget]s are fine.
+/// - Do not put [NavigatorResizable] inside a widget that gives it a tight
+///   constraint, because otherwise the navigator can not resize itself to
+///   fit the current route content. In such cases, an assertion error will
+///   be thrown. Typically, [Center] and [Align] are good choices for the
+///   parent widget.
+///
+/// ### See also
+/// - [ResizableMaterialPageRoute], the replacement for [MaterialPageRoute]
+///   that should be used with the [child] navigator when using the imperative
+///   navigation APIs.
+/// - [ResizableMaterialPage], the replacement for [MaterialPage] that should
+///   be used with the [child] navigator when using the declarative navigation
+///   APIs.
 class NavigatorResizable extends StatefulWidget
     with RouteTransitionAwareWidgetMixin {
+  /// Creates a thin wrapper around [Navigator] that **visually** resizes it
+  /// to fit the current route content.
   const NavigatorResizable({
     super.key,
     required this.transitionObserver,
@@ -19,7 +52,15 @@ class NavigatorResizable extends StatefulWidget
     required this.child,
   });
 
+  /// The [Curve] used for interpolating the size of this widget
+  /// during a route transition animation.
+  ///
+  /// This widget gradually changes its size during a route transition,
+  /// interpolating between the sizes of the previous and the next route
+  /// with this curve. The default value is [Curves.easeInOutCubic].
   final Curve interpolationCurve;
+
+  /// The [Navigator] for which the visual resizing should be applied.
   final Widget child;
 
   @override
@@ -223,6 +264,7 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   }
 }
 
+@internal
 class ResizableNavigatorRouteContentBoundary
     extends SingleChildRenderObjectWidget {
   const ResizableNavigatorRouteContentBoundary({
