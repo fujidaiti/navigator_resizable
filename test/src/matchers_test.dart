@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'matchers.dart';
 
 void main() {
-  group('isMonotonic matcher', () {
+  group('isMonotonic', () {
     test('matches an increasing sequence of doubles', () {
       expect([1.0, 2.0, 3.0, 4.0], isMonotonic(increasing: true));
       expect([0.0, 0.5, 1.5], isMonotonic(increasing: true));
