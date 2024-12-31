@@ -10,41 +10,110 @@ import 'resizable_navigator_routes.dart';
 import 'route_transition_observer.dart';
 import 'route_transition_status.dart';
 
-/// Thin wrapper around [Navigator] that **visually** resizes it to fit
-/// the current route content.
+/// A thin wrapper around [Navigator] that **visually** resizes the [child]
+/// navigator to match the size of the content displayed in the current route.
 ///
-/// Roughly equivalent to the combination of [OverflowBox] and [ClipRect],
-/// but more specialized for this purpose. More specifically, this widget
-/// changes its size, its hit test area, and its painting area to match
-/// the size of the widget displayed in the current route of the [child]
-/// navigator. The navigator, on the other hand, can overflow this widget
-/// so that the navigator can be as large as the parent constraints allow
-/// and can keep the same size unless the constraints change, reducing
-/// unnecessary layout work for the navigator and its routes.
+/// This widget is functionally similar to combining [OverflowBox] and
+/// [ClipRect], but it is specifically designed for this use case.
+/// It adjusts its size, hit test area, and painting area to align
+/// with the size of the widget displayed by the [child] navigator's
+/// current route. The navigator itself can overflow this widget,
+/// maintaining its size as determined by the parent constraints
+/// unless those constraints change. This helps minimize unnecessary
+/// layout operations for the navigator and its routes.
+///
+/// ### Routes and Pages
+///
+/// The [NavigatorResizable] can respect the content size of a route
+/// only if the route mix-ins the [ResizableNavigatorRouteMixin].
+/// This is especially important during route transitions, as the
+/// [NavigatorResizable] can animate its size in sync with the transition
+/// animation only when both the current route and the next route
+/// implement [ResizableNavigatorRouteMixin]. Otherwise, the size
+/// remains unchanged before and after the transition.
+///
+/// For convenience, the following built-in route classes already mix-in
+/// the [ResizableNavigatorRouteMixin]:
+/// - [ResizableMaterialPageRoute]: A replacement for [MaterialPageRoute].
+/// - [ResizableMaterialPage]: A replacement for [MaterialPage].
+///
+/// Note that the [child] navigator and its routes are constrained by the
+/// constraints imposed by the parent widget of the [NavigatorResizable].
+/// To ensure that the route content fills the entire available space,
+/// the easiest way is to set the content widget's width or height
+/// to [double.infinity].
+///
+/// ```dart
+/// ResizableMaterialPageRoute(
+///   builder: (context) {
+///     return Container(
+///       color: Colors.while,
+///       width: double.infinity,
+///       height: double.infinity,
+///     );
+///   },
+/// );
+/// ```
+///
+/// ### Caveats
+/// - Avoid wrapping the navigator in widgets that add additional space
+///   (e.g., [Padding]). Zero-size widgets, such as [GestureDetector]
+///   or [InheritedWidget], are acceptable.
+/// - Do not place [NavigatorResizable] inside a widget with a tight constraint,
+///   as this forces [NavigatorResizable] to ignore the size of the current
+///   route's content and adopt the size dictated by the constraints.
+///   In such cases, an assertion error will be thrown. Typically, [Center]
+///   and [Align] are good choices for the parent widget.
+/// - The initial route of the [child] navigator must implement
+///   [ResizableNavigatorRouteMixin] (e.g., [ResizableMaterialPageRoute]),
+///   otherwise, [NavigatorResizable] will be unable to determine the
+///   initial size and will throw an assertion error.
 ///
 /// ### Example
 ///
-/// ### Caveats
-/// - Do not wrap the navigator with a widget that adds extra space around
-///   it, such as [Padding]. Zero volume widgets, however, like
-///   [GestureDetector] and [InheritedWidget]s are fine.
-/// - Do not put [NavigatorResizable] inside a widget that gives it a tight
-///   constraint, because otherwise the navigator can not resize itself to
-///   fit the current route content. In such cases, an assertion error will
-///   be thrown. Typically, [Center] and [Align] are good choices for the
-///   parent widget.
+/// The following example demonstrates a resizable window centered within
+/// a [Scaffold] that can display multiple pages:
 ///
-/// ### See also
-/// - [ResizableMaterialPageRoute], the replacement for [MaterialPageRoute]
-///   that should be used with the [child] navigator when using the imperative
-///   navigation APIs.
-/// - [ResizableMaterialPage], the replacement for [MaterialPage] that should
-///   be used with the [child] navigator when using the declarative navigation
-///   APIs.
+/// ```dart
+/// Navigator nestedNavigator;
+/// return Scaffold(
+///   body: Center(
+///     child: Material(
+///       color: Colors.white,
+///       child: NavigatorResizable(
+///         child: nestedNavigator,
+///       ),
+///     ),
+///   ),
+/// );
+/// ```
+/// You can use any standard navigation methods, such as [Navigator.push],
+/// [Navigator.pop], [named routes](https://api.flutter.dev/flutter/widgets/Navigator-class.html#:~:text=Using%20named%20navigator%20routes),
+/// and the [Pages API](https://api.flutter.dev/flutter/widgets/Navigator-class.html#:~:text=the%20current%20page.-,Using%20the%20Pages%20API,-The%20Navigator%20will),
+/// with [NavigatorResizable] as you would with a regular [Navigator]:
+///
+/// ```dart
+/// Navigator.push(
+///   context,
+///   ResizableMaterialPageRoute(
+///     builder: (context) {
+///       return Container(
+///         color: Colors.red,
+///         width: 300,
+///         height: 300,
+///       );
+///     },
+///   ),
+/// );
+/// ```
+///
+/// For more practical examples, refer to the
+/// [/example](https://github.com/fujidaiti/resizable_navigator/tree/main/example/lib) directory.
 class NavigatorResizable extends StatefulWidget
     with RouteTransitionAwareWidgetMixin {
-  /// Creates a thin wrapper around [Navigator] that **visually** resizes it
-  /// to fit the current route content.
+  /// Creates a thin wrapper around [Navigator] that **visually** resizes
+  /// the [child] navigator to match the size of the content displayed
+  /// in the current route.
   const NavigatorResizable({
     super.key,
     required this.transitionObserver,
