@@ -36,10 +36,16 @@ void main() {
       testWidget = MaterialApp(
         navigatorObservers: [transitionObserver],
         navigatorKey: navigatorKey,
-        initialRoute: '/a',
-        routes: {
-          '/a': (_) => const Scaffold(),
-          '/b': (_) => const Scaffold(),
+        initialRoute: 'a',
+        onGenerateRoute: (settings) {
+          return MaterialPageRoute(
+            settings: settings,
+            builder: (_) => Scaffold(
+              appBar: AppBar(
+                title: Text('Page:${settings.name}'),
+              ),
+            ),
+          );
         },
         builder: (context, navigator) {
           return _TestRouteTransitionObserverWidget(
@@ -53,9 +59,10 @@ void main() {
 
     testWidgets('On initial build', (tester) async {
       await tester.pumpWidget(testWidget);
+      expect(find.text('Page:a'), findsOneWidget);
       expect(transitionStatusHistory, [
         isTransitionCompleted(
-          currentRoute: isModalRoute(name: '/a'),
+          currentRoute: isModalRoute(name: 'a'),
         ),
       ]);
     });
@@ -63,12 +70,15 @@ void main() {
     testWidgets('When pushing a route', (tester) async {
       await tester.pumpWidget(testWidget);
       transitionStatusHistory.clear();
-      unawaited(navigatorKey.currentState!.pushNamed('/b'));
+      unawaited(navigatorKey.currentState!.pushNamed('b'));
       await tester.pump();
+
+      expect(find.text('Page:a'), findsOneWidget);
+      expect(find.text('Page:b'), findsNothing);
       expect(transitionStatusHistory, [
         isForwardTransition(
-          originRoute: isModalRoute(name: '/a'),
-          destinationRoute: isModalRoute(name: '/b'),
+          originRoute: isModalRoute(name: 'a'),
+          destinationRoute: isModalRoute(name: 'b'),
         ),
       ]);
 
@@ -76,11 +86,13 @@ void main() {
         (transitionStatusHistory.first as ForwardTransition).animation,
       );
       transitionStatusHistory.clear();
-
       await tester.pumpAndSettle();
+
+      expect(find.text('Page:a'), findsNothing);
+      expect(find.text('Page:b'), findsOneWidget);
       expect(transitionStatusHistory, [
         isTransitionCompleted(
-          currentRoute: isModalRoute(name: '/b'),
+          currentRoute: isModalRoute(name: 'b'),
         ),
       ]);
       expect(transitionProgressHistory, isMonotonic(increasing: true));
@@ -88,15 +100,19 @@ void main() {
 
     testWidgets('When popping a route', (tester) async {
       await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('/b'));
+      unawaited(navigatorKey.currentState!.pushNamed('b'));
       await tester.pumpAndSettle();
+
+      expect(find.text('Page:b'), findsOneWidget);
+      expect(find.text('Page:a'), findsNothing);
+
       transitionStatusHistory.clear();
       navigatorKey.currentState!.pop();
       await tester.pump();
       expect(transitionStatusHistory, [
         isBackwardTransition(
-          originRoute: isModalRoute(name: '/b'),
-          destinationRoute: isModalRoute(name: '/a'),
+          originRoute: isModalRoute(name: 'b'),
+          destinationRoute: isModalRoute(name: 'a'),
         ),
       ]);
 
@@ -104,11 +120,13 @@ void main() {
         (transitionStatusHistory.first as BackwardTransition).animation,
       );
       transitionStatusHistory.clear();
-
       await tester.pumpAndSettle();
+
+      expect(find.text('Page:b'), findsNothing);
+      expect(find.text('Page:a'), findsOne);
       expect(transitionStatusHistory, [
         isTransitionCompleted(
-          currentRoute: isModalRoute(name: '/a'),
+          currentRoute: isModalRoute(name: 'a'),
         ),
       ]);
       expect(transitionProgressHistory, isMonotonic(increasing: true));
@@ -118,8 +136,12 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
       await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('/b'));
+      unawaited(navigatorKey.currentState!.pushNamed('b'));
       await tester.pumpAndSettle();
+
+      expect(find.text('Page:a'), findsNothing);
+      expect(find.text('Page:b'), findsOneWidget);
+
       transitionStatusHistory.clear();
       // Start a swipe back gesture
       final gesture = await tester.startGesture(const Offset(0, 200));
@@ -128,8 +150,8 @@ void main() {
 
       expect(transitionStatusHistory, [
         isUserGestureTransition(
-          currentRoute: isModalRoute(name: '/b'),
-          previousRoute: isModalRoute(name: '/a'),
+          currentRoute: isModalRoute(name: 'b'),
+          previousRoute: isModalRoute(name: 'a'),
         ),
       ]);
 
@@ -154,13 +176,15 @@ void main() {
       await gesture.up();
       await tester.pumpAndSettle();
 
+      expect(find.text('Page:a'), findsOne);
+      expect(find.text('Page:b'), findsNothing);
       expect(transitionStatusHistory, [
         isBackwardTransition(
-          originRoute: isModalRoute(name: '/b'),
-          destinationRoute: isModalRoute(name: '/a'),
+          originRoute: isModalRoute(name: 'b'),
+          destinationRoute: isModalRoute(name: 'a'),
         ),
         isTransitionCompleted(
-          currentRoute: isModalRoute(name: '/a'),
+          currentRoute: isModalRoute(name: 'a'),
         ),
       ]);
 
@@ -172,8 +196,11 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
       await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('/b'));
+      unawaited(navigatorKey.currentState!.pushNamed('b'));
       await tester.pumpAndSettle();
+      expect(find.text('Page:a'), findsNothing);
+      expect(find.text('Page:b'), findsOneWidget);
+
       // Start a swipe back gesture
       final gesture = await tester.startGesture(const Offset(0, 200));
       await gesture.moveBy(const Offset(50, 0));
@@ -188,9 +215,11 @@ void main() {
       await gesture.up();
       await tester.pumpAndSettle();
 
+      expect(find.text('Page:a'), findsNothing);
+      expect(find.text('Page:b'), findsOneWidget);
       expect(transitionStatusHistory, [
         isTransitionCompleted(
-          currentRoute: isModalRoute(name: '/b'),
+          currentRoute: isModalRoute(name: 'b'),
         ),
       ]);
       expect(transitionProgressHistory, isMonotonic(increasing: false));
