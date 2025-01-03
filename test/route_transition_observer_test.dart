@@ -3,18 +3,16 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:resizable_navigator/src/route_transition_observer.dart';
+import 'package:resizable_navigator/src/new_route_transition_observer.dart';
 import 'package:resizable_navigator/src/route_transition_status.dart';
 
 import 'src/matchers.dart';
 
 void main() {
-  late RouteTransitionObserver transitionObserver;
   late List<RouteTransitionStatus> transitionStatusHistory;
   late List<double> transitionProgressHistory;
 
   setUp(() {
-    transitionObserver = RouteTransitionObserver();
     transitionStatusHistory = [];
     transitionProgressHistory = [];
   });
@@ -34,11 +32,10 @@ void main() {
     setUp(() {
       navigatorKey = GlobalKey<NavigatorState>();
       testWidget = MaterialApp(
-        navigatorObservers: [transitionObserver],
         navigatorKey: navigatorKey,
         initialRoute: 'a',
         onGenerateRoute: (settings) {
-          return MaterialPageRoute(
+          return _TestMaterialPageRoute(
             settings: settings,
             builder: (_) => Scaffold(
               appBar: AppBar(
@@ -48,9 +45,8 @@ void main() {
           );
         },
         builder: (context, navigator) {
-          return _TestRouteTransitionObserverWidget(
-            onTransitionStatusChanged: transitionStatusHistory.add,
-            transitionObserver: transitionObserver,
+          return RouteTransitionObserver(
+            listeners: [transitionStatusHistory.add],
             child: navigator!,
           );
         },
@@ -234,22 +230,22 @@ void main() {
     late Widget testWidget;
 
     setUp(() {
-      const pageA = MaterialPage<dynamic>(
+      const pageA = _TestMaterialPage(
         name: 'a',
         key: ValueKey('a'),
         child: Scaffold(),
       );
-      const pageB = MaterialPage<dynamic>(
+      const pageB = _TestMaterialPage(
         name: 'b',
         key: ValueKey('b'),
         child: Scaffold(),
       );
-      const pageC = MaterialPage<dynamic>(
+      const pageC = _TestMaterialPage(
         name: 'c',
         key: ValueKey('c'),
         child: Scaffold(),
       );
-      const pageD = MaterialPage<dynamic>(
+      const pageD = _TestMaterialPage(
         name: 'd',
         key: ValueKey('d'),
         child: Scaffold(),
@@ -264,11 +260,9 @@ void main() {
           };
 
           return MaterialApp(
-            home: _TestRouteTransitionObserverWidget(
-              onTransitionStatusChanged: transitionStatusHistory.add,
-              transitionObserver: transitionObserver,
+            home: RouteTransitionObserver(
+              listeners: [transitionStatusHistory.add],
               child: Navigator(
-                observers: [transitionObserver],
                 onDidRemovePage: (page) {},
                 pages: switch (location) {
                   '/a' => [pageA],
@@ -515,35 +509,38 @@ void main() {
   });
 }
 
-class _TestRouteTransitionObserverWidget extends StatefulWidget
-    with RouteTransitionAwareWidgetMixin {
-  const _TestRouteTransitionObserverWidget({
-    required this.onTransitionStatusChanged,
-    required this.transitionObserver,
-    required this.child,
-  });
-
-  final ValueChanged<RouteTransitionStatus> onTransitionStatusChanged;
-  final Widget child;
-
-  @override
-  final RouteTransitionObserver transitionObserver;
-
-  @override
-  State<_TestRouteTransitionObserverWidget> createState() =>
-      _TestRouteTransitionObserverWidgetState();
+class _TestMaterialPageRoute extends MaterialPageRoute<dynamic>
+    with ObservableModalRouteMixin<dynamic> {
+  _TestMaterialPageRoute({super.settings, required super.builder});
 }
 
-class _TestRouteTransitionObserverWidgetState
-    extends State<_TestRouteTransitionObserverWidget>
-    with RouteTransitionAwareStateMixin {
-  @override
-  void didChangeTransitionStatus(RouteTransitionStatus transition) {
-    widget.onTransitionStatusChanged(transition);
-  }
+class _TestMaterialPage extends MaterialPage<dynamic> {
+  const _TestMaterialPage({
+    super.key,
+    super.name,
+    required super.child,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    return widget.child;
-  }
+  Route<dynamic> createRoute(BuildContext context) =>
+      _PageBasedResizableMaterialPageRoute(page: this);
+}
+
+class _PageBasedResizableMaterialPageRoute extends PageRoute<dynamic>
+    with
+        ObservableModalRouteMixin<dynamic>,
+        MaterialRouteTransitionMixin<dynamic> {
+  _PageBasedResizableMaterialPageRoute({
+    required _TestMaterialPage page,
+  }) : super(settings: page);
+
+  @override
+  bool get maintainState => (settings as _TestMaterialPage).maintainState;
+
+  @override
+  bool get fullscreenDialog => (settings as _TestMaterialPage).fullscreenDialog;
+
+  @override
+  Widget buildContent(BuildContext context) =>
+      (settings as _TestMaterialPage).child;
 }
