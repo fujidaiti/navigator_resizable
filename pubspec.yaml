@@ -20,6 +20,8 @@ dev_dependencies:
     sdk: flutter
   pedantic_mono: ^1.29.0
   flutter_lints: ^5.0.0
+  mockito: ^5.4.5
+  build_runner: ^2.4.14
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
