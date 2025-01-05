@@ -179,6 +179,7 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
   }
 
   void _didPopNextInternal(Route<dynamic> route) {
+    assert(route.isCurrent);
     final currentRoute = _lastSettledRoute!;
     if (currentRoute is! TransitionRoute<dynamic> ||
         currentRoute.animation!.status == AnimationStatus.dismissed) {
@@ -199,9 +200,13 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
     void notifyTransitionEnd(AnimationStatus status) {
       if (status == AnimationStatus.dismissed) {
         currentRoute.animation!.removeStatusListener(notifyTransitionEnd);
-        assert(route.isCurrent);
-        _lastSettledRoute = route;
-        _notifyListeners((it) => it.didEndTransition(route));
+        // At this point, the `route` might no longer be the current route.
+        // This can happen, for example, if multiple routes are popped
+        // in the same frame by calling `Navigator.pop` consecutively.
+        if (route.isCurrent) {
+          _lastSettledRoute = route;
+          _notifyListeners((it) => it.didEndTransition(route));
+        }
       }
     }
 

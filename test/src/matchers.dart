@@ -95,11 +95,16 @@ TypeMatcher<ModalRoute<dynamic>> isModalRoute({String? name}) {
 }
 
 /// Returns a matcher that matches if an object is a sequence
-/// of [double] values that are monotonically increasing or decreasing.
+/// of [double] values that are monotonically increasing.
 ///
 /// The matcher does not match if the sequence has less than two elements.
-Matcher isMonotonic({required bool increasing}) =>
-    _IsMonotonic(increasing: increasing);
+const Matcher isMonotonicallyIncreasing = _IsMonotonic(increasing: true);
+
+/// Returns a matcher that matches if an object is a sequence
+/// of [double] values that are monotonically decreasing.
+///
+/// The matcher does not match if the sequence has less than two elements.
+const Matcher isMonotonicallyDecreasing = _IsMonotonic(increasing: false);
 
 class _IsMonotonic extends Matcher {
   const _IsMonotonic({required this.increasing});
@@ -132,6 +137,7 @@ class _IsMonotonic extends Matcher {
   }
 
   @override
-  Description describe(Description description) =>
-      description.add('monotonically increasing');
+  Description describe(Description description) => increasing
+      ? description.add('A sequence of monotonically increasing numbers')
+      : description.add('A sequence of monotonically decreasing numbers');
 }
