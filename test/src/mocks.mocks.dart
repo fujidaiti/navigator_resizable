@@ -95,6 +95,12 @@ class MockNavigatorEventListener extends _i1.Mock
       );
 
   @override
+  void didEndTransition(_i4.Route<dynamic>? route) => super.noSuchMethod(
+        Invocation.method(#didEndTransition, [route]),
+        returnValueForMissingStub: null,
+      );
+
+  @override
   void didStartTransition(
     _i4.Route<dynamic>? currentRoute,
     _i4.Route<dynamic>? nextRoute,
@@ -107,12 +113,6 @@ class MockNavigatorEventListener extends _i1.Mock
           [currentRoute, nextRoute, animation],
           {#isUserGestureInProgress: isUserGestureInProgress},
         ),
-        returnValueForMissingStub: null,
-      );
-
-  @override
-  void didEndTransition(_i4.Route<dynamic>? route) => super.noSuchMethod(
-        Invocation.method(#didEndTransition, [route]),
         returnValueForMissingStub: null,
       );
 }
