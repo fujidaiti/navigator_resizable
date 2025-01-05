@@ -179,6 +179,13 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
   }
 
   void _didPopNextInternal(Route<dynamic> route) {
+    if (_navigator!.userGestureInProgress) {
+      // A swipe back gesture has popped the current route off.
+      // This is handled by `_didUserGestureInProgressChange`,
+      // so no action is needed here.
+      return;
+    }
+
     assert(route.isCurrent);
     final currentRoute = _lastSettledRoute!;
     if (currentRoute is! TransitionRoute<dynamic> ||
@@ -264,10 +271,12 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
             );
 
           case AnimationStatus.completed:
+            assert(originRoute.isCurrent);
             originRoute.animation!.removeStatusListener(statusListener);
             _notifyListeners((it) => it.didEndTransition(originRoute));
 
           case AnimationStatus.dismissed:
+            assert(destinationRoute.isCurrent);
             originRoute.animation!.removeStatusListener(statusListener);
             _notifyListeners((it) => it.didEndTransition(destinationRoute));
 

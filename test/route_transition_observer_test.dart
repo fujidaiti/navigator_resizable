@@ -55,8 +55,12 @@ void main() {
     testWidgets('On initial build', (tester) async {
       await tester.pumpWidget(testWidget);
       expect(find.text('Page:a'), findsOneWidget);
-      verify(listener.didInstall(argThat(isModalRoute(name: 'a'))));
-      verify(listener.didEndTransition(argThat(isModalRoute(name: 'a'))));
+      verify(listener.didInstall(
+        argThat(isModalRoute(name: 'a')),
+      )).called(1);
+      verify(listener.didEndTransition(
+        argThat(isModalRoute(name: 'a')),
+      )).called(1);
     });
 
     testWidgets('When pushing a route', (tester) async {
@@ -67,13 +71,15 @@ void main() {
 
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
-      final capturedAnimation = verify(
+      final verification = verify(
         listener.didStartTransition(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
           captureAny,
         ),
-      ).captured.single as Animation<double>;
+      )..called(1);
+      final capturedAnimation =
+          verification.captured.single as Animation<double>;
       expect(capturedAnimation.status, AnimationStatus.forward);
 
       startTrackingTransitionProgress(capturedAnimation);
@@ -83,7 +89,9 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      verify(listener.didEndTransition(argThat(isModalRoute(name: 'b'))));
+      verify(listener.didEndTransition(
+        argThat(isModalRoute(name: 'b')),
+      )).called(1);
     });
 
     testWidgets('When popping a route', (tester) async {
@@ -97,13 +105,15 @@ void main() {
       reset(listener);
       navigatorKey.currentState!.pop();
       await tester.pump();
-      final capturedAnimation = verify(
+      final verification = verify(
         listener.didStartTransition(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
         ),
-      ).captured.single as Animation<double>;
+      )..called(1);
+      final capturedAnimation =
+          verification.captured.single as Animation<double>;
       expect(capturedAnimation.status, AnimationStatus.reverse);
 
       startTrackingTransitionProgress(capturedAnimation);
@@ -111,9 +121,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Page:b'), findsNothing);
-      expect(find.text('Page:a'), findsOne);
+      expect(find.text('Page:a'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
-      verify(listener.didEndTransition(argThat(isModalRoute(name: 'a'))));
+      verify(listener.didEndTransition(
+        argThat(isModalRoute(name: 'a')),
+      )).called(1);
     });
 
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
@@ -132,14 +144,16 @@ void main() {
       await gesture.moveBy(const Offset(50, 0));
       await tester.pumpAndSettle();
 
-      final capturedAnimation = verify(
+      final verification = verify(
         listener.didStartTransition(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: true,
         ),
-      ).captured.single as Animation<double>;
+      )..called(1);
+      final capturedAnimation =
+          verification.captured.single as Animation<double>;
       expect(capturedAnimation.status, AnimationStatus.forward);
 
       startTrackingTransitionProgress(capturedAnimation);
@@ -162,10 +176,12 @@ void main() {
       await gesture.up();
       await tester.pumpAndSettle();
 
-      expect(find.text('Page:a'), findsOne);
+      expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
-      verify(listener.didEndTransition(argThat(isModalRoute(name: 'a'))));
+      verify(listener.didEndTransition(
+        argThat(isModalRoute(name: 'a')),
+      )).called(1);
 
       // Reset the default target platform.
       debugDefaultTargetPlatformOverride = null;
@@ -185,14 +201,16 @@ void main() {
       await gesture.moveBy(const Offset(50, 0));
       await tester.pumpAndSettle();
 
-      final capturedAnimation = verify(
+      final verification = verify(
         listener.didStartTransition(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: true,
         ),
-      ).captured.single as Animation<double>;
+      )..called(1);
+      final capturedAnimation =
+          verification.captured.single as Animation<double>;
 
       startTrackingTransitionProgress(capturedAnimation);
       reset(listener);
@@ -203,7 +221,9 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      verify(listener.didEndTransition(argThat(isModalRoute(name: 'b'))));
+      verify(listener.didEndTransition(
+        argThat(isModalRoute(name: 'b')),
+      )).called(1);
 
       // Reset the default target platform.
       debugDefaultTargetPlatformOverride = null;
@@ -269,8 +289,12 @@ void main() {
     testWidgets('On initial build', (tester) async {
       await tester.pumpWidget(testWidget);
       expect(find.text('Page:a'), findsOneWidget);
-      verify(listener.didInstall(argThat(isModalRoute(name: 'a'))));
-      verify(listener.didEndTransition(argThat(isModalRoute(name: 'a'))));
+      verify(listener.didInstall(
+        argThat(isModalRoute(name: 'a')),
+      )).called(1);
+      verify(listener.didEndTransition(
+        argThat(isModalRoute(name: 'a')),
+      )).called(1);
     });
 
     testWidgets('When pushing a route', (tester) async {
@@ -279,14 +303,16 @@ void main() {
       reset(listener);
       setLocation('/a/b');
       await tester.pump();
-      final capturedAnimation = verify(
+      final verification = verify(
         listener.didStartTransition(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
           captureAny,
           isUserGestureInProgress: false,
         ),
-      ).captured.single as Animation<double>;
+      )..called(1);
+      final capturedAnimation =
+          verification.captured.single as Animation<double>;
 
       startTrackingTransitionProgress(capturedAnimation);
       reset(listener);
@@ -294,7 +320,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
       expect(find.text('Page:b'), findsOneWidget);
-      verify(listener.didEndTransition(argThat(isModalRoute(name: 'b'))));
+      verify(listener.didEndTransition(
+        argThat(isModalRoute(name: 'b')),
+      )).called(1);
     });
 
     testWidgets('When pushing multiple routes simultaneously', (tester) async {
@@ -304,14 +332,16 @@ void main() {
       await tester.pump();
       expect(find.text('Page:c'), findsOneWidget);
 
-      final capturedAnimation = verify(
+      final verification = verify(
         listener.didStartTransition(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'c')),
           captureAny,
           isUserGestureInProgress: false,
         ),
-      ).captured.single as Animation<double>;
+      )..called(1);
+      final capturedAnimation =
+          verification.captured.single as Animation<double>;
 
       startTrackingTransitionProgress(capturedAnimation);
       reset(listener);
@@ -319,7 +349,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
       expect(find.text('Page:c'), findsOneWidget);
-      verify(listener.didEndTransition(argThat(isModalRoute(name: 'c'))));
+      verify(listener.didEndTransition(
+        argThat(isModalRoute(name: 'c')),
+      )).called(1);
     });
 
     testWidgets('When replacing the entire page stack', (tester) async {
@@ -329,14 +361,16 @@ void main() {
       await tester.pump();
       expect(find.text('Page:d'), findsOneWidget);
 
-      final capturedAnimation = verify(
+      final verification = verify(
         listener.didStartTransition(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'd')),
           captureAny,
           isUserGestureInProgress: false,
         ),
-      ).captured.single as Animation<double>;
+      )..called(1);
+      final capturedAnimation =
+          verification.captured.single as Animation<double>;
 
       startTrackingTransitionProgress(capturedAnimation);
       reset(listener);
@@ -344,7 +378,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Page:d'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      verify(listener.didEndTransition(argThat(isModalRoute(name: 'd'))));
+      verify(listener.didEndTransition(
+        argThat(isModalRoute(name: 'd')),
+      )).called(1);
     });
 
     testWidgets('When popping a route', (tester) async {
@@ -355,14 +391,16 @@ void main() {
       reset(listener);
       setLocation('/a');
       await tester.pump();
-      final capturedAnimation = verify(
+      final verification = verify(
         listener.didStartTransition(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: false,
         ),
-      ).captured.single as Animation<double>;
+      )..called(1);
+      final capturedAnimation =
+          verification.captured.single as Animation<double>;
 
       startTrackingTransitionProgress(capturedAnimation);
       reset(listener);
@@ -370,7 +408,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
       expect(find.text('Page:a'), findsOneWidget);
-      verify(listener.didEndTransition(argThat(isModalRoute(name: 'a'))));
+      verify(listener.didEndTransition(
+        argThat(isModalRoute(name: 'a')),
+      )).called(1);
     });
 
     testWidgets('When popping multiple routes simultaneously', (tester) async {
@@ -382,14 +422,16 @@ void main() {
 
       setLocation('/a');
       await tester.pump();
-      final capturedAnimation = verify(
+      final verification = verify(
         listener.didStartTransition(
           argThat(isModalRoute(name: 'c')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: false,
         ),
-      ).captured.single as Animation<double>;
+      )..called(1);
+      final capturedAnimation =
+          verification.captured.single as Animation<double>;
 
       startTrackingTransitionProgress(capturedAnimation);
       reset(listener);
@@ -397,7 +439,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
       expect(find.text('Page:a'), findsOneWidget);
-      verify(listener.didEndTransition(argThat(isModalRoute(name: 'a'))));
+      verify(listener.didEndTransition(
+        argThat(isModalRoute(name: 'a')),
+      )).called(1);
     });
 
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
@@ -415,14 +459,16 @@ void main() {
       await gesture.moveBy(const Offset(50, 0));
       await tester.pumpAndSettle();
 
-      final capturedAnimation = verify(
+      final verification = verify(
         listener.didStartTransition(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: true,
         ),
-      ).captured.single as Animation<double>;
+      )..called(1);
+      final capturedAnimation =
+          verification.captured.single as Animation<double>;
 
       startTrackingTransitionProgress(capturedAnimation);
       reset(listener);
@@ -467,14 +513,16 @@ void main() {
       await gesture.moveBy(const Offset(50, 0));
       await tester.pumpAndSettle();
 
-      final capturedAnimation = verify(
+      final verification = verify(
         listener.didStartTransition(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: true,
         ),
-      ).captured.single as Animation<double>;
+      )..called(1);
+      final capturedAnimation =
+          verification.captured.single as Animation<double>;
       startTrackingTransitionProgress(capturedAnimation);
       reset(listener);
 
@@ -485,7 +533,9 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      verify(listener.didEndTransition(argThat(isModalRoute(name: 'b'))));
+      verify(listener.didEndTransition(
+        argThat(isModalRoute(name: 'b')),
+      )).called(1);
 
       // Reset the default target platform.
       debugDefaultTargetPlatformOverride = null;
