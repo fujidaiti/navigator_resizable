@@ -557,14 +557,14 @@ class _TestMaterialPage extends MaterialPage<dynamic> {
 
   @override
   Route<dynamic> createRoute(BuildContext context) =>
-      _PageBasedResizableMaterialPageRoute(page: this);
+      _TestPageBasedMaterialPageRoute(page: this);
 }
 
-class _PageBasedResizableMaterialPageRoute extends PageRoute<dynamic>
+class _TestPageBasedMaterialPageRoute extends PageRoute<dynamic>
     with
         ObservableModalRouteMixin<dynamic>,
         MaterialRouteTransitionMixin<dynamic> {
-  _PageBasedResizableMaterialPageRoute({
+  _TestPageBasedMaterialPageRoute({
     required _TestMaterialPage page,
   }) : super(settings: page);
 
