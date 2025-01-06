@@ -28,16 +28,19 @@ void main() {
     late Widget testWidget;
     late GlobalKey<NavigatorState> navigatorKey;
     late MockNavigatorEventListener listener;
+    late Duration transitionDuration;
 
     setUp(() {
       navigatorKey = GlobalKey<NavigatorState>();
       listener = MockNavigatorEventListener();
+      transitionDuration = const Duration(milliseconds: 300);
       testWidget = MaterialApp(
         navigatorKey: navigatorKey,
         initialRoute: 'a',
         onGenerateRoute: (settings) {
           return _TestMaterialPageRoute(
             settings: settings,
+            transitionDuration: transitionDuration,
             builder: (_) => _TestScaffold(
               title: 'Page:${settings.name}',
             ),
@@ -56,9 +59,15 @@ void main() {
       await tester.pumpWidget(testWidget);
       expect(find.text('Page:a'), findsOneWidget);
       verifyInOrder([
-        listener.didInstall(argThat(isModalRoute(name: 'a'))),
-        listener.didAdd(argThat(isModalRoute(name: 'a'))),
-        listener.didEndTransition(argThat(isModalRoute(name: 'a'))),
+        listener.didInstall(
+          argThat(isModalRoute(name: 'a')),
+        ),
+        listener.didAdd(
+          argThat(isModalRoute(name: 'a')),
+        ),
+        listener.didEndTransition(
+          argThat(isModalRoute(name: 'a')),
+        ),
         listener.didChangeNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isNull),
@@ -80,8 +89,12 @@ void main() {
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       final results = verifyInOrder([
-        listener.didInstall(argThat(isModalRoute(name: 'b'))),
-        listener.didPush(argThat(isModalRoute(name: 'b'))),
+        listener.didInstall(
+          argThat(isModalRoute(name: 'b')),
+        ),
+        listener.didPush(
+          argThat(isModalRoute(name: 'b')),
+        ),
         listener.didStartTransition(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
@@ -116,6 +129,47 @@ void main() {
         argThat(isModalRoute(name: 'b')),
       )).called(1);
       verifyNoMoreInteractions(listener);
+    });
+
+    testWidgets('When pushing a route without animation', (tester) async {
+      transitionDuration = Duration.zero;
+
+      await tester.pumpWidget(testWidget);
+      reset(listener);
+      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      await tester.pump();
+
+      expect(find.text('Page:a'), findsNothing);
+      expect(find.text('Page:b'), findsOneWidget);
+      verifyInOrder([
+        listener.didInstall(
+          argThat(isModalRoute(name: 'b')),
+        ),
+        listener.didPush(
+          argThat(isModalRoute(name: 'b')),
+        ),
+        listener.didEndTransition(
+          argThat(isModalRoute(name: 'b')),
+        ),
+        listener.didChangeNext(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        listener.didChangePrevious(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isModalRoute(name: 'a')),
+        ),
+        listener.didChangeNext(
+          argThat(isModalRoute(name: 'a')),
+          argThat(isModalRoute(name: 'b')),
+        ),
+      ]);
+
+      await tester.pumpAndSettle();
+
+      verifyNoMoreInteractions(listener);
+      expect(find.text('Page:a'), findsNothing);
+      expect(find.text('Page:b'), findsOneWidget);
     });
 
     testWidgets(
@@ -195,9 +249,6 @@ void main() {
       },
     );
 
-    // TODO: Add test: When pushing a route without animation
-    testWidgets('When pushing a route without animation', (tester) async {});
-
     testWidgets('When popping a route', (tester) async {
       await tester.pumpWidget(testWidget);
       unawaited(navigatorKey.currentState!.pushNamed('b'));
@@ -210,8 +261,14 @@ void main() {
       navigatorKey.currentState!.pop();
       await tester.pump();
       final results = verifyInOrder([
-        listener.didComplete(argThat(isModalRoute(name: 'b')), argThat(isNull)),
-        listener.didPop(argThat(isModalRoute(name: 'b')), argThat(isNull)),
+        listener.didComplete(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        listener.didPop(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isNull),
+        ),
         listener.didPopNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
@@ -238,6 +295,44 @@ void main() {
         argThat(isModalRoute(name: 'a')),
       )).called(1);
       verifyNoMoreInteractions(listener);
+    });
+
+    testWidgets('When popping a route without animation', (tester) async {
+      transitionDuration = Duration.zero;
+
+      await tester.pumpWidget(testWidget);
+      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Page:b'), findsOneWidget);
+      expect(find.text('Page:a'), findsNothing);
+
+      reset(listener);
+      navigatorKey.currentState!.pop();
+      await tester.pump();
+      verifyInOrder([
+        listener.didComplete(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        listener.didPop(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        listener.didPopNext(
+          argThat(isModalRoute(name: 'a')),
+          argThat(isModalRoute(name: 'b')),
+        ),
+        listener.didEndTransition(
+          argThat(isModalRoute(name: 'a')),
+        ),
+      ]);
+
+      await tester.pumpAndSettle();
+
+      verifyNoMoreInteractions(listener);
+      expect(find.text('Page:b'), findsNothing);
+      expect(find.text('Page:a'), findsOneWidget);
     });
 
     testWidgets('When popping multiple routes simultaneously', (tester) async {
@@ -309,11 +404,56 @@ void main() {
       verifyNoMoreInteractions(listener);
     });
 
-    // TODO: Add test: When popping a route without animation
-    testWidgets('When popping a route without animation', (tester) async {});
+    testWidgets('When replacing the entire page stack', (tester) async {
+      await tester.pumpWidget(testWidget);
+      reset(listener);
+      unawaited(navigatorKey.currentState!.pushReplacementNamed('b'));
+      await tester.pump();
 
-    // TODO: Add test: When replacing the entire page stack
-    testWidgets('When replacing the entire page stack', (tester) async {});
+      expect(find.text('Page:a'), findsOneWidget);
+      expect(find.text('Page:b'), findsNothing);
+      final results = verifyInOrder([
+        listener.didInstall(argThat(isModalRoute(name: 'b'))),
+        listener.didPush(argThat(isModalRoute(name: 'b'))),
+        listener.didStartTransition(
+          argThat(isModalRoute(name: 'a')),
+          argThat(isModalRoute(name: 'b')),
+          captureAny,
+          isUserGestureInProgress: false,
+        ),
+        listener.didChangeNext(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        listener.didComplete(
+          argThat(isModalRoute(name: 'a')),
+          argThat(isNull),
+        ),
+        listener.didChangePrevious(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        listener.didChangeNext(
+          argThat(isModalRoute(name: 'a')),
+          argThat(isModalRoute(name: 'b')),
+        ),
+      ]);
+      verifyNoMoreInteractions(listener);
+
+      final capturedAnimation = results[2].captured.single as Animation<double>;
+      expect(capturedAnimation.status, AnimationStatus.forward);
+
+      startTrackingTransitionProgress(capturedAnimation);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Page:a'), findsNothing);
+      expect(find.text('Page:b'), findsOneWidget);
+      expect(transitionProgressHistory, isMonotonicallyIncreasing);
+      verify(listener.didEndTransition(
+        argThat(isModalRoute(name: 'b')),
+      )).called(1);
+      verifyNoMoreInteractions(listener);
+    });
 
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
@@ -429,33 +569,40 @@ void main() {
   });
 
   group('Navigator event capturing test with declarative navigator API', () {
-    var initialLocation = '/a';
+    late String initialLocation;
+    late Duration transitionDuration;
     late ValueSetter<String> setLocation;
     late Widget testWidget;
     late MockNavigatorEventListener listener;
 
     setUp(() {
+      initialLocation = '/a';
+      transitionDuration = const Duration(milliseconds: 300);
       listener = MockNavigatorEventListener();
 
-      const pageA = _TestMaterialPage(
+      final pageA = _TestMaterialPage(
         name: 'a',
-        key: ValueKey('a'),
-        child: _TestScaffold(title: 'Page:a'),
+        key: const ValueKey('a'),
+        transitionDuration: transitionDuration,
+        child: const _TestScaffold(title: 'Page:a'),
       );
-      const pageB = _TestMaterialPage(
+      final pageB = _TestMaterialPage(
         name: 'b',
-        key: ValueKey('b'),
-        child: _TestScaffold(title: 'Page:b'),
+        key: const ValueKey('b'),
+        transitionDuration: transitionDuration,
+        child: const _TestScaffold(title: 'Page:b'),
       );
-      const pageC = _TestMaterialPage(
+      final pageC = _TestMaterialPage(
         name: 'c',
-        key: ValueKey('c'),
-        child: _TestScaffold(title: 'Page:c'),
+        key: const ValueKey('c'),
+        transitionDuration: transitionDuration,
+        child: const _TestScaffold(title: 'Page:c'),
       );
-      const pageD = _TestMaterialPage(
+      final pageD = _TestMaterialPage(
         name: 'd',
-        key: ValueKey('d'),
-        child: _TestScaffold(title: 'Page:d'),
+        key: const ValueKey('d'),
+        transitionDuration: transitionDuration,
+        child: const _TestScaffold(title: 'Page:d'),
       );
 
       String? location;
@@ -615,6 +762,48 @@ void main() {
       verifyNoMoreInteractions(listener);
     });
 
+    // TODO: Add test: When pushing a route without animation
+    testWidgets('When pushing a route without animation', (tester) async {
+      transitionDuration = Duration.zero;
+
+      await tester.pumpWidget(testWidget);
+      reset(listener);
+      setLocation('/a/b');
+      await tester.pump();
+
+      expect(find.text('Page:a'), findsNothing);
+      expect(find.text('Page:b'), findsOneWidget);
+      verifyInOrder([
+        listener.didInstall(
+          argThat(isModalRoute(name: 'b')),
+        ),
+        listener.didPush(
+          argThat(isModalRoute(name: 'b')),
+        ),
+        listener.didEndTransition(
+          argThat(isModalRoute(name: 'b')),
+        ),
+        listener.didChangeNext(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        listener.didChangePrevious(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isModalRoute(name: 'a')),
+        ),
+        listener.didChangeNext(
+          argThat(isModalRoute(name: 'a')),
+          argThat(isModalRoute(name: 'b')),
+        ),
+      ]);
+
+      await tester.pumpAndSettle();
+
+      verifyNoMoreInteractions(listener);
+      expect(find.text('Page:a'), findsNothing);
+      expect(find.text('Page:b'), findsOneWidget);
+    });
+
     testWidgets('When pushing multiple routes simultaneously', (tester) async {
       await tester.pumpWidget(testWidget);
       reset(listener);
@@ -680,9 +869,6 @@ void main() {
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
       expect(find.text('Page:c'), findsOneWidget);
     });
-
-    // TODO: Add test: When pushing a route without animation
-    testWidgets('When pushing a route without animation', (tester) async {});
 
     testWidgets('When replacing the entire page stack', (tester) async {
       await tester.pumpWidget(testWidget);
@@ -796,6 +982,43 @@ void main() {
       verifyNoMoreInteractions(listener);
     });
 
+    // TODO: Fix issue that transitionDuration=Duration.zero is ignored
+    testWidgets('When popping a route without animation', (tester) async {
+      initialLocation = '/a/b';
+      transitionDuration = Duration.zero;
+
+      await tester.pumpWidget(testWidget);
+      expect(find.text('Page:b'), findsOneWidget);
+
+      reset(listener);
+      setLocation('/a');
+      await tester.pump();
+
+      verifyInOrder([
+        listener.didComplete(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        listener.didPop(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        listener.didPopNext(
+          argThat(isModalRoute(name: 'a')),
+          argThat(isModalRoute(name: 'b')),
+        ),
+        listener.didEndTransition(
+          argThat(isModalRoute(name: 'a')),
+        ),
+      ]);
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Page:b'), findsNothing);
+      expect(find.text('Page:a'), findsOneWidget);
+      verifyNoMoreInteractions(listener);
+    });
+
     testWidgets('When popping multiple routes simultaneously', (tester) async {
       await tester.pumpWidget(testWidget);
       setLocation('/a/b/c');
@@ -859,9 +1082,6 @@ void main() {
       )).called(1);
       verifyNoMoreInteractions(listener);
     });
-
-    // TODO: Add test: When popping a route without animation
-    testWidgets('When popping a route without animation', (tester) async {});
 
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
@@ -953,15 +1173,25 @@ void main() {
 
 class _TestMaterialPageRoute extends MaterialPageRoute<dynamic>
     with ObservableModalRouteMixin<dynamic> {
-  _TestMaterialPageRoute({super.settings, required super.builder});
+  _TestMaterialPageRoute({
+    super.settings,
+    required this.transitionDuration,
+    required super.builder,
+  });
+
+  @override
+  final Duration transitionDuration;
 }
 
 class _TestMaterialPage extends MaterialPage<dynamic> {
   const _TestMaterialPage({
     super.key,
     super.name,
+    required this.transitionDuration,
     required super.child,
   });
+
+  final Duration transitionDuration;
 
   @override
   Route<dynamic> createRoute(BuildContext context) =>
@@ -981,6 +1211,10 @@ class _TestPageBasedMaterialPageRoute extends PageRoute<dynamic>
 
   @override
   bool get fullscreenDialog => (settings as _TestMaterialPage).fullscreenDialog;
+
+  @override
+  Duration get transitionDuration =>
+      (settings as _TestMaterialPage).transitionDuration;
 
   @override
   Widget buildContent(BuildContext context) =>
