@@ -429,6 +429,7 @@ void main() {
   });
 
   group('Navigator event capturing test with declarative navigator API', () {
+    var initialLocation = '/a';
     late ValueSetter<String> setLocation;
     late Widget testWidget;
     late MockNavigatorEventListener listener;
@@ -457,7 +458,7 @@ void main() {
         child: _TestScaffold(title: 'Page:d'),
       );
 
-      var location = '/a';
+      String? location;
       testWidget = StatefulBuilder(
         builder: (_, setState) {
           setLocation = (newLocation) {
@@ -470,7 +471,7 @@ void main() {
               listeners: [listener],
               child: Navigator(
                 onDidRemovePage: (page) {},
-                pages: switch (location) {
+                pages: switch (location ?? initialLocation) {
                   '/a' => [pageA],
                   '/a/b' => [pageA, pageB],
                   '/a/b/c' => [pageA, pageB, pageC],
@@ -509,8 +510,60 @@ void main() {
       verifyNoMoreInteractions(listener);
     });
 
-    // TODO: Add test: On initial build with multiple routes
-    testWidgets('On initial build with multiple routes', (tester) async {});
+    testWidgets('On initial build with multiple routes', (tester) async {
+      initialLocation = '/a/b/c';
+      await tester.pumpWidget(testWidget);
+
+      expect(find.text('Page:c'), findsOneWidget);
+      verifyInOrder([
+        listener.didInstall(
+          argThat(isModalRoute(name: 'c')),
+        ),
+        listener.didAdd(
+          argThat(isModalRoute(name: 'c')),
+        ),
+        listener.didEndTransition(
+          argThat(isModalRoute(name: 'c')),
+        ),
+        listener.didChangeNext(
+          argThat(isModalRoute(name: 'c')),
+          argThat(isNull),
+        ),
+        listener.didInstall(
+          argThat(isModalRoute(name: 'b')),
+        ),
+        listener.didAdd(
+          argThat(isModalRoute(name: 'b')),
+        ),
+        listener.didInstall(
+          argThat(isModalRoute(name: 'a')),
+        ),
+        listener.didAdd(
+          argThat(isModalRoute(name: 'a')),
+        ),
+        listener.didChangePrevious(
+          argThat(isModalRoute(name: 'c')),
+          argThat(isModalRoute(name: 'b')),
+        ),
+        listener.didChangeNext(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isModalRoute(name: 'c')),
+        ),
+        listener.didChangePrevious(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isModalRoute(name: 'a')),
+        ),
+        listener.didChangeNext(
+          argThat(isModalRoute(name: 'a')),
+          argThat(isModalRoute(name: 'b')),
+        ),
+        listener.didChangePrevious(
+          argThat(isModalRoute(name: 'a')),
+          argThat(isNull),
+        ),
+      ]);
+      verifyNoMoreInteractions(listener);
+    });
 
     testWidgets('When pushing a route', (tester) async {
       await tester.pumpWidget(testWidget);
