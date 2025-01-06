@@ -165,9 +165,13 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
       if (status == AnimationStatus.completed &&
           (route is! ModalRoute || !route.offstage)) {
         route.animation!.removeStatusListener(notifyTransitionEnd);
-        assert(route.isCurrent);
-        _lastSettledRoute = route;
-        _notifyListeners((it) => it.didEndTransition(route));
+        // At this point, the `route` might no longer be the current route,
+        // e.g., when multiple routes are pushed in the same frame
+        // by calling `Navigator.push` consecutively.
+        if (route.isCurrent) {
+          _lastSettledRoute = route;
+          _notifyListeners((it) => it.didEndTransition(route));
+        }
       }
     }
 

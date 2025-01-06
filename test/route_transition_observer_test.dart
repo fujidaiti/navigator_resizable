@@ -118,6 +118,86 @@ void main() {
       verifyNoMoreInteractions(listener);
     });
 
+    testWidgets(
+      'When pushing multiple routes simultaneously',
+      (tester) async {
+        await tester.pumpWidget(testWidget);
+        reset(listener);
+        unawaited(navigatorKey.currentState!.pushNamed('b'));
+        unawaited(navigatorKey.currentState!.pushNamed('c'));
+        await tester.pump();
+
+        final results = verifyInOrder([
+          listener.didInstall(
+            argThat(isModalRoute(name: 'b')),
+          ),
+          listener.didPush(
+            argThat(isModalRoute(name: 'b')),
+          ),
+          listener.didStartTransition(
+            argThat(isModalRoute(name: 'a')),
+            argThat(isModalRoute(name: 'b')),
+            any,
+            isUserGestureInProgress: false,
+          ),
+          listener.didChangeNext(
+            argThat(isModalRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          listener.didChangePrevious(
+            argThat(isModalRoute(name: 'b')),
+            argThat(isModalRoute(name: 'a')),
+          ),
+          listener.didChangeNext(
+            argThat(isModalRoute(name: 'a')),
+            argThat(isModalRoute(name: 'b')),
+          ),
+          listener.didInstall(
+            argThat(isModalRoute(name: 'c')),
+          ),
+          listener.didPush(
+            argThat(isModalRoute(name: 'c')),
+          ),
+          listener.didStartTransition(
+            argThat(isModalRoute(name: 'a')),
+            argThat(isModalRoute(name: 'c')),
+            captureAny,
+            isUserGestureInProgress: false,
+          ),
+          listener.didChangeNext(
+            argThat(isModalRoute(name: 'c')),
+            argThat(isNull),
+          ),
+          listener.didChangePrevious(
+            argThat(isModalRoute(name: 'c')),
+            argThat(isModalRoute(name: 'b')),
+          ),
+          listener.didChangeNext(
+            argThat(isModalRoute(name: 'b')),
+            argThat(isModalRoute(name: 'c')),
+          ),
+        ]);
+
+        final capturedAnimation =
+            results[8].captured.single as Animation<double>;
+        expect(capturedAnimation.status, AnimationStatus.forward);
+
+        startTrackingTransitionProgress(capturedAnimation);
+        await tester.pumpAndSettle();
+
+        expect(transitionProgressHistory, isMonotonicallyIncreasing);
+        expect(find.text('Page:b'), findsNothing);
+        expect(find.text('Page:c'), findsOneWidget);
+        verify(listener.didEndTransition(
+          argThat(isModalRoute(name: 'c')),
+        )).called(1);
+        verifyNoMoreInteractions(listener);
+      },
+    );
+
+    // TODO: Add test: When pushing a route without animation
+    testWidgets('When pushing a route without animation', (tester) async {});
+
     testWidgets('When popping a route', (tester) async {
       await tester.pumpWidget(testWidget);
       unawaited(navigatorKey.currentState!.pushNamed('b'));
@@ -159,6 +239,81 @@ void main() {
       )).called(1);
       verifyNoMoreInteractions(listener);
     });
+
+    testWidgets('When popping multiple routes simultaneously', (tester) async {
+      await tester.pumpWidget(testWidget);
+      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      unawaited(navigatorKey.currentState!.pushNamed('c'));
+      await tester.pumpAndSettle();
+      expect(find.text('Page:c'), findsOneWidget);
+      reset(listener);
+
+      navigatorKey.currentState!.popUntil((route) => route.isFirst);
+      await tester.pump();
+      final results = verifyInOrder([
+        listener.didComplete(
+          argThat(isModalRoute(name: 'c')),
+          argThat(isNull),
+        ),
+        listener.didPop(
+          argThat(isModalRoute(name: 'c')),
+          argThat(isNull),
+        ),
+        listener.didPopNext(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isModalRoute(name: 'c')),
+        ),
+        listener.didStartTransition(
+          argThat(isModalRoute(name: 'c')),
+          argThat(isModalRoute(name: 'b')),
+          any,
+          isUserGestureInProgress: false,
+        ),
+        listener.didComplete(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        listener.didPop(
+          argThat(isModalRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        listener.didPopNext(
+          argThat(isModalRoute(name: 'a')),
+          argThat(isModalRoute(name: 'b')),
+        ),
+        listener.didStartTransition(
+          argThat(isModalRoute(name: 'c')),
+          argThat(isModalRoute(name: 'a')),
+          captureAny,
+          isUserGestureInProgress: false,
+        ),
+        listener.didChangePrevious(
+          argThat(isModalRoute(name: 'c')),
+          argThat(isModalRoute(name: 'a')),
+        ),
+      ]);
+
+      final capturedAnimation = results[7].captured.single as Animation<double>;
+      expect(capturedAnimation.status, AnimationStatus.reverse);
+
+      startTrackingTransitionProgress(capturedAnimation);
+      await tester.pumpAndSettle();
+
+      expect(transitionProgressHistory, isMonotonicallyDecreasing);
+      expect(find.text('Page:a'), findsOneWidget);
+      expect(find.text('Page:b'), findsNothing);
+      expect(find.text('Page:c'), findsNothing);
+      verify(listener.didEndTransition(
+        argThat(isModalRoute(name: 'a')),
+      )).called(1);
+      verifyNoMoreInteractions(listener);
+    });
+
+    // TODO: Add test: When popping a route without animation
+    testWidgets('When popping a route without animation', (tester) async {});
+
+    // TODO: Add test: When replacing the entire page stack
+    testWidgets('When replacing the entire page stack', (tester) async {});
 
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
@@ -354,6 +509,9 @@ void main() {
       verifyNoMoreInteractions(listener);
     });
 
+    // TODO: Add test: On initial build with multiple routes
+    testWidgets('On initial build with multiple routes', (tester) async {});
+
     testWidgets('When pushing a route', (tester) async {
       await tester.pumpWidget(testWidget);
       reset(listener);
@@ -469,6 +627,9 @@ void main() {
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
       expect(find.text('Page:c'), findsOneWidget);
     });
+
+    // TODO: Add test: When pushing a route without animation
+    testWidgets('When pushing a route without animation', (tester) async {});
 
     testWidgets('When replacing the entire page stack', (tester) async {
       await tester.pumpWidget(testWidget);
@@ -645,6 +806,9 @@ void main() {
       )).called(1);
       verifyNoMoreInteractions(listener);
     });
+
+    // TODO: Add test: When popping a route without animation
+    testWidgets('When popping a route without animation', (tester) async {});
 
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
