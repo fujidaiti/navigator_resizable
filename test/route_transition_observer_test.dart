@@ -25,16 +25,16 @@ void main() {
   }
 
   group('Navigator event capturing test with imperative navigator API', () {
-    late Widget testWidget;
-    late GlobalKey<NavigatorState> navigatorKey;
-    late MockNavigatorEventListener listener;
-    late Duration transitionDuration;
-
-    setUp(() {
-      navigatorKey = GlobalKey<NavigatorState>();
-      listener = MockNavigatorEventListener();
-      transitionDuration = const Duration(milliseconds: 300);
-      testWidget = MaterialApp(
+    ({
+      Widget testWidget,
+      MockNavigatorEventListener listener,
+      GlobalKey<NavigatorState> navigatorKey,
+    }) boilerplate({
+      Duration transitionDuration = const Duration(milliseconds: 300),
+    }) {
+      final navigatorKey = GlobalKey<NavigatorState>();
+      final listener = MockNavigatorEventListener();
+      final testWidget = MaterialApp(
         navigatorKey: navigatorKey,
         initialRoute: 'a',
         onGenerateRoute: (settings) {
@@ -53,68 +53,76 @@ void main() {
           );
         },
       );
-    });
+
+      return (
+        testWidget: testWidget,
+        listener: listener,
+        navigatorKey: navigatorKey,
+      );
+    }
 
     testWidgets('On initial build', (tester) async {
-      await tester.pumpWidget(testWidget);
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
       expect(find.text('Page:a'), findsOneWidget);
       verifyInOrder([
-        listener.didInstall(
+        env.listener.didInstall(
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didAdd(
+        env.listener.didAdd(
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didEndTransition(
+        env.listener.didEndTransition(
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isNull),
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'a')),
           argThat(isNull),
         ),
       ]);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
     });
 
     testWidgets('When pushing a route', (tester) async {
-      await tester.pumpWidget(testWidget);
-      reset(listener);
-      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      reset(env.listener);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
       await tester.pump();
 
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       final results = verifyInOrder([
-        listener.didInstall(
+        env.listener.didInstall(
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didPush(
+        env.listener.didPush(
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didStartTransition(
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
           captureAny,
           isUserGestureInProgress: false,
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
         ),
       ]);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
 
       final capturedAnimation = results[2].captured.single as Animation<double>;
       expect(capturedAnimation.status, AnimationStatus.forward);
@@ -125,41 +133,40 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      verify(listener.didEndTransition(
+      verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'b')),
       )).called(1);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
     });
 
     testWidgets('When pushing a route without animation', (tester) async {
-      transitionDuration = Duration.zero;
-
-      await tester.pumpWidget(testWidget);
-      reset(listener);
-      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      final env = boilerplate(transitionDuration: Duration.zero);
+      await tester.pumpWidget(env.testWidget);
+      reset(env.listener);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
       await tester.pump();
 
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       verifyInOrder([
-        listener.didInstall(
+        env.listener.didInstall(
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didPush(
+        env.listener.didPush(
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didEndTransition(
+        env.listener.didEndTransition(
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
         ),
@@ -167,7 +174,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
     });
@@ -175,58 +182,59 @@ void main() {
     testWidgets(
       'When pushing multiple routes simultaneously',
       (tester) async {
-        await tester.pumpWidget(testWidget);
-        reset(listener);
-        unawaited(navigatorKey.currentState!.pushNamed('b'));
-        unawaited(navigatorKey.currentState!.pushNamed('c'));
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
+        reset(env.listener);
+        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        unawaited(env.navigatorKey.currentState!.pushNamed('c'));
         await tester.pump();
 
         final results = verifyInOrder([
-          listener.didInstall(
+          env.listener.didInstall(
             argThat(isModalRoute(name: 'b')),
           ),
-          listener.didPush(
+          env.listener.didPush(
             argThat(isModalRoute(name: 'b')),
           ),
-          listener.didStartTransition(
+          env.listener.didStartTransition(
             argThat(isModalRoute(name: 'a')),
             argThat(isModalRoute(name: 'b')),
             any,
             isUserGestureInProgress: false,
           ),
-          listener.didChangeNext(
+          env.listener.didChangeNext(
             argThat(isModalRoute(name: 'b')),
             argThat(isNull),
           ),
-          listener.didChangePrevious(
+          env.listener.didChangePrevious(
             argThat(isModalRoute(name: 'b')),
             argThat(isModalRoute(name: 'a')),
           ),
-          listener.didChangeNext(
+          env.listener.didChangeNext(
             argThat(isModalRoute(name: 'a')),
             argThat(isModalRoute(name: 'b')),
           ),
-          listener.didInstall(
+          env.listener.didInstall(
             argThat(isModalRoute(name: 'c')),
           ),
-          listener.didPush(
+          env.listener.didPush(
             argThat(isModalRoute(name: 'c')),
           ),
-          listener.didStartTransition(
+          env.listener.didStartTransition(
             argThat(isModalRoute(name: 'a')),
             argThat(isModalRoute(name: 'c')),
             captureAny,
             isUserGestureInProgress: false,
           ),
-          listener.didChangeNext(
+          env.listener.didChangeNext(
             argThat(isModalRoute(name: 'c')),
             argThat(isNull),
           ),
-          listener.didChangePrevious(
+          env.listener.didChangePrevious(
             argThat(isModalRoute(name: 'c')),
             argThat(isModalRoute(name: 'b')),
           ),
-          listener.didChangeNext(
+          env.listener.didChangeNext(
             argThat(isModalRoute(name: 'b')),
             argThat(isModalRoute(name: 'c')),
           ),
@@ -242,45 +250,46 @@ void main() {
         expect(transitionProgressHistory, isMonotonicallyIncreasing);
         expect(find.text('Page:b'), findsNothing);
         expect(find.text('Page:c'), findsOneWidget);
-        verify(listener.didEndTransition(
+        verify(env.listener.didEndTransition(
           argThat(isModalRoute(name: 'c')),
         )).called(1);
-        verifyNoMoreInteractions(listener);
+        verifyNoMoreInteractions(env.listener);
       },
     );
 
     testWidgets('When popping a route', (tester) async {
-      await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
       await tester.pumpAndSettle();
 
       expect(find.text('Page:b'), findsOneWidget);
       expect(find.text('Page:a'), findsNothing);
 
-      reset(listener);
-      navigatorKey.currentState!.pop();
+      reset(env.listener);
+      env.navigatorKey.currentState!.pop();
       await tester.pump();
       final results = verifyInOrder([
-        listener.didComplete(
+        env.listener.didComplete(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didPop(
+        env.listener.didPop(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didPopNext(
+        env.listener.didPopNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didStartTransition(
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: false,
         ),
       ]);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
 
       final capturedAnimation = results[3].captured.single as Animation<double>;
       expect(capturedAnimation.status, AnimationStatus.reverse);
@@ -291,98 +300,99 @@ void main() {
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:a'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
-      verify(listener.didEndTransition(
+      verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'a')),
       )).called(1);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
     });
 
     testWidgets('When popping a route without animation', (tester) async {
-      transitionDuration = Duration.zero;
-
-      await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      final env = boilerplate(transitionDuration: Duration.zero);
+      await tester.pumpWidget(env.testWidget);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
       await tester.pumpAndSettle();
 
       expect(find.text('Page:b'), findsOneWidget);
       expect(find.text('Page:a'), findsNothing);
 
-      reset(listener);
-      navigatorKey.currentState!.pop();
+      reset(env.listener);
+      env.navigatorKey.currentState!.pop();
       await tester.pump();
       verifyInOrder([
-        listener.didComplete(
+        env.listener.didComplete(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didPop(
+        env.listener.didPop(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didPopNext(
+        env.listener.didPopNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didEndTransition(
+        env.listener.didEndTransition(
           argThat(isModalRoute(name: 'a')),
         ),
       ]);
 
       await tester.pumpAndSettle();
 
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:a'), findsOneWidget);
     });
 
     testWidgets('When popping multiple routes simultaneously', (tester) async {
-      await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('b'));
-      unawaited(navigatorKey.currentState!.pushNamed('c'));
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      unawaited(env.navigatorKey.currentState!.pushNamed('c'));
       await tester.pumpAndSettle();
       expect(find.text('Page:c'), findsOneWidget);
-      reset(listener);
+      reset(env.listener);
 
-      navigatorKey.currentState!.popUntil((route) => route.isFirst);
+      env.navigatorKey.currentState!.popUntil((route) => route.isFirst);
       await tester.pump();
+
       final results = verifyInOrder([
-        listener.didComplete(
+        env.listener.didComplete(
           argThat(isModalRoute(name: 'c')),
           argThat(isNull),
         ),
-        listener.didPop(
+        env.listener.didPop(
           argThat(isModalRoute(name: 'c')),
           argThat(isNull),
         ),
-        listener.didPopNext(
+        env.listener.didPopNext(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'c')),
         ),
-        listener.didStartTransition(
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'c')),
           argThat(isModalRoute(name: 'b')),
           any,
           isUserGestureInProgress: false,
         ),
-        listener.didComplete(
+        env.listener.didComplete(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didPop(
+        env.listener.didPop(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didPopNext(
+        env.listener.didPopNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didStartTransition(
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'c')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: false,
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'c')),
           argThat(isModalRoute(name: 'a')),
         ),
@@ -398,47 +408,48 @@ void main() {
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:c'), findsNothing);
-      verify(listener.didEndTransition(
+      verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'a')),
       )).called(1);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
     });
 
     testWidgets('When replacing the entire page stack', (tester) async {
-      await tester.pumpWidget(testWidget);
-      reset(listener);
-      unawaited(navigatorKey.currentState!.pushReplacementNamed('b'));
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      reset(env.listener);
+      unawaited(env.navigatorKey.currentState!.pushReplacementNamed('b'));
       await tester.pump();
 
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       final results = verifyInOrder([
-        listener.didInstall(argThat(isModalRoute(name: 'b'))),
-        listener.didPush(argThat(isModalRoute(name: 'b'))),
-        listener.didStartTransition(
+        env.listener.didInstall(argThat(isModalRoute(name: 'b'))),
+        env.listener.didPush(argThat(isModalRoute(name: 'b'))),
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
           captureAny,
           isUserGestureInProgress: false,
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didComplete(
+        env.listener.didComplete(
           argThat(isModalRoute(name: 'a')),
           argThat(isNull),
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
         ),
       ]);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
 
       final capturedAnimation = results[2].captured.single as Animation<double>;
       expect(capturedAnimation.status, AnimationStatus.forward);
@@ -449,30 +460,31 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      verify(listener.didEndTransition(
+      verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'b')),
       )).called(1);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
     });
 
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
-      await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
       await tester.pumpAndSettle();
 
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
 
-      reset(listener);
+      reset(env.listener);
       // Start a swipe back gesture
       final gesture = await tester.startGesture(const Offset(0, 200));
       await gesture.moveBy(const Offset(50, 0));
       await tester.pumpAndSettle();
 
       final verification = verify(
-        listener.didStartTransition(
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
@@ -502,23 +514,23 @@ void main() {
       expect(find.text('Page:b'), findsNothing);
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
       verifyInOrder([
-        listener.didComplete(
+        env.listener.didComplete(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didPop(
+        env.listener.didPop(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didPopNext(
+        env.listener.didPopNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didEndTransition(
+        env.listener.didEndTransition(
           argThat(isModalRoute(name: 'a')),
         ),
       ]);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
 
       // Reset the default target platform.
       debugDefaultTargetPlatformOverride = null;
@@ -527,20 +539,21 @@ void main() {
     testWidgets('When iOS swipe back gesture is canceled', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
-      await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
       await tester.pumpAndSettle();
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
 
-      reset(listener);
+      reset(env.listener);
       // Start a swipe back gesture
       final gesture = await tester.startGesture(const Offset(0, 200));
       await gesture.moveBy(const Offset(50, 0));
       await tester.pumpAndSettle();
 
       final verification = verify(
-        listener.didStartTransition(
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
@@ -558,10 +571,10 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      verify(listener.didEndTransition(
+      verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'b')),
       )).called(1);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
 
       // Reset the default target platform.
       debugDefaultTargetPlatformOverride = null;
@@ -569,16 +582,15 @@ void main() {
   });
 
   group('Navigator event capturing test with declarative navigator API', () {
-    late String initialLocation;
-    late Duration transitionDuration;
-    late ValueSetter<String> setLocation;
-    late Widget testWidget;
-    late MockNavigatorEventListener listener;
-
-    setUp(() {
-      initialLocation = '/a';
-      transitionDuration = const Duration(milliseconds: 300);
-      listener = MockNavigatorEventListener();
+    ({
+      Widget testWidget,
+      MockNavigatorEventListener listener,
+      ValueSetter<String> setLocation,
+    }) boilerplate({
+      String initialLocation = '/a',
+      Duration transitionDuration = const Duration(milliseconds: 300),
+    }) {
+      final listener = MockNavigatorEventListener();
 
       final pageA = _TestMaterialPage(
         name: 'a',
@@ -605,147 +617,161 @@ void main() {
         child: const _TestScaffold(title: 'Page:d'),
       );
 
-      String? location;
-      testWidget = StatefulBuilder(
-        builder: (_, setState) {
-          setLocation = (newLocation) {
-            location = newLocation;
-            setState(() {});
-          };
+      var location = initialLocation;
+      late VoidCallback invokeSetState;
+      void setLocation(String newLocation) {
+        location = newLocation;
+        invokeSetState();
+      }
 
+      final testWidget = StatefulBuilder(
+        builder: (_, setState) {
           return MaterialApp(
             home: NavigatorEventObserver(
               listeners: [listener],
-              child: Navigator(
-                onDidRemovePage: (page) {},
-                pages: switch (location ?? initialLocation) {
-                  '/a' => [pageA],
-                  '/a/b' => [pageA, pageB],
-                  '/a/b/c' => [pageA, pageB, pageC],
-                  '/d' => [pageD],
-                  _ => throw StateError('Unknown location: $location'),
+              child: StatefulBuilder(
+                builder: (_, setState) {
+                  invokeSetState = () => setState(() {});
+                  return Navigator(
+                    onDidRemovePage: (page) {},
+                    pages: switch (location) {
+                      '/a' => [pageA],
+                      '/a/b' => [pageA, pageB],
+                      '/a/b/c' => [pageA, pageB, pageC],
+                      '/d' => [pageD],
+                      _ => throw StateError('Unknown location: $location'),
+                    },
+                  );
                 },
               ),
             ),
           );
         },
       );
-    });
+
+      return (
+        testWidget: testWidget,
+        listener: listener,
+        setLocation: setLocation,
+      );
+    }
 
     testWidgets('On initial build', (tester) async {
-      await tester.pumpWidget(testWidget);
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
       expect(find.text('Page:a'), findsOneWidget);
       verifyInOrder([
-        listener.didInstall(
+        env.listener.didInstall(
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didAdd(
+        env.listener.didAdd(
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didEndTransition(
+        env.listener.didEndTransition(
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isNull),
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'a')),
           argThat(isNull),
         ),
       ]);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
     });
 
     testWidgets('On initial build with multiple routes', (tester) async {
-      initialLocation = '/a/b/c';
-      await tester.pumpWidget(testWidget);
+      final env = boilerplate(initialLocation: '/a/b/c');
+      await tester.pumpWidget(env.testWidget);
 
       expect(find.text('Page:c'), findsOneWidget);
       verifyInOrder([
-        listener.didInstall(
+        env.listener.didInstall(
           argThat(isModalRoute(name: 'c')),
         ),
-        listener.didAdd(
+        env.listener.didAdd(
           argThat(isModalRoute(name: 'c')),
         ),
-        listener.didEndTransition(
+        env.listener.didEndTransition(
           argThat(isModalRoute(name: 'c')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'c')),
           argThat(isNull),
         ),
-        listener.didInstall(
+        env.listener.didInstall(
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didAdd(
+        env.listener.didAdd(
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didInstall(
+        env.listener.didInstall(
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didAdd(
+        env.listener.didAdd(
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'c')),
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'c')),
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'a')),
           argThat(isNull),
         ),
       ]);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
     });
 
     testWidgets('When pushing a route', (tester) async {
-      await tester.pumpWidget(testWidget);
-      reset(listener);
-      setLocation('/a/b');
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      reset(env.listener);
+      env.setLocation('/a/b');
       await tester.pump();
 
       expect(find.text('Page:b'), findsOneWidget);
       final results = verifyInOrder([
-        listener.didInstall(
+        env.listener.didInstall(
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didPush(
+        env.listener.didPush(
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didStartTransition(
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
           captureAny,
           isUserGestureInProgress: false,
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
         ),
       ]);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
 
       final capturedAnimation = results[2].captured.single as Animation<double>;
       expect(capturedAnimation.status, AnimationStatus.forward);
@@ -756,42 +782,41 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      verify(listener.didEndTransition(
+      verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'b')),
       )).called(1);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
     });
 
     // TODO: Add test: When pushing a route without animation
     testWidgets('When pushing a route without animation', (tester) async {
-      transitionDuration = Duration.zero;
-
-      await tester.pumpWidget(testWidget);
-      reset(listener);
-      setLocation('/a/b');
+      final env = boilerplate(transitionDuration: Duration.zero);
+      await tester.pumpWidget(env.testWidget);
+      reset(env.listener);
+      env.setLocation('/a/b');
       await tester.pump();
 
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       verifyInOrder([
-        listener.didInstall(
+        env.listener.didInstall(
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didPush(
+        env.listener.didPush(
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didEndTransition(
+        env.listener.didEndTransition(
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
         ),
@@ -799,43 +824,44 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
     });
 
     testWidgets('When pushing multiple routes simultaneously', (tester) async {
-      await tester.pumpWidget(testWidget);
-      reset(listener);
-      setLocation('/a/b/c');
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      reset(env.listener);
+      env.setLocation('/a/b/c');
       await tester.pump();
 
       expect(find.text('Page:c'), findsOneWidget);
       final results = verifyInOrder([
-        listener.didInstall(
+        env.listener.didInstall(
           argThat(isModalRoute(name: 'c')),
         ),
-        listener.didPush(
+        env.listener.didPush(
           argThat(isModalRoute(name: 'c')),
         ),
-        listener.didStartTransition(
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'c')),
           captureAny,
           isUserGestureInProgress: false,
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'c')),
           argThat(isNull),
         ),
-        listener.didInstall(
+        env.listener.didInstall(
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'c')),
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'c')),
         ),
@@ -846,79 +872,80 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyInOrder([
-        listener.didEndTransition(argThat(isModalRoute(name: 'c'))),
-        listener.didAdd(argThat(isModalRoute(name: 'b'))),
-        listener.didChangePrevious(
+        env.listener.didEndTransition(argThat(isModalRoute(name: 'c'))),
+        env.listener.didAdd(argThat(isModalRoute(name: 'b'))),
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'c')),
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'c')),
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
         ),
       ]);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
       expect(find.text('Page:c'), findsOneWidget);
     });
 
     testWidgets('When replacing the entire page stack', (tester) async {
-      await tester.pumpWidget(testWidget);
-      setLocation('/a/b');
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      env.setLocation('/a/b');
       await tester.pumpAndSettle();
       expect(find.text('Page:b'), findsOneWidget);
 
-      reset(listener);
-      setLocation('/d');
+      reset(env.listener);
+      env.setLocation('/d');
       await tester.pump();
       expect(find.text('Page:d'), findsOneWidget);
 
       final results = verifyInOrder([
-        listener.didInstall(
+        env.listener.didInstall(
           argThat(isModalRoute(name: 'd')),
         ),
-        listener.didPush(
+        env.listener.didPush(
           argThat(isModalRoute(name: 'd')),
         ),
-        listener.didStartTransition(
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'd')),
           captureAny,
           isUserGestureInProgress: false,
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'd')),
           argThat(isNull),
         ),
-        listener.didComplete(
+        env.listener.didComplete(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didComplete(
+        env.listener.didComplete(
           argThat(isModalRoute(name: 'a')),
           argThat(isNull),
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'd')),
           argThat(isNull),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'd')),
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'd')),
         ),
@@ -930,36 +957,37 @@ void main() {
 
       expect(find.text('Page:d'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      verify(listener.didEndTransition(
+      verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'd')),
       )).called(1);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
     });
 
     testWidgets('When popping a route', (tester) async {
-      await tester.pumpWidget(testWidget);
-      setLocation('/a/b');
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      env.setLocation('/a/b');
       await tester.pumpAndSettle();
       expect(find.text('Page:b'), findsOneWidget);
 
-      reset(listener);
-      setLocation('/a');
+      reset(env.listener);
+      env.setLocation('/a');
       await tester.pump();
 
       final results = verifyInOrder([
-        listener.didComplete(
+        env.listener.didComplete(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didPop(
+        env.listener.didPop(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didPopNext(
+        env.listener.didPopNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didStartTransition(
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
@@ -976,38 +1004,39 @@ void main() {
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:a'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
-      verify(listener.didEndTransition(
+      verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'a')),
       )).called(1);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
     });
 
-    // TODO: Fix issue that transitionDuration=Duration.zero is ignored
     testWidgets('When popping a route without animation', (tester) async {
-      initialLocation = '/a/b';
-      transitionDuration = Duration.zero;
+      final env = boilerplate(
+        initialLocation: '/a/b',
+        transitionDuration: Duration.zero,
+      );
 
-      await tester.pumpWidget(testWidget);
+      await tester.pumpWidget(env.testWidget);
       expect(find.text('Page:b'), findsOneWidget);
 
-      reset(listener);
-      setLocation('/a');
+      reset(env.listener);
+      env.setLocation('/a');
       await tester.pump();
 
       verifyInOrder([
-        listener.didComplete(
+        env.listener.didComplete(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didPop(
+        env.listener.didPop(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didPopNext(
+        env.listener.didPopNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isModalRoute(name: 'b')),
         ),
-        listener.didEndTransition(
+        env.listener.didEndTransition(
           argThat(isModalRoute(name: 'a')),
         ),
       ]);
@@ -1016,50 +1045,51 @@ void main() {
 
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:a'), findsOneWidget);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
     });
 
     testWidgets('When popping multiple routes simultaneously', (tester) async {
-      await tester.pumpWidget(testWidget);
-      setLocation('/a/b/c');
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      env.setLocation('/a/b/c');
       await tester.pumpAndSettle();
       expect(find.text('Page:c'), findsOneWidget);
-      reset(listener);
+      reset(env.listener);
 
-      setLocation('/a');
+      env.setLocation('/a');
       await tester.pump();
       final results = verifyInOrder([
-        listener.didComplete(
+        env.listener.didComplete(
           argThat(isModalRoute(name: 'c')),
           argThat(isNull),
         ),
-        listener.didPop(
+        env.listener.didPop(
           argThat(isModalRoute(name: 'c')),
           argThat(isNull),
         ),
-        listener.didComplete(
+        env.listener.didComplete(
           argThat(isModalRoute(name: 'b')),
           argThat(isNull),
         ),
-        listener.didPopNext(
+        env.listener.didPopNext(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'c')),
         ),
-        listener.didStartTransition(
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'c')),
           argThat(isModalRoute(name: 'b')),
           any,
           isUserGestureInProgress: false,
         ),
-        listener.didChangePrevious(
+        env.listener.didChangePrevious(
           argThat(isModalRoute(name: 'c')),
           argThat(isModalRoute(name: 'a')),
         ),
-        listener.didChangeNext(
+        env.listener.didChangeNext(
           argThat(isModalRoute(name: 'a')),
           argThat(isNull),
         ),
-        listener.didStartTransition(
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'c')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
@@ -1077,29 +1107,30 @@ void main() {
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:c'), findsNothing);
-      verify(listener.didEndTransition(
+      verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'a')),
       )).called(1);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
     });
 
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
-      await tester.pumpWidget(testWidget);
-      setLocation('/a/b');
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      env.setLocation('/a/b');
       await tester.pumpAndSettle();
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
 
-      reset(listener);
+      reset(env.listener);
       // Start a swipe back gesture
       final gesture = await tester.startGesture(const Offset(0, 200));
       await gesture.moveBy(const Offset(50, 0));
       await tester.pumpAndSettle();
 
       final verification = verify(
-        listener.didStartTransition(
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
@@ -1117,10 +1148,10 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      verify(listener.didEndTransition(
+      verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'b')),
       )).called(1);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
 
       // Reset the default target platform.
       debugDefaultTargetPlatformOverride = null;
@@ -1129,20 +1160,21 @@ void main() {
     testWidgets('When iOS swipe back gesture is canceled', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
-      await tester.pumpWidget(testWidget);
-      setLocation('/a/b');
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      env.setLocation('/a/b');
       await tester.pumpAndSettle();
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
 
-      reset(listener);
+      reset(env.listener);
       // Start a swipe back gesture
       final gesture = await tester.startGesture(const Offset(0, 200));
       await gesture.moveBy(const Offset(50, 0));
       await tester.pumpAndSettle();
 
       final verification = verify(
-        listener.didStartTransition(
+        env.listener.didStartTransition(
           argThat(isModalRoute(name: 'b')),
           argThat(isModalRoute(name: 'a')),
           captureAny,
@@ -1160,10 +1192,10 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      verify(listener.didEndTransition(
+      verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'b')),
       )).called(1);
-      verifyNoMoreInteractions(listener);
+      verifyNoMoreInteractions(env.listener);
 
       // Reset the default target platform.
       debugDefaultTargetPlatformOverride = null;
