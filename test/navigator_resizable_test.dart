@@ -8,33 +8,26 @@ import 'package:resizable_navigator/src/resizable_navigator_routes.dart';
 import 'package:resizable_navigator/src/route_transition_observer.dart';
 
 void main() {
-  group('Layout test with imperative navigator API', () {
+  group('Size transition test with imperative navigator API', () {
     const interpolationCurve = Curves.easeInOut;
 
     late GlobalKey<NavigatorState> navigatorKey;
     late RenderBox Function(WidgetTester) getBox;
-    late void Function(String, Size) setRouteContentSize;
     late Widget testWidget;
 
     setUp(() {
       navigatorKey = GlobalKey();
       final navigatorResizableKey = UniqueKey();
-      final routeAKey = GlobalKey<_TestRouteWidgetState>();
-      final routeBKey = GlobalKey<_TestRouteWidgetState>();
-      final routeCKey = GlobalKey<_TestRouteWidgetState>();
       final transitionObserver = RouteTransitionObserver();
       final routes = {
-        'a': () => _TestRouteWidget(
-              key: routeAKey,
-              initialSize: const Size(100, 200),
+        'a': () => const _TestRouteWidget(
+              initialSize: Size(100, 200),
             ),
-        'b': () => _TestRouteWidget(
-              key: routeBKey,
-              initialSize: const Size(200, 300),
+        'b': () => const _TestRouteWidget(
+              initialSize: Size(200, 300),
             ),
-        'c': () => _TestRouteWidget(
-              key: routeCKey,
-              initialSize: const Size(150, 250),
+        'c': () => const _TestRouteWidget(
+              initialSize: Size(150, 250),
             ),
       };
       testWidget = MaterialApp(
@@ -61,16 +54,6 @@ void main() {
 
       getBox = (tester) {
         return tester.renderObject(find.byKey(navigatorResizableKey));
-      };
-
-      setRouteContentSize = (routeName, size) {
-        final routeKey = switch (routeName) {
-          'a' => routeAKey,
-          'b' => routeBKey,
-          'c' => routeCKey,
-          _ => throw StateError('Unknown route name: $routeName'),
-        };
-        routeKey.currentState!.size = size;
       };
     });
 
@@ -301,37 +284,9 @@ void main() {
       // Reset the default target platform.
       debugDefaultTargetPlatformOverride = null;
     });
-
-    testWidgets(
-      'When the content size of the current route changes',
-      (tester) async {
-        await tester.pumpWidget(testWidget);
-        expect(getBox(tester).size, const Size(100, 200));
-
-        // Make it bigger.
-        setRouteContentSize('a', const Size(200, 300));
-        // It *intentionally* takes two frames to update the size because:
-        // in the first frame, the route content size is updated,
-        // but we can't mark the render object of the NavigatorResizable
-        // as dirty in the layout phase of the same frame. Instead,
-        // we have to schedule the next frame to reflect the new content size
-        // to the size of the NavigatorResizable.
-        await tester.pump();
-        expect(getBox(tester).size, const Size(100, 200));
-        await tester.pump();
-        expect(getBox(tester).size, const Size(200, 300));
-
-        // Make it smaller.
-        setRouteContentSize('a', const Size(50, 100));
-        await tester.pump();
-        expect(getBox(tester).size, const Size(200, 300));
-        await tester.pump();
-        expect(getBox(tester).size, const Size(50, 100));
-      },
-    );
   });
 
-  group('Layout test with declarative navigator API', () {
+  group('Size transition test with declarative navigator API', () {
     ({
       GlobalKey<NavigatorState> navigatorKey,
       RenderBox Function(WidgetTester) getBox,
@@ -420,8 +375,9 @@ void main() {
     });
 
     testWidgets('After initial build with multiple routes', (tester) async {
-      await tester.pumpWidget(testWidget);
-      expect(getBox(tester).size, const Size(100, 200));
+      final env = boilerplate(initialLocation: '/a/b/c');
+      await tester.pumpWidget(env.testWidget);
+      expect(env.getBox(tester).size, const Size(800, 600));
     });
 
     testWidgets('When pushing a new route', (tester) async {
@@ -657,6 +613,131 @@ void main() {
     });
   });
 
+  group('Layout test', () {
+    ({
+      ValueGetter<Size> getBoxSize,
+      ValueSetter<Size> setContentSize,
+      Widget testWidget,
+    }) boilerplate({
+      Size initialContentSize = const Size(100, 200),
+      bool useAlign = true,
+    }) {
+      final navigatorResizableKey = GlobalKey<NavigatorResizableState>();
+      final routeContentKey = GlobalKey<_TestRouteWidgetState>();
+      final transitionObserver = RouteTransitionObserver();
+
+      Size getBoxSize() {
+        return (navigatorResizableKey.currentContext!.findRenderObject()!
+                as RenderBox)
+            .size;
+      }
+
+      void setContentSize(Size size) {
+        routeContentKey.currentState!.size = size;
+      }
+
+      final navigatorResizable = NavigatorResizable(
+        key: navigatorResizableKey,
+        transitionObserver: transitionObserver,
+        child: Navigator(
+          observers: [transitionObserver],
+          onGenerateInitialRoutes: (navigator, initialRoute) {
+            return [
+              ResizableMaterialPageRoute(
+                settings: const RouteSettings(name: 'a'),
+                builder: (_) => _TestRouteWidget(
+                  key: routeContentKey,
+                  initialSize: initialContentSize,
+                ),
+              ),
+            ];
+          },
+        ),
+      );
+
+      final testWidget = MaterialApp(
+        home: useAlign
+            ? Align(
+                alignment: Alignment.center,
+                child: navigatorResizable,
+              )
+            : navigatorResizable,
+      );
+
+      return (
+        getBoxSize: getBoxSize,
+        setContentSize: setContentSize,
+        testWidget: testWidget,
+      );
+    }
+
+    testWidgets(
+      'When the content size of the current route changes',
+      (tester) async {
+        final env = boilerplate(initialContentSize: const Size(100, 200));
+        await tester.pumpWidget(env.testWidget);
+        expect(env.getBoxSize(), const Size(100, 200));
+
+        // Make it bigger.
+        env.setContentSize(const Size(200, 300));
+        // It *intentionally* takes two frames to update the size because:
+        // in the first frame, the route content size is updated,
+        // but we can't mark the render object of the NavigatorResizable
+        // as dirty in the layout phase of the same frame. Instead,
+        // we have to schedule the next frame to reflect the new content size
+        // to the size of the NavigatorResizable.
+        await tester.pump();
+        expect(env.getBoxSize(), const Size(100, 200));
+        await tester.pump();
+        expect(env.getBoxSize(), const Size(200, 300));
+
+        // Make it smaller.
+        env.setContentSize(const Size(50, 100));
+        await tester.pump();
+        expect(env.getBoxSize(), const Size(200, 300));
+        await tester.pump();
+        expect(env.getBoxSize(), const Size(50, 100));
+      },
+    );
+
+    testWidgets(
+      'Route content is constrained by the parent constraints',
+      (tester) async {
+        final env = boilerplate(initialContentSize: Size.infinite);
+        await tester.pumpWidget(env.testWidget);
+        // Full screen size.
+        expect(env.getBoxSize(), const Size(800, 600));
+      },
+    );
+
+    testWidgets(
+      'Throws assertion error when given tight constraint',
+      (tester) async {
+        final env = boilerplate(useAlign: false);
+        final exceptions = <Object>[];
+        final oldErrorHandler = FlutterError.onError;
+        FlutterError.onError = (details) => exceptions.add(details.exception);
+        await tester.pumpWidget(env.testWidget);
+        FlutterError.onError = oldErrorHandler;
+
+        expect(
+          exceptions.firstOrNull,
+          isAssertionError.having(
+            (it) => it.message,
+            'message',
+            'The NavigatorResizable widget was given an tight constraint. '
+                'This is not allowed because it needs to size itself '
+                'to fit the current route content. Consider wrapping '
+                'the NavigatorResizable with a widget that provides non-tight '
+                'constraints, such as Align and Center. \n'
+                'The given constraints were: BoxConstraints(w=800.0, h=600.0) '
+                'which was given by the parent: RenderSemanticsAnnotations',
+          ),
+        );
+      },
+    );
+  });
+
   group('Hit testing', () {
     late bool isRouteContentTapped;
     late bool isBackgroundTapped;
@@ -788,52 +869,6 @@ void main() {
       },
     );
   });
-
-  testWidgets(
-    'Throws assertion error when given tight constraint',
-    (tester) async {
-      final exceptions = <Object>[];
-      final oldErrorHandler = FlutterError.onError;
-      FlutterError.onError = (details) => exceptions.add(details.exception);
-
-      final transitionObserver = RouteTransitionObserver();
-      await tester.pumpWidget(
-        MaterialApp(
-          home: NavigatorResizable(
-            transitionObserver: transitionObserver,
-            child: Navigator(
-              observers: [transitionObserver],
-              onGenerateRoute: (settings) {
-                return ResizableMaterialPageRoute(
-                  settings: settings,
-                  builder: (_) => const _TestRouteWidget(
-                    initialSize: Size(200, 200),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      );
-
-      FlutterError.onError = oldErrorHandler;
-
-      expect(
-        exceptions.firstOrNull,
-        isAssertionError.having(
-          (it) => it.message,
-          'message',
-          'The NavigatorResizable widget was given an tight constraint. '
-              'This is not allowed because it needs to size itself '
-              'to fit the current route content. Consider wrapping '
-              'the NavigatorResizable with a widget that provides non-tight '
-              'constraints, such as Align and Center. \n'
-              'The given constraints were: BoxConstraints(w=800.0, h=600.0) '
-              'which was given by the parent: RenderSemanticsAnnotations',
-        ),
-      );
-    },
-  );
 }
 
 class _TestRouteWidget extends StatefulWidget {
