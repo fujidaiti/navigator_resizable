@@ -21,6 +21,7 @@ void main() {
       final navigatorResizableKey = UniqueKey();
       final routeAKey = GlobalKey<_TestRouteWidgetState>();
       final routeBKey = GlobalKey<_TestRouteWidgetState>();
+      final routeCKey = GlobalKey<_TestRouteWidgetState>();
       final transitionObserver = RouteTransitionObserver();
       final routes = {
         'a': () => _TestRouteWidget(
@@ -30,6 +31,10 @@ void main() {
         'b': () => _TestRouteWidget(
               key: routeBKey,
               initialSize: const Size(200, 300),
+            ),
+        'c': () => _TestRouteWidget(
+              key: routeCKey,
+              initialSize: const Size(150, 250),
             ),
       };
       testWidget = MaterialApp(
@@ -62,6 +67,7 @@ void main() {
         final routeKey = switch (routeName) {
           'a' => routeAKey,
           'b' => routeBKey,
+          'c' => routeCKey,
           _ => throw StateError('Unknown route name: $routeName'),
         };
         routeKey.currentState!.size = size;
@@ -100,6 +106,34 @@ void main() {
       expect(getBox(tester).size, const Size(200, 300));
     });
 
+    testWidgets('When pushing multiple routes simultaneously', (tester) async {
+      await tester.pumpWidget(testWidget);
+      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      unawaited(navigatorKey.currentState!.pushNamed('c'));
+      await tester.pump();
+      expect(getBox(tester).size, const Size(100, 200));
+
+      Size interpolatedSize(double progress) {
+        return Size.lerp(
+          const Size(100, 200),
+          const Size(150, 250),
+          interpolationCurve.transform(progress),
+        )!;
+      }
+
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(getBox(tester).size, interpolatedSize(0.25));
+
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(getBox(tester).size, interpolatedSize(0.5));
+
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(getBox(tester).size, interpolatedSize(0.75));
+
+      await tester.pumpAndSettle();
+      expect(getBox(tester).size, const Size(150, 250));
+    });
+
     testWidgets('When popping a route', (tester) async {
       await tester.pumpWidget(testWidget);
       unawaited(navigatorKey.currentState!.pushNamed('b'));
@@ -127,6 +161,64 @@ void main() {
 
       await tester.pumpAndSettle();
       expect(getBox(tester).size, const Size(100, 200));
+    });
+
+    testWidgets('When popping multiple routes simultaneously', (tester) async {
+      await tester.pumpWidget(testWidget);
+      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      unawaited(navigatorKey.currentState!.pushNamed('c'));
+      await tester.pumpAndSettle();
+      navigatorKey.currentState!.popUntil((r) => r.isFirst);
+      await tester.pump();
+      expect(getBox(tester).size, const Size(150, 250));
+
+      Size interpolatedSize(double progress) {
+        return Size.lerp(
+          const Size(150, 250),
+          const Size(100, 200),
+          interpolationCurve.transform(progress),
+        )!;
+      }
+
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(getBox(tester).size, interpolatedSize(0.25));
+
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(getBox(tester).size, interpolatedSize(0.5));
+
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(getBox(tester).size, interpolatedSize(0.75));
+
+      await tester.pumpAndSettle();
+      expect(getBox(tester).size, const Size(100, 200));
+    });
+
+    testWidgets('When replacing the current route', (tester) async {
+      await tester.pumpWidget(testWidget);
+      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      await tester.pumpAndSettle();
+      unawaited(navigatorKey.currentState!.pushReplacementNamed('c'));
+      expect(getBox(tester).size, const Size(200, 300));
+
+      Size interpolatedSize(double progress) {
+        return Size.lerp(
+          const Size(200, 300),
+          const Size(150, 250),
+          interpolationCurve.transform(progress),
+        )!;
+      }
+
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(getBox(tester).size, interpolatedSize(0.25));
+
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(getBox(tester).size, interpolatedSize(0.5));
+
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(getBox(tester).size, interpolatedSize(0.75));
+
+      await tester.pumpAndSettle();
+      expect(getBox(tester).size, const Size(150, 250));
     });
 
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
@@ -310,6 +402,11 @@ void main() {
     });
 
     testWidgets('After initial build', (tester) async {
+      await tester.pumpWidget(testWidget);
+      expect(getBox(tester).size, const Size(100, 200));
+    });
+
+    testWidgets('After initial build with multiple routes', (tester) async {
       await tester.pumpWidget(testWidget);
       expect(getBox(tester).size, const Size(100, 200));
     });
