@@ -10,20 +10,28 @@ import 'package:resizable_navigator/src/route_transition_observer.dart';
 void main() {
   group('Layout test with imperative navigator API', () {
     const interpolationCurve = Curves.easeInOut;
-    final routes = {
-      'a': () => const _TestRouteWidget(size: Size(100, 200)),
-      'b': () => const _TestRouteWidget(size: Size(200, 300)),
-    };
 
     late GlobalKey<NavigatorState> navigatorKey;
     late RenderBox Function(WidgetTester) getBox;
+    late void Function(String, Size) setRouteContentSize;
     late Widget testWidget;
 
     setUp(() {
       navigatorKey = GlobalKey();
       final navigatorResizableKey = UniqueKey();
+      final routeAKey = GlobalKey<_TestRouteWidgetState>();
+      final routeBKey = GlobalKey<_TestRouteWidgetState>();
       final transitionObserver = RouteTransitionObserver();
-
+      final routes = {
+        'a': () => _TestRouteWidget(
+              key: routeAKey,
+              initialSize: const Size(100, 200),
+            ),
+        'b': () => _TestRouteWidget(
+              key: routeBKey,
+              initialSize: const Size(200, 300),
+            ),
+      };
       testWidget = MaterialApp(
         home: Align(
           alignment: Alignment.center,
@@ -48,6 +56,15 @@ void main() {
 
       getBox = (tester) {
         return tester.renderObject(find.byKey(navigatorResizableKey));
+      };
+
+      setRouteContentSize = (routeName, size) {
+        final routeKey = switch (routeName) {
+          'a' => routeAKey,
+          'b' => routeBKey,
+          _ => throw StateError('Unknown route name: $routeName'),
+        };
+        routeKey.currentState!.size = size;
       };
     });
 
@@ -192,6 +209,35 @@ void main() {
       // Reset the default target platform.
       debugDefaultTargetPlatformOverride = null;
     });
+
+    testWidgets(
+      'When the content size of the current route changes',
+      (tester) async {
+        await tester.pumpWidget(testWidget);
+        expect(getBox(tester).size, const Size(100, 200));
+
+        // Make it bigger.
+        //
+        // It *intentionally* takes two frames to update the size because:
+        // in the first frame, the route content size is updated,
+        // but we can't mark the render object of the NavigatorResizable
+        // as dirty in the layout phase of the same frame. Instead,
+        // we have to schedule the next frame to reflect the new content size
+        // to the size of the NavigatorResizable.
+        setRouteContentSize('a', const Size(200, 300));
+        await tester.pump();
+        expect(getBox(tester).size, const Size(100, 200));
+        await tester.pump();
+        expect(getBox(tester).size, const Size(200, 300));
+
+        // Make it smaller.
+        setRouteContentSize('a', const Size(50, 100));
+        await tester.pump();
+        expect(getBox(tester).size, const Size(200, 300));
+        await tester.pump();
+        expect(getBox(tester).size, const Size(50, 100));
+      },
+    );
   });
 
   group('Layout test with declarative navigator API', () {
@@ -205,22 +251,22 @@ void main() {
       const pageA = ResizableMaterialPage(
         name: 'a',
         key: ValueKey('a'),
-        child: _TestRouteWidget(size: Size(100, 200)),
+        child: _TestRouteWidget(initialSize: Size(100, 200)),
       );
       const pageB = ResizableMaterialPage(
         name: 'b',
         key: ValueKey('b'),
-        child: _TestRouteWidget(size: Size(200, 300)),
+        child: _TestRouteWidget(initialSize: Size(200, 300)),
       );
       const pageC = ResizableMaterialPage(
         name: 'c',
         key: ValueKey('c'),
-        child: _TestRouteWidget(size: Size.infinite),
+        child: _TestRouteWidget(initialSize: Size.infinite),
       );
       const pageD = ResizableMaterialPage(
         name: 'd',
         key: ValueKey('d'),
-        child: _TestRouteWidget(size: Size(300, 400)),
+        child: _TestRouteWidget(initialSize: Size(300, 400)),
       );
 
       navigatorKey = GlobalKey();
@@ -521,7 +567,7 @@ void main() {
                       builder: (_) => GestureDetector(
                         onTap: () => isRouteContentTapped = true,
                         child: const _TestRouteWidget(
-                          size: Size(200, 200),
+                          initialSize: Size(200, 200),
                         ),
                       ),
                     );
@@ -644,7 +690,7 @@ void main() {
                 return ResizableMaterialPageRoute(
                   settings: settings,
                   builder: (_) => const _TestRouteWidget(
-                    size: Size(200, 200),
+                    initialSize: Size(200, 200),
                   ),
                 );
               },
@@ -673,10 +719,30 @@ void main() {
   );
 }
 
-class _TestRouteWidget extends StatelessWidget {
-  const _TestRouteWidget({required this.size});
+class _TestRouteWidget extends StatefulWidget {
+  const _TestRouteWidget({
+    super.key,
+    required this.initialSize,
+  });
 
-  final Size size;
+  final Size initialSize;
+
+  @override
+  State<_TestRouteWidget> createState() => _TestRouteWidgetState();
+}
+
+class _TestRouteWidgetState extends State<_TestRouteWidget> {
+  late Size _size;
+  Size get size => _size;
+  set size(Size value) {
+    setState(() => _size = value);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _size = widget.initialSize;
+  }
 
   @override
   Widget build(BuildContext context) {
