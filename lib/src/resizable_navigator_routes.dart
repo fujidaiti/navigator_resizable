@@ -5,7 +5,7 @@ import 'navigator_resizable.dart';
 
 @optionalTypeArgs
 class ResizableMaterialPageRoute<T> extends MaterialPageRoute<T>
-    with ObservableModalRouteMixin<T>, MaterialRouteTransitionMixin<T> {
+    with ObservableRouteMixin<T>, MaterialRouteTransitionMixin<T> {
   ResizableMaterialPageRoute({
     required super.builder,
     super.settings,
@@ -48,7 +48,7 @@ class ResizableMaterialPage<T> extends MaterialPage<T> {
 }
 
 class _PageBasedResizableMaterialPageRoute<T> extends PageRoute<T>
-    with ObservableModalRouteMixin<T>, MaterialRouteTransitionMixin<T> {
+    with ObservableRouteMixin<T>, MaterialRouteTransitionMixin<T> {
   _PageBasedResizableMaterialPageRoute({
     required ResizableMaterialPage<T> page,
     required super.allowSnapshotting,

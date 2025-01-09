@@ -24,15 +24,15 @@ import 'resizable_navigator_routes.dart';
 /// ### Routes and Pages
 ///
 /// The [NavigatorResizable] can respect the content size of a route
-/// only if the route mix-ins the [ObservableModalRouteMixin].
+/// only if the route mix-ins the [ObservableRouteMixin].
 /// This is especially important during route transitions, as the
 /// [NavigatorResizable] can animate its size in sync with the transition
 /// animation only when both the current route and the next route
-/// implement [ObservableModalRouteMixin]. Otherwise, the size
+/// implement [ObservableRouteMixin]. Otherwise, the size
 /// remains unchanged before and after the transition.
 ///
 /// For convenience, the following built-in route classes already mix-in
-/// the [ObservableModalRouteMixin]:
+/// the [ObservableRouteMixin]:
 /// - [ResizableMaterialPageRoute]: A replacement for [MaterialPageRoute].
 /// - [ResizableMaterialPage]: A replacement for [MaterialPage].
 ///
@@ -64,7 +64,7 @@ import 'resizable_navigator_routes.dart';
 ///   In such cases, an assertion error will be thrown. Typically, [Center]
 ///   and [Align] are good choices for the parent widget.
 /// - The initial route of the [child] navigator must implement
-///   [ObservableModalRouteMixin] (e.g., [ResizableMaterialPageRoute]),
+///   [ObservableRouteMixin] (e.g., [ResizableMaterialPageRoute]),
 ///   otherwise, [NavigatorResizable] will be unable to determine the
 ///   initial size and will throw an assertion error.
 ///

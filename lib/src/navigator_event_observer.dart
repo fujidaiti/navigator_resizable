@@ -311,7 +311,7 @@ class _InheritedRouteTransitionObserver extends InheritedWidget {
   bool updateShouldNotify(_) => true;
 }
 
-mixin ObservableModalRouteMixin<T> on Route<T> {
+mixin ObservableRouteMixin<T> on Route<T> {
   NavigatorEventObserverState? _observer;
   VoidCallback? onDisposeCallback;
 

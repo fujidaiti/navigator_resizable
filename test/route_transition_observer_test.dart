@@ -1231,7 +1231,7 @@ void main() {
 }
 
 class _TestMaterialPageRoute extends MaterialPageRoute<dynamic>
-    with ObservableModalRouteMixin<dynamic> {
+    with ObservableRouteMixin<dynamic> {
   _TestMaterialPageRoute({
     super.settings,
     required this.transitionDuration,
@@ -1258,9 +1258,7 @@ class _TestMaterialPage extends MaterialPage<dynamic> {
 }
 
 class _TestPageBasedMaterialPageRoute extends PageRoute<dynamic>
-    with
-        ObservableModalRouteMixin<dynamic>,
-        MaterialRouteTransitionMixin<dynamic> {
+    with ObservableRouteMixin<dynamic>, MaterialRouteTransitionMixin<dynamic> {
   _TestPageBasedMaterialPageRoute({
     required _TestMaterialPage page,
   }) : super(settings: page);
