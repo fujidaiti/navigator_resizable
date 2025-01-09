@@ -619,7 +619,7 @@ void main() {
       Size initialContentSize = const Size(100, 200),
       bool useAlign = true,
     }) {
-      final navigatorResizableKey = GlobalKey<NavigatorResizableState>();
+      final navigatorResizableKey = GlobalKey();
       final routeContentKey = GlobalKey<_TestRouteWidgetState>();
 
       Size getBoxSize() {

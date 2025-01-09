@@ -130,11 +130,10 @@ class NavigatorResizable extends StatefulWidget {
   final Widget child;
 
   @override
-  State<NavigatorResizable> createState() => NavigatorResizableState();
+  State<NavigatorResizable> createState() => _NavigatorResizableState();
 }
 
-@internal
-class NavigatorResizableState extends State<NavigatorResizable> {
+class _NavigatorResizableState extends State<NavigatorResizable> {
   late final NavigatorSizeNotifier _preferredSizeNotifier;
 
   @override
@@ -169,7 +168,7 @@ class NavigatorResizableState extends State<NavigatorResizable> {
     _preferredSizeNotifier.didRouteContentSizeChange(route, contentSize);
   }
 
-  static NavigatorResizableState of(BuildContext context) {
+  static _NavigatorResizableState of(BuildContext context) {
     return context
         .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>()!
         .state;
@@ -184,7 +183,7 @@ class _InheritedNavigatorResizable extends InheritedWidget {
     required super.child,
   });
 
-  final NavigatorResizableState state;
+  final _NavigatorResizableState state;
 
   @override
   bool updateShouldNotify(_InheritedNavigatorResizable oldWidget) => true;
@@ -327,7 +326,7 @@ class ResizableNavigatorRouteContentBoundary
   @override
   RenderObject createRenderObject(BuildContext context) {
     final parentRoute = ModalRoute.of(context)!;
-    final navigatorResizable = NavigatorResizableState.of(context);
+    final navigatorResizable = _NavigatorResizableState.of(context);
     return _RenderRouteContentBoundary(
       didRouteContentSizeChangeCallback: (size) {
         navigatorResizable.didRouteContentSizeChange(parentRoute, size);
@@ -338,7 +337,7 @@ class ResizableNavigatorRouteContentBoundary
   @override
   void updateRenderObject(BuildContext context, RenderObject renderObject) {
     final parentRoute = ModalRoute.of(context)!;
-    final navigatorResizable = NavigatorResizableState.of(context);
+    final navigatorResizable = _NavigatorResizableState.of(context);
     (renderObject as _RenderRouteContentBoundary)
         .didRouteContentSizeChangeCallback = (size) {
       navigatorResizable.didRouteContentSizeChange(parentRoute, size);
