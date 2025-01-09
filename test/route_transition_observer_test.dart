@@ -29,10 +29,12 @@ void main() {
       Widget testWidget,
       MockNavigatorEventListener listener,
       GlobalKey<NavigatorState> navigatorKey,
+      ValueGetter<NavigatorEventObserverState> getObserver,
     }) boilerplate({
       Duration transitionDuration = const Duration(milliseconds: 300),
     }) {
       final navigatorKey = GlobalKey<NavigatorState>();
+      final navigatorResizableKey = GlobalKey<NavigatorEventObserverState>();
       final listener = MockNavigatorEventListener();
       final testWidget = MaterialApp(
         navigatorKey: navigatorKey,
@@ -48,6 +50,7 @@ void main() {
         },
         builder: (context, navigator) {
           return NavigatorEventObserver(
+            key: navigatorResizableKey,
             listeners: [listener],
             child: navigator!,
           );
@@ -58,6 +61,7 @@ void main() {
         testWidget: testWidget,
         listener: listener,
         navigatorKey: navigatorKey,
+        getObserver: () => navigatorResizableKey.currentState!,
       );
     }
 
@@ -85,6 +89,7 @@ void main() {
         ),
       ]);
       verifyNoMoreInteractions(env.listener);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
     });
 
     testWidgets('When pushing a route', (tester) async {
@@ -133,6 +138,7 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
       verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'b')),
       )).called(1);
@@ -177,6 +183,7 @@ void main() {
       verifyNoMoreInteractions(env.listener);
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
     });
 
     testWidgets(
@@ -248,6 +255,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(transitionProgressHistory, isMonotonicallyIncreasing);
+        expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'c'));
         expect(find.text('Page:b'), findsNothing);
         expect(find.text('Page:c'), findsOneWidget);
         verify(env.listener.didEndTransition(
@@ -300,6 +308,7 @@ void main() {
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:a'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
       verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'a')),
       )).called(1);
@@ -341,6 +350,7 @@ void main() {
       verifyNoMoreInteractions(env.listener);
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:a'), findsOneWidget);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
     });
 
     testWidgets('When popping multiple routes simultaneously', (tester) async {
@@ -405,6 +415,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:c'), findsNothing);
@@ -460,6 +471,7 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
       verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'b')),
       )).called(1);
@@ -513,6 +525,7 @@ void main() {
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
       verifyInOrder([
         env.listener.didComplete(
           argThat(isModalRoute(name: 'b')),
@@ -571,6 +584,7 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
       verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'b')),
       )).called(1);
@@ -586,12 +600,11 @@ void main() {
       Widget testWidget,
       MockNavigatorEventListener listener,
       ValueSetter<String> setLocation,
+      ValueGetter<NavigatorEventObserverState> getObserver,
     }) boilerplate({
       String initialLocation = '/a',
       Duration transitionDuration = const Duration(milliseconds: 300),
     }) {
-      final listener = MockNavigatorEventListener();
-
       final pageA = _TestMaterialPage(
         name: 'a',
         key: const ValueKey('a'),
@@ -624,10 +637,13 @@ void main() {
         invokeSetState();
       }
 
+      final listener = MockNavigatorEventListener();
+      final observerKey = GlobalKey<NavigatorEventObserverState>();
       final testWidget = StatefulBuilder(
         builder: (_, setState) {
           return MaterialApp(
             home: NavigatorEventObserver(
+              key: observerKey,
               listeners: [listener],
               child: StatefulBuilder(
                 builder: (_, setState) {
@@ -653,6 +669,7 @@ void main() {
         testWidget: testWidget,
         listener: listener,
         setLocation: setLocation,
+        getObserver: () => observerKey.currentState!,
       );
     }
 
@@ -680,6 +697,7 @@ void main() {
         ),
       ]);
       verifyNoMoreInteractions(env.listener);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
     });
 
     testWidgets('On initial build with multiple routes', (tester) async {
@@ -735,6 +753,7 @@ void main() {
         ),
       ]);
       verifyNoMoreInteractions(env.listener);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'c'));
     });
 
     testWidgets('When pushing a route', (tester) async {
@@ -782,13 +801,13 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
       verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'b')),
       )).called(1);
       verifyNoMoreInteractions(env.listener);
     });
 
-    // TODO: Add test: When pushing a route without animation
     testWidgets('When pushing a route without animation', (tester) async {
       final env = boilerplate(transitionDuration: Duration.zero);
       await tester.pumpWidget(env.testWidget);
@@ -827,6 +846,7 @@ void main() {
       verifyNoMoreInteractions(env.listener);
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
     });
 
     testWidgets('When pushing multiple routes simultaneously', (tester) async {
@@ -893,6 +913,7 @@ void main() {
       ]);
       verifyNoMoreInteractions(env.listener);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'c'));
       expect(find.text('Page:c'), findsOneWidget);
     });
 
@@ -957,6 +978,7 @@ void main() {
 
       expect(find.text('Page:d'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'd'));
       verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'd')),
       )).called(1);
@@ -1004,6 +1026,7 @@ void main() {
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:a'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
       verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'a')),
       )).called(1);
@@ -1045,6 +1068,7 @@ void main() {
 
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:a'), findsOneWidget);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
       verifyNoMoreInteractions(env.listener);
     });
 
@@ -1104,6 +1128,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:c'), findsNothing);
@@ -1148,6 +1173,7 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
       verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'b')),
       )).called(1);
@@ -1192,6 +1218,7 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
+      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
       verify(env.listener.didEndTransition(
         argThat(isModalRoute(name: 'b')),
       )).called(1);

@@ -2,17 +2,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 
-import 'route_transition_status.dart';
+import 'navigator_event_observer.dart';
 
 const _defaultPreferredSize = Size.infinite;
 
 @internal
 class NavigatorSizeNotifier extends ChangeNotifier
+    with NavigatorEventListener
     implements ValueListenable<Size> {
   NavigatorSizeNotifier({
     required this.interpolationCurve,
   });
-  final _routeContentSizes = <ModalRoute<dynamic>, Size>{};
+  final _routeContentSizes = <Route<dynamic>, Size>{};
 
   final Curve interpolationCurve;
 
@@ -26,9 +27,9 @@ class NavigatorSizeNotifier extends ChangeNotifier
     }
   }
 
-  ModalRoute<dynamic>? _currentRouteRegistry;
-  ModalRoute<dynamic>? get _currentRoute => _currentRouteRegistry;
-  set _currentRoute(ModalRoute<dynamic>? newRoute) {
+  Route<dynamic>? _currentRouteRegistry;
+  Route<dynamic>? get _currentRoute => _currentRouteRegistry;
+  set _currentRoute(Route<dynamic>? newRoute) {
     final oldSize = value;
     _currentRouteRegistry = newRoute;
     if (newRoute != null) {
@@ -58,7 +59,7 @@ class NavigatorSizeNotifier extends ChangeNotifier
     super.dispose();
   }
 
-  void didRouteContentSizeChange(ModalRoute<dynamic> route, Size contentSize) {
+  void didRouteContentSizeChange(Route<dynamic> route, Size contentSize) {
     assert(_routeContentSizes.containsKey(route));
     final oldPreferredSize = value;
     _routeContentSizes[route] = contentSize;
@@ -67,60 +68,57 @@ class NavigatorSizeNotifier extends ChangeNotifier
     }
   }
 
-  void addRoute(ModalRoute<dynamic> route) {
+  @override
+  VoidCallback? didInstall(Route<dynamic> route) {
     assert(!_routeContentSizes.containsKey(route));
     _routeContentSizes[route] = _defaultPreferredSize;
-  }
 
-  void removeRoute(ModalRoute<dynamic> route) {
-    assert(_routeContentSizes.containsKey(route));
-    _routeContentSizes.remove(route);
-    if (route == _currentRoute) {
-      _currentRoute = null;
-    }
-  }
-
-  void didChangeTransitionStatus(RouteTransitionStatus status) {
-    switch (status) {
-      case NoRoute():
+    void onDispose() {
+      assert(_routeContentSizes.containsKey(route));
+      _routeContentSizes.remove(route);
+      if (route == _currentRoute) {
         _currentRoute = null;
-
-      case TransitionCompleted(:final currentRoute):
-        _currentRoute = currentRoute;
-
-      case ForwardTransition(
-              :final originRoute,
-              :final destinationRoute,
-              :final animation,
-            ) ||
-            BackwardTransition(
-              :final originRoute,
-              :final destinationRoute,
-              :final animation,
-            ):
-        _interpolation = _RouteContentSizeInterpolation(
-          drivenBy: animation,
-          beginRouteContentSize: () => _routeContentSizes[originRoute],
-          endRouteContentSize: () => _routeContentSizes[destinationRoute],
-          curve: switch (_interpolation?.curve) {
-            // If the current interpolation is linear, keep it linear.
-            Curves.linear => Curves.linear,
-            _ => interpolationCurve,
-          },
-        );
-
-      case UserGestureTransition(
-          :final currentRoute,
-          :final previousRoute,
-          :final animation,
-        ):
-        _interpolation = _RouteContentSizeInterpolation(
-          drivenBy: animation,
-          beginRouteContentSize: () => _routeContentSizes[currentRoute],
-          endRouteContentSize: () => _routeContentSizes[previousRoute],
-          curve: Curves.linear,
-        );
+      }
     }
+
+    return onDispose;
+  }
+
+  @override
+  void didStartTransition(
+    Route<dynamic> currentRoute,
+    Route<dynamic> nextRoute,
+    Animation<double> animation, {
+    bool isUserGestureInProgress = false,
+  }) {
+    assert(_routeContentSizes.containsKey(currentRoute));
+    assert(_routeContentSizes.containsKey(nextRoute));
+
+    if (isUserGestureInProgress) {
+      _interpolation = _RouteContentSizeInterpolation(
+        drivenBy: animation.drive(Tween(begin: 1.0, end: 0.0)),
+        beginRouteContentSize: () => _routeContentSizes[currentRoute],
+        endRouteContentSize: () => _routeContentSizes[nextRoute],
+        curve: Curves.linear,
+      );
+    } else {
+      _interpolation = _RouteContentSizeInterpolation(
+        drivenBy: switch (animation.status) {
+          AnimationStatus.reverse =>
+            animation.drive(Tween(begin: 1.0, end: 0.0)),
+          _ => animation,
+        },
+        beginRouteContentSize: () => _routeContentSizes[currentRoute],
+        endRouteContentSize: () => _routeContentSizes[nextRoute],
+        curve: interpolationCurve,
+      );
+    }
+  }
+
+  @override
+  void didEndTransition(Route<dynamic> route) {
+    assert(_routeContentSizes.containsKey(route));
+    _currentRoute = route;
   }
 }
 

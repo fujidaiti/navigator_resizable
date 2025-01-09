@@ -43,8 +43,11 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
   final Set<NavigatorEventListener> _listeners = {};
   final Map<Route<dynamic>, Route<dynamic>?> _nextRouteOf = {};
   final Map<Route<dynamic>, Route<dynamic>?> _previousRouteOf = {};
-  Route<dynamic>? _lastSettledRoute;
   NavigatorState? _navigator;
+
+  @visibleForTesting
+  Route<dynamic>? get lastSettledRoute => _lastSettledRoute;
+  Route<dynamic>? _lastSettledRoute;
 
   void _setNavigator(NavigatorState navigator) {
     if (navigator != _navigator) {
@@ -276,11 +279,13 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
 
           case AnimationStatus.completed:
             assert(originRoute.isCurrent);
+            assert(_lastSettledRoute == originRoute);
             originRoute.animation!.removeStatusListener(statusListener);
             _notifyListeners((it) => it.didEndTransition(originRoute));
 
           case AnimationStatus.dismissed:
             assert(destinationRoute.isCurrent);
+            _lastSettledRoute = destinationRoute;
             originRoute.animation!.removeStatusListener(statusListener);
             _notifyListeners((it) => it.didEndTransition(destinationRoute));
 

@@ -11,8 +11,6 @@ void main() {
   runApp(MaterialApp.router(routerConfig: _router));
 }
 
-final transitionObserver = RouteTransitionObserver();
-
 final _router = GoRouter(
   routes: [
     GoRoute(
@@ -20,10 +18,8 @@ final _router = GoRouter(
       builder: (context, state) => const Home(),
       routes: [
         ShellRoute(
-          observers: [transitionObserver],
           pageBuilder: (context, state, child) => MultiPageDialogPage(
             key: state.pageKey,
-            transitionObserver: transitionObserver,
             navigator: child,
           ),
           routes: [
@@ -143,11 +139,9 @@ class Home extends StatelessWidget {
 class MultiPageDialogPage extends Page {
   const MultiPageDialogPage({
     super.key,
-    required this.transitionObserver,
     required this.navigator,
   });
 
-  final RouteTransitionObserver transitionObserver;
   final Widget navigator;
 
   @override
@@ -191,7 +185,6 @@ class PageBasedMultiPageDialogRoute extends PageRoute<void> {
     Animation<double> secondaryAnimation,
   ) {
     return MultiPageDialog(
-      transitionObserver: page.transitionObserver,
       navigator: page.navigator,
     );
   }

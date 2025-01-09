@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:resizable_navigator/src/navigator_resizable.dart';
 import 'package:resizable_navigator/src/resizable_navigator_routes.dart';
-import 'package:resizable_navigator/src/route_transition_observer.dart';
 
 void main() {
   group('Size transition test with imperative navigator API', () {
@@ -18,7 +17,6 @@ void main() {
     setUp(() {
       navigatorKey = GlobalKey();
       final navigatorResizableKey = UniqueKey();
-      final transitionObserver = RouteTransitionObserver();
       final routes = {
         'a': () => const _TestRouteWidget(
               initialSize: Size(100, 200),
@@ -35,11 +33,9 @@ void main() {
           alignment: Alignment.center,
           child: NavigatorResizable(
             key: navigatorResizableKey,
-            transitionObserver: transitionObserver,
             interpolationCurve: interpolationCurve,
             child: Navigator(
               key: navigatorKey,
-              observers: [transitionObserver],
               initialRoute: 'a',
               onGenerateRoute: (settings) {
                 return ResizableMaterialPageRoute(
@@ -191,6 +187,10 @@ void main() {
         )!;
       }
 
+      // Not sure why, but without this pump, the animation gets stuck at
+      // value=0.0 even when we advance the clock 75ms in the subsequent pump.
+      await tester.pump(Duration.zero);
+
       await tester.pump(const Duration(milliseconds: 75));
       expect(getBox(tester).size, interpolatedSize(0.25));
 
@@ -319,7 +319,6 @@ void main() {
 
       final navigatorKey = GlobalKey<NavigatorState>();
       final navigatorResizableKey = UniqueKey();
-      final transitionObserver = RouteTransitionObserver();
 
       var location = initialLocation;
       late StateSetter setStateFn;
@@ -336,7 +335,6 @@ void main() {
         home: Center(
           child: NavigatorResizable(
             key: navigatorResizableKey,
-            transitionObserver: transitionObserver,
             interpolationCurve: interpolationCurve,
             child: StatefulBuilder(
               builder: (_, setState) {
@@ -344,7 +342,6 @@ void main() {
 
                 return Navigator(
                   key: navigatorKey,
-                  observers: [transitionObserver],
                   onDidRemovePage: (page) {},
                   pages: switch (location) {
                     '/a' => [pageA],
@@ -624,7 +621,6 @@ void main() {
     }) {
       final navigatorResizableKey = GlobalKey<NavigatorResizableState>();
       final routeContentKey = GlobalKey<_TestRouteWidgetState>();
-      final transitionObserver = RouteTransitionObserver();
 
       Size getBoxSize() {
         return (navigatorResizableKey.currentContext!.findRenderObject()!
@@ -638,9 +634,7 @@ void main() {
 
       final navigatorResizable = NavigatorResizable(
         key: navigatorResizableKey,
-        transitionObserver: transitionObserver,
         child: Navigator(
-          observers: [transitionObserver],
           onGenerateInitialRoutes: (navigator, initialRoute) {
             return [
               ResizableMaterialPageRoute(
@@ -747,7 +741,6 @@ void main() {
       isRouteContentTapped = false;
       isBackgroundTapped = false;
 
-      final transitionObserver = RouteTransitionObserver();
       testWidget = MaterialApp(
         home: GestureDetector(
           onTap: () => isBackgroundTapped = true,
@@ -756,9 +749,7 @@ void main() {
             color: Colors.white,
             child: Center(
               child: NavigatorResizable(
-                transitionObserver: transitionObserver,
                 child: Navigator(
-                  observers: [transitionObserver],
                   onGenerateRoute: (settings) {
                     return ResizableMaterialPageRoute(
                       settings: settings,

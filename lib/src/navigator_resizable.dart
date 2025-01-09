@@ -5,10 +5,9 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:meta/meta.dart';
 
+import 'navigator_event_observer.dart';
 import 'navigator_size_notifier.dart';
 import 'resizable_navigator_routes.dart';
-import 'route_transition_observer.dart';
-import 'route_transition_status.dart';
 
 /// A thin wrapper around [Navigator] that **visually** resizes the [child]
 /// navigator to match the size of the content displayed in the current route.
@@ -25,15 +24,15 @@ import 'route_transition_status.dart';
 /// ### Routes and Pages
 ///
 /// The [NavigatorResizable] can respect the content size of a route
-/// only if the route mix-ins the [ResizableNavigatorRouteMixin].
+/// only if the route mix-ins the [ObservableModalRouteMixin].
 /// This is especially important during route transitions, as the
 /// [NavigatorResizable] can animate its size in sync with the transition
 /// animation only when both the current route and the next route
-/// implement [ResizableNavigatorRouteMixin]. Otherwise, the size
+/// implement [ObservableModalRouteMixin]. Otherwise, the size
 /// remains unchanged before and after the transition.
 ///
 /// For convenience, the following built-in route classes already mix-in
-/// the [ResizableNavigatorRouteMixin]:
+/// the [ObservableModalRouteMixin]:
 /// - [ResizableMaterialPageRoute]: A replacement for [MaterialPageRoute].
 /// - [ResizableMaterialPage]: A replacement for [MaterialPage].
 ///
@@ -65,7 +64,7 @@ import 'route_transition_status.dart';
 ///   In such cases, an assertion error will be thrown. Typically, [Center]
 ///   and [Align] are good choices for the parent widget.
 /// - The initial route of the [child] navigator must implement
-///   [ResizableNavigatorRouteMixin] (e.g., [ResizableMaterialPageRoute]),
+///   [ObservableModalRouteMixin] (e.g., [ResizableMaterialPageRoute]),
 ///   otherwise, [NavigatorResizable] will be unable to determine the
 ///   initial size and will throw an assertion error.
 ///
@@ -109,14 +108,12 @@ import 'route_transition_status.dart';
 ///
 /// For more practical examples, refer to the
 /// [/example](https://github.com/fujidaiti/resizable_navigator/tree/main/example/lib) directory.
-class NavigatorResizable extends StatefulWidget
-    with RouteTransitionAwareWidgetMixin {
+class NavigatorResizable extends StatefulWidget {
   /// Creates a thin wrapper around [Navigator] that **visually** resizes
   /// the [child] navigator to match the size of the content displayed
   /// in the current route.
   const NavigatorResizable({
     super.key,
-    required this.transitionObserver,
     this.interpolationCurve = Curves.easeInOutCubic,
     required this.child,
   });
@@ -133,15 +130,11 @@ class NavigatorResizable extends StatefulWidget
   final Widget child;
 
   @override
-  final RouteTransitionObserver transitionObserver;
-
-  @override
   State<NavigatorResizable> createState() => NavigatorResizableState();
 }
 
 @internal
-class NavigatorResizableState extends State<NavigatorResizable>
-    with RouteTransitionAwareStateMixin<NavigatorResizable> {
+class NavigatorResizableState extends State<NavigatorResizable> {
   late final NavigatorSizeNotifier _preferredSizeNotifier;
 
   @override
@@ -160,26 +153,16 @@ class NavigatorResizableState extends State<NavigatorResizable>
 
   @override
   Widget build(BuildContext context) {
-    return _InheritedNavigatorResizable(
-      state: this,
-      child: _RenderNavigatorResizableWidget(
-        preferredSize: _preferredSizeNotifier,
-        child: widget.child,
+    return NavigatorEventObserver(
+      listeners: [_preferredSizeNotifier],
+      child: _InheritedNavigatorResizable(
+        state: this,
+        child: _RenderNavigatorResizableWidget(
+          preferredSize: _preferredSizeNotifier,
+          child: widget.child,
+        ),
       ),
     );
-  }
-
-  @override
-  void didChangeTransitionStatus(RouteTransitionStatus transition) {
-    _preferredSizeNotifier.didChangeTransitionStatus(transition);
-  }
-
-  void didAddRoute(ModalRoute<dynamic> route) {
-    _preferredSizeNotifier.addRoute(route);
-  }
-
-  void didRemoveRoute(ModalRoute<dynamic> route) {
-    _preferredSizeNotifier.removeRoute(route);
   }
 
   void didRouteContentSizeChange(ModalRoute<dynamic> route, Size contentSize) {

@@ -6,11 +6,9 @@ import 'package:resizable_navigator/resizable_navigator.dart';
 class MultiPageDialog extends StatelessWidget {
   const MultiPageDialog({
     super.key,
-    required this.transitionObserver,
     required this.navigator,
   });
 
-  final RouteTransitionObserver transitionObserver;
   final Widget navigator;
 
   @override
@@ -30,7 +28,6 @@ class MultiPageDialog extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           clipBehavior: Clip.antiAlias,
           child: NavigatorResizable(
-            transitionObserver: transitionObserver,
             child: navigator,
           ),
         ),

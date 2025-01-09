@@ -98,20 +98,20 @@ class PageA extends StatelessWidget {
               ),
             );
 
-            Navigator.push(
-              context,
-              DiagnosticableMaterialPageRoute(
-                identifier: 'Page C',
-                builder: (context) => PageC(),
-              ),
-            );
-            Navigator.push(
-              context,
-              DiagnosticableMaterialPageRoute(
-                identifier: 'Page D',
-                builder: (context) => PageD(),
-              ),
-            );
+            // Navigator.push(
+            //   context,
+            //   DiagnosticableMaterialPageRoute(
+            //     identifier: 'Page C',
+            //     builder: (context) => PageC(),
+            //   ),
+            // );
+            // Navigator.push(
+            //   context,
+            //   DiagnosticableMaterialPageRoute(
+            //     identifier: 'Page D',
+            //     builder: (context) => PageD(),
+            //   ),
+            // );
           },
           child: Text('Go to Page B'),
         ),
@@ -140,9 +140,16 @@ class PageB extends StatelessWidget {
       body: Center(
         child: FilledButton(
           onPressed: () {
-            context
-                .findAncestorStateOfType<_ExampleAppState>()!
-                .setLocation('/c');
+            // context
+            //     .findAncestorStateOfType<_ExampleAppState>()!
+            //     .setLocation('/c');
+            Navigator.pushReplacement(
+              context,
+              DiagnosticableMaterialPageRoute(
+                identifier: 'Page C',
+                builder: (context) => PageC(),
+              ),
+            );
           },
           child: Text('Go to Page C'),
         ),

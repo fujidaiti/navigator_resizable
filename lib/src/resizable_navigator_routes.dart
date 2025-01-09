@@ -1,40 +1,11 @@
 import 'package:flutter/material.dart';
 
+import 'navigator_event_observer.dart';
 import 'navigator_resizable.dart';
 
 @optionalTypeArgs
-mixin ResizableNavigatorRouteMixin<T> on ModalRoute<T> {
-  NavigatorResizableState? _navigatorResizable;
-
-  @override
-  void install() {
-    super.install();
-    _navigatorResizable = NavigatorResizableState.of(navigator!.context)
-      ..didAddRoute(this);
-  }
-
-  @override
-  void changedExternalState() {
-    super.changedExternalState();
-    final newNavigatorResizable =
-        NavigatorResizableState.of(navigator!.context);
-    if (newNavigatorResizable != _navigatorResizable) {
-      _navigatorResizable?.didRemoveRoute(this);
-      _navigatorResizable = newNavigatorResizable..didAddRoute(this);
-    }
-  }
-
-  @override
-  void dispose() {
-    _navigatorResizable?.didRemoveRoute(this);
-    _navigatorResizable = null;
-    super.dispose();
-  }
-}
-
-@optionalTypeArgs
 class ResizableMaterialPageRoute<T> extends MaterialPageRoute<T>
-    with ResizableNavigatorRouteMixin<T>, MaterialRouteTransitionMixin<T> {
+    with ObservableModalRouteMixin<T>, MaterialRouteTransitionMixin<T> {
   ResizableMaterialPageRoute({
     required super.builder,
     super.settings,
@@ -77,7 +48,7 @@ class ResizableMaterialPage<T> extends MaterialPage<T> {
 }
 
 class _PageBasedResizableMaterialPageRoute<T> extends PageRoute<T>
-    with ResizableNavigatorRouteMixin<T>, MaterialRouteTransitionMixin<T> {
+    with ObservableModalRouteMixin<T>, MaterialRouteTransitionMixin<T> {
   _PageBasedResizableMaterialPageRoute({
     required ResizableMaterialPage<T> page,
     required super.allowSnapshotting,

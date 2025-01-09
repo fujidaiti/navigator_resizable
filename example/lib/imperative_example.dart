@@ -25,16 +25,12 @@ class Home extends StatelessWidget {
   }
 }
 
-final transitionObserver = RouteTransitionObserver();
-
 void showMultiPageDialog(BuildContext context) {
   showDialog(
     context: context,
     builder: (context) {
       return MultiPageDialog(
-        transitionObserver: transitionObserver,
         navigator: Navigator(
-          observers: [transitionObserver],
           onGenerateInitialRoutes: (_, __) {
             return [
               ResizableMaterialPageRoute(

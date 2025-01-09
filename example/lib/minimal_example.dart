@@ -19,9 +19,7 @@ class ExampleApp extends StatelessWidget {
             color: Colors.purple,
             // STEP1: Wrap the navigator with NavigatorResizable.
             child: NavigatorResizable(
-              transitionObserver: transitionObserver,
               child: Navigator(
-                observers: [transitionObserver],
                 onGenerateInitialRoutes: (_, __) => [
                   // STEP2: Use ResizableMaterialPageRoute instead of MaterialPageRoute.
                   //
@@ -38,8 +36,6 @@ class ExampleApp extends StatelessWidget {
     );
   }
 }
-
-final transitionObserver = RouteTransitionObserver();
 
 class SmallPage extends StatelessWidget {
   const SmallPage({super.key});
