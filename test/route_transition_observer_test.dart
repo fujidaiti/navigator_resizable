@@ -71,25 +71,25 @@ void main() {
       expect(find.text('Page:a'), findsOneWidget);
       verifyInOrder([
         env.listener.didInstall(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didAdd(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didEndTransition(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
           argThat(isNull),
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
           argThat(isNull),
         ),
       ]);
       verifyNoMoreInteractions(env.listener);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
     });
 
     testWidgets('When pushing a route', (tester) async {
@@ -103,28 +103,28 @@ void main() {
       expect(find.text('Page:b'), findsNothing);
       final results = verifyInOrder([
         env.listener.didInstall(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didPush(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
           captureAny,
           isUserGestureInProgress: false,
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
         ),
       ]);
       verifyNoMoreInteractions(env.listener);
@@ -138,9 +138,9 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
       verify(env.listener.didEndTransition(
-        argThat(isModalRoute(name: 'b')),
+        argThat(isRoute(name: 'b')),
       )).called(1);
       verifyNoMoreInteractions(env.listener);
     });
@@ -156,25 +156,25 @@ void main() {
       expect(find.text('Page:b'), findsOneWidget);
       verifyInOrder([
         env.listener.didInstall(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didPush(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didEndTransition(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
         ),
       ]);
 
@@ -183,7 +183,7 @@ void main() {
       verifyNoMoreInteractions(env.listener);
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
     });
 
     testWidgets(
@@ -198,52 +198,52 @@ void main() {
 
         final results = verifyInOrder([
           env.listener.didInstall(
-            argThat(isModalRoute(name: 'b')),
+            argThat(isRoute(name: 'b')),
           ),
           env.listener.didPush(
-            argThat(isModalRoute(name: 'b')),
+            argThat(isRoute(name: 'b')),
           ),
           env.listener.didStartTransition(
-            argThat(isModalRoute(name: 'a')),
-            argThat(isModalRoute(name: 'b')),
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'b')),
             any,
             isUserGestureInProgress: false,
           ),
           env.listener.didChangeNext(
-            argThat(isModalRoute(name: 'b')),
+            argThat(isRoute(name: 'b')),
             argThat(isNull),
           ),
           env.listener.didChangePrevious(
-            argThat(isModalRoute(name: 'b')),
-            argThat(isModalRoute(name: 'a')),
+            argThat(isRoute(name: 'b')),
+            argThat(isRoute(name: 'a')),
           ),
           env.listener.didChangeNext(
-            argThat(isModalRoute(name: 'a')),
-            argThat(isModalRoute(name: 'b')),
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'b')),
           ),
           env.listener.didInstall(
-            argThat(isModalRoute(name: 'c')),
+            argThat(isRoute(name: 'c')),
           ),
           env.listener.didPush(
-            argThat(isModalRoute(name: 'c')),
+            argThat(isRoute(name: 'c')),
           ),
           env.listener.didStartTransition(
-            argThat(isModalRoute(name: 'a')),
-            argThat(isModalRoute(name: 'c')),
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'c')),
             captureAny,
             isUserGestureInProgress: false,
           ),
           env.listener.didChangeNext(
-            argThat(isModalRoute(name: 'c')),
+            argThat(isRoute(name: 'c')),
             argThat(isNull),
           ),
           env.listener.didChangePrevious(
-            argThat(isModalRoute(name: 'c')),
-            argThat(isModalRoute(name: 'b')),
+            argThat(isRoute(name: 'c')),
+            argThat(isRoute(name: 'b')),
           ),
           env.listener.didChangeNext(
-            argThat(isModalRoute(name: 'b')),
-            argThat(isModalRoute(name: 'c')),
+            argThat(isRoute(name: 'b')),
+            argThat(isRoute(name: 'c')),
           ),
         ]);
 
@@ -255,11 +255,11 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(transitionProgressHistory, isMonotonicallyIncreasing);
-        expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'c'));
+        expect(env.getObserver().lastSettledRoute, isRoute(name: 'c'));
         expect(find.text('Page:b'), findsNothing);
         expect(find.text('Page:c'), findsOneWidget);
         verify(env.listener.didEndTransition(
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'c')),
         )).called(1);
         verifyNoMoreInteractions(env.listener);
       },
@@ -279,20 +279,20 @@ void main() {
       await tester.pump();
       final results = verifyInOrder([
         env.listener.didComplete(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didPop(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didPopNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: false,
         ),
@@ -308,9 +308,9 @@ void main() {
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:a'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
       verify(env.listener.didEndTransition(
-        argThat(isModalRoute(name: 'a')),
+        argThat(isRoute(name: 'a')),
       )).called(1);
       verifyNoMoreInteractions(env.listener);
     });
@@ -329,19 +329,19 @@ void main() {
       await tester.pump();
       verifyInOrder([
         env.listener.didComplete(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didPop(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didPopNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didEndTransition(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
         ),
       ]);
 
@@ -350,7 +350,7 @@ void main() {
       verifyNoMoreInteractions(env.listener);
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:a'), findsOneWidget);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
     });
 
     testWidgets('When popping multiple routes simultaneously', (tester) async {
@@ -367,44 +367,44 @@ void main() {
 
       final results = verifyInOrder([
         env.listener.didComplete(
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'c')),
           argThat(isNull),
         ),
         env.listener.didPop(
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'c')),
           argThat(isNull),
         ),
         env.listener.didPopNext(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'c')),
         ),
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'c')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'c')),
+          argThat(isRoute(name: 'b')),
           any,
           isUserGestureInProgress: false,
         ),
         env.listener.didComplete(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didPop(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didPopNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'c')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'c')),
+          argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: false,
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'c')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'c')),
+          argThat(isRoute(name: 'a')),
         ),
       ]);
 
@@ -415,12 +415,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:c'), findsNothing);
       verify(env.listener.didEndTransition(
-        argThat(isModalRoute(name: 'a')),
+        argThat(isRoute(name: 'a')),
       )).called(1);
       verifyNoMoreInteractions(env.listener);
     });
@@ -435,29 +435,29 @@ void main() {
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       final results = verifyInOrder([
-        env.listener.didInstall(argThat(isModalRoute(name: 'b'))),
-        env.listener.didPush(argThat(isModalRoute(name: 'b'))),
+        env.listener.didInstall(argThat(isRoute(name: 'b'))),
+        env.listener.didPush(argThat(isRoute(name: 'b'))),
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
           captureAny,
           isUserGestureInProgress: false,
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didComplete(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
           argThat(isNull),
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
         ),
       ]);
       verifyNoMoreInteractions(env.listener);
@@ -471,9 +471,9 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
       verify(env.listener.didEndTransition(
-        argThat(isModalRoute(name: 'b')),
+        argThat(isRoute(name: 'b')),
       )).called(1);
       verifyNoMoreInteractions(env.listener);
     });
@@ -497,8 +497,8 @@ void main() {
 
       final verification = verify(
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: true,
         ),
@@ -525,22 +525,22 @@ void main() {
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
       verifyInOrder([
         env.listener.didComplete(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didPop(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didPopNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didEndTransition(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
         ),
       ]);
       verifyNoMoreInteractions(env.listener);
@@ -567,8 +567,8 @@ void main() {
 
       final verification = verify(
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: true,
         ),
@@ -584,9 +584,9 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
       verify(env.listener.didEndTransition(
-        argThat(isModalRoute(name: 'b')),
+        argThat(isRoute(name: 'b')),
       )).called(1);
       verifyNoMoreInteractions(env.listener);
 
@@ -679,25 +679,25 @@ void main() {
       expect(find.text('Page:a'), findsOneWidget);
       verifyInOrder([
         env.listener.didInstall(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didAdd(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didEndTransition(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
           argThat(isNull),
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
           argThat(isNull),
         ),
       ]);
       verifyNoMoreInteractions(env.listener);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
     });
 
     testWidgets('On initial build with multiple routes', (tester) async {
@@ -707,53 +707,53 @@ void main() {
       expect(find.text('Page:c'), findsOneWidget);
       verifyInOrder([
         env.listener.didInstall(
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'c')),
         ),
         env.listener.didAdd(
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'c')),
         ),
         env.listener.didEndTransition(
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'c')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'c')),
           argThat(isNull),
         ),
         env.listener.didInstall(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didAdd(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didInstall(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didAdd(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'c')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'c')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'c')),
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
           argThat(isNull),
         ),
       ]);
       verifyNoMoreInteractions(env.listener);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'c'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'c'));
     });
 
     testWidgets('When pushing a route', (tester) async {
@@ -766,28 +766,28 @@ void main() {
       expect(find.text('Page:b'), findsOneWidget);
       final results = verifyInOrder([
         env.listener.didInstall(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didPush(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
           captureAny,
           isUserGestureInProgress: false,
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
         ),
       ]);
       verifyNoMoreInteractions(env.listener);
@@ -801,9 +801,9 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
       verify(env.listener.didEndTransition(
-        argThat(isModalRoute(name: 'b')),
+        argThat(isRoute(name: 'b')),
       )).called(1);
       verifyNoMoreInteractions(env.listener);
     });
@@ -819,25 +819,25 @@ void main() {
       expect(find.text('Page:b'), findsOneWidget);
       verifyInOrder([
         env.listener.didInstall(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didPush(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didEndTransition(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
         ),
       ]);
 
@@ -846,7 +846,7 @@ void main() {
       verifyNoMoreInteractions(env.listener);
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
     });
 
     testWidgets('When pushing multiple routes simultaneously', (tester) async {
@@ -859,31 +859,31 @@ void main() {
       expect(find.text('Page:c'), findsOneWidget);
       final results = verifyInOrder([
         env.listener.didInstall(
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'c')),
         ),
         env.listener.didPush(
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'c')),
         ),
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'c')),
           captureAny,
           isUserGestureInProgress: false,
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'c')),
           argThat(isNull),
         ),
         env.listener.didInstall(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'c')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'c')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'c')),
         ),
       ]);
 
@@ -892,28 +892,28 @@ void main() {
       await tester.pumpAndSettle();
 
       verifyInOrder([
-        env.listener.didEndTransition(argThat(isModalRoute(name: 'c'))),
-        env.listener.didAdd(argThat(isModalRoute(name: 'b'))),
+        env.listener.didEndTransition(argThat(isRoute(name: 'c'))),
+        env.listener.didAdd(argThat(isRoute(name: 'b'))),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'c')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'c')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'c')),
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
         ),
       ]);
       verifyNoMoreInteractions(env.listener);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'c'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'c'));
       expect(find.text('Page:c'), findsOneWidget);
     });
 
@@ -931,44 +931,44 @@ void main() {
 
       final results = verifyInOrder([
         env.listener.didInstall(
-          argThat(isModalRoute(name: 'd')),
+          argThat(isRoute(name: 'd')),
         ),
         env.listener.didPush(
-          argThat(isModalRoute(name: 'd')),
+          argThat(isRoute(name: 'd')),
         ),
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'd')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'd')),
           captureAny,
           isUserGestureInProgress: false,
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'd')),
+          argThat(isRoute(name: 'd')),
           argThat(isNull),
         ),
         env.listener.didComplete(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didComplete(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
           argThat(isNull),
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'd')),
+          argThat(isRoute(name: 'd')),
           argThat(isNull),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'd')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'd')),
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'd')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'd')),
         ),
       ]);
 
@@ -978,9 +978,9 @@ void main() {
 
       expect(find.text('Page:d'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'd'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'd'));
       verify(env.listener.didEndTransition(
-        argThat(isModalRoute(name: 'd')),
+        argThat(isRoute(name: 'd')),
       )).called(1);
       verifyNoMoreInteractions(env.listener);
     });
@@ -998,20 +998,20 @@ void main() {
 
       final results = verifyInOrder([
         env.listener.didComplete(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didPop(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didPopNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: false,
         ),
@@ -1026,9 +1026,9 @@ void main() {
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:a'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
       verify(env.listener.didEndTransition(
-        argThat(isModalRoute(name: 'a')),
+        argThat(isRoute(name: 'a')),
       )).called(1);
       verifyNoMoreInteractions(env.listener);
     });
@@ -1048,19 +1048,19 @@ void main() {
 
       verifyInOrder([
         env.listener.didComplete(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didPop(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didPopNext(
-          argThat(isModalRoute(name: 'a')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
         ),
         env.listener.didEndTransition(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
         ),
       ]);
 
@@ -1068,7 +1068,7 @@ void main() {
 
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:a'), findsOneWidget);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
       verifyNoMoreInteractions(env.listener);
     });
 
@@ -1084,38 +1084,38 @@ void main() {
       await tester.pump();
       final results = verifyInOrder([
         env.listener.didComplete(
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'c')),
           argThat(isNull),
         ),
         env.listener.didPop(
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'c')),
           argThat(isNull),
         ),
         env.listener.didComplete(
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'b')),
           argThat(isNull),
         ),
         env.listener.didPopNext(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'c')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'c')),
         ),
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'c')),
-          argThat(isModalRoute(name: 'b')),
+          argThat(isRoute(name: 'c')),
+          argThat(isRoute(name: 'b')),
           any,
           isUserGestureInProgress: false,
         ),
         env.listener.didChangePrevious(
-          argThat(isModalRoute(name: 'c')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'c')),
+          argThat(isRoute(name: 'a')),
         ),
         env.listener.didChangeNext(
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'a')),
           argThat(isNull),
         ),
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'c')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'c')),
+          argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: false,
         ),
@@ -1128,12 +1128,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'a'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:c'), findsNothing);
       verify(env.listener.didEndTransition(
-        argThat(isModalRoute(name: 'a')),
+        argThat(isRoute(name: 'a')),
       )).called(1);
       verifyNoMoreInteractions(env.listener);
     });
@@ -1156,8 +1156,8 @@ void main() {
 
       final verification = verify(
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: true,
         ),
@@ -1173,9 +1173,9 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
       verify(env.listener.didEndTransition(
-        argThat(isModalRoute(name: 'b')),
+        argThat(isRoute(name: 'b')),
       )).called(1);
       verifyNoMoreInteractions(env.listener);
 
@@ -1201,8 +1201,8 @@ void main() {
 
       final verification = verify(
         env.listener.didStartTransition(
-          argThat(isModalRoute(name: 'b')),
-          argThat(isModalRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: true,
         ),
@@ -1218,9 +1218,9 @@ void main() {
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      expect(env.getObserver().lastSettledRoute, isModalRoute(name: 'b'));
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
       verify(env.listener.didEndTransition(
-        argThat(isModalRoute(name: 'b')),
+        argThat(isRoute(name: 'b')),
       )).called(1);
       verifyNoMoreInteractions(env.listener);
 

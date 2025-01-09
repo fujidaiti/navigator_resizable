@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-TypeMatcher<ModalRoute<dynamic>> isModalRoute({String? name}) {
-  var result = isA<ModalRoute<dynamic>>();
+TypeMatcher<Route<dynamic>> isRoute({String? name}) {
+  var result = isA<Route<dynamic>>();
   if (name != null) {
     result = result.having(
       (it) => it.settings.name,
