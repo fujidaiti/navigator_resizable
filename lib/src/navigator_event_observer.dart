@@ -313,19 +313,19 @@ class _InheritedRouteTransitionObserver extends InheritedWidget {
 
 mixin ObservableRouteMixin<T> on Route<T> {
   NavigatorEventObserverState? _observer;
-  VoidCallback? onDisposeCallback;
+  VoidCallback? _onDisposeCallback;
 
   @override
   void install() {
     super.install();
     _observer = NavigatorEventObserver.of(navigator!.context);
-    onDisposeCallback = _observer?._didInstall(this);
+    _onDisposeCallback = _observer?._didInstall(this);
   }
 
   @override
   void dispose() {
-    onDisposeCallback?.call();
-    onDisposeCallback = null;
+    _onDisposeCallback?.call();
+    _onDisposeCallback = null;
     _observer = null;
     super.dispose();
   }
