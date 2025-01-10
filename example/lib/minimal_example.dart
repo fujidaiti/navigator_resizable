@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:resizable_navigator/resizable_navigator.dart';
+import 'package:navigator_resizable/navigator_resizable.dart';
 
 void main() {
   runApp(const ExampleApp());

@@ -1,7 +1,7 @@
-name: resizable_navigator
+name: navigator_resizable
 description: "A Navigator that resizes itself to fit the current route content."
 version: 0.1.0
-homepage: https://github.com/fujidaiti/resizable_navigator
+homepage: https://github.com/fujidaiti/navigator_resizable
 topics:
   - ui
   - widget

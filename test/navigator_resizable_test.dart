@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:resizable_navigator/src/navigator_resizable.dart';
-import 'package:resizable_navigator/src/resizable_navigator_routes.dart';
+import 'package:navigator_resizable/src/navigator_resizable.dart';
+import 'package:navigator_resizable/src/resizable_navigator_routes.dart';
 
 void main() {
   group('Size transition test with imperative navigator API', () {

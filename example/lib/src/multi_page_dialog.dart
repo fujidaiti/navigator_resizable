@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:resizable_navigator/resizable_navigator.dart';
+import 'package:navigator_resizable/navigator_resizable.dart';
 
 class MultiPageDialog extends StatelessWidget {
   const MultiPageDialog({

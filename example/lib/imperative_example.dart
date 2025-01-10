@@ -3,7 +3,7 @@ import 'package:example/src/multi_page_dialog.dart';
 import 'package:example/src/variable_height_page.dart';
 import 'package:example/src/welcome_page.dart';
 import 'package:flutter/material.dart';
-import 'package:resizable_navigator/resizable_navigator.dart';
+import 'package:navigator_resizable/navigator_resizable.dart';
 
 void main() {
   runApp(const MaterialApp(home: Home()));

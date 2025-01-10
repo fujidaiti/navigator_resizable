@@ -109,7 +109,7 @@ import 'resizable_navigator_routes.dart';
 /// ```
 ///
 /// For more practical examples, refer to the
-/// [/example](https://github.com/fujidaiti/resizable_navigator/tree/main/example/lib) directory.
+/// [/example](https://github.com/fujidaiti/navigator_resizable/tree/main/example/lib) directory.
 class NavigatorResizable extends StatefulWidget {
   /// Creates a thin wrapper around [Navigator] that **visually** resizes
   /// the [child] navigator to match the size of the content displayed

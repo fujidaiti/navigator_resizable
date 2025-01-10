@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   go_router: ^14.6.2
-  resizable_navigator:
+  navigator_resizable:
     path: ../
 
 dev_dependencies:

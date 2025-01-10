@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:resizable_navigator/src/navigator_event_observer.dart';
+import 'package:navigator_resizable/src/navigator_event_observer.dart';
 
 import 'src/matchers.dart';
 import 'src/mocks.dart';

@@ -5,7 +5,7 @@ import 'package:example/src/variable_height_page.dart';
 import 'package:example/src/welcome_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:resizable_navigator/resizable_navigator.dart';
+import 'package:navigator_resizable/navigator_resizable.dart';
 
 void main() {
   runApp(MaterialApp.router(routerConfig: _router));
