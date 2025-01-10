@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart' as p;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:meta/meta.dart';
 
 import 'navigator_event_observer.dart';
 import 'navigator_size_notifier.dart';
@@ -318,7 +317,6 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   }
 }
 
-@internal
 class ResizableNavigatorRouteContentBoundary
     extends SingleChildRenderObjectWidget {
   const ResizableNavigatorRouteContentBoundary({
