@@ -35,6 +35,9 @@ import 'resizable_navigator_routes.dart';
 /// the [ObservableRouteMixin]:
 /// - [ResizableMaterialPageRoute]: A replacement for [MaterialPageRoute].
 /// - [ResizableMaterialPage]: A replacement for [MaterialPage].
+/// - [ResizablePageRouteBuilder]: A replacement for [PageRouteBuilder].
+/// - [ResizablePageBuilder]: Similar to [ResizablePageRouteBuilder],
+///   but creates a [Page].
 ///
 /// Note that the [child] navigator and its routes are constrained by the
 /// constraints imposed by the parent widget of the [NavigatorResizable].
