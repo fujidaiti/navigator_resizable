@@ -1,37 +1,119 @@
 import 'package:flutter/material.dart';
 
+/// An interface for observing the lifecycle of [Route]s.
+///
+/// Similar to [NavigatorObserver], but can handle more fine-grained events
+/// such as when a route transition animation starts or ends.
+///
+/// See also:
 mixin NavigatorEventListener {
+  /// Called when a [route] is inserted into the navigator.
+  ///
+  /// See [Route.install] for more details.
   VoidCallback? didInstall(Route<dynamic> route) => null;
+
+  /// Called when a [route] is replaced by [oldRoute].
+  ///
+  /// See [Route.didReplace] for more details.
   void didReplace(Route<dynamic> route, Route<dynamic>? oldRoute) {}
+
+  /// Called when a [route] is added to the navigator.
+  ///
+  /// See [Route.didAdd] for more details.
   void didAdd(Route<dynamic> route) {}
+
+  /// Called when a [route] is pushed onto the navigator.
+  ///
+  /// See [Route.didPush] for more details.
   void didPush(Route<dynamic> route) {}
+
+  /// Called when a request was made to pop a [route].
+  ///
+  /// See [Route.didPop] for more details.
   void didComplete(Route<dynamic> route, Object? result) {}
+
+  /// Called when a [route] is popped from the navigator.
+  ///
+  /// See [Route.didPop] for more details.
   void didPop(Route<dynamic> route, Object? result) {}
+
+  /// Called when the [nextRoute] of a [route] is popped from the navigator.
+  ///
+  /// See [Route.didPopNext] for more details.
   void didPopNext(Route<dynamic> route, Route<dynamic> nextRoute) {}
+
+  /// Called when the [nextRoute] of a [route] changes.
+  ///
+  /// See [Route.didChangeNext] for more details.
   void didChangeNext(Route<dynamic> route, Route<dynamic>? nextRoute) {}
+
+  /// Called when the [previousRoute] of a [route] changes.
+  ///
+  /// See [Route.didChangePrevious] for more details.
   void didChangePrevious(Route<dynamic> route, Route<dynamic>? previousRoute) {}
-  void didEndTransition(Route<dynamic> route) {}
+
+  /// Called when a route transition starts between [currentRoute] and
+  /// [nextRoute].
+  ///
+  /// This is called only when the [currentRoute] and [nextRoute] are both
+  /// [TransitionRoute]s. If the transition is driven by a user gesture,
+  /// typically a swipe back gesture on iOS, [isUserGestureInProgress] is true.
+  ///
+  /// The [animation] is the animation that drives the transition
+  /// (see [TransitionRoute.animation]). The animation's status can be used to
+  /// determine the transition's direction, e.g., when popping a route, the
+  /// status is [AnimationStatus.forward].
+  ///
+  /// Note that this method may be called multiple times in a frame, e.g., when
+  /// calling [Navigator.pop] consecutively. Even in such cases,
+  /// [didEndTransition] is called only once for each route transition.
   void didStartTransition(
     Route<dynamic> currentRoute,
     Route<dynamic> nextRoute,
     Animation<double> animation, {
     bool isUserGestureInProgress = false,
   }) {}
+
+  /// Called when a route transition ends with [route].
+  ///
+  /// This is also called when a first build of the navigator is completed.
+  void didEndTransition(Route<dynamic> route) {}
 }
 
+/// A widget that observes the lifecycle of [Route]s.
+///
+/// This widget must be an ancestor of a [Navigator] widget,
+/// and expects the routes in the navigator to be [ObservableRouteMixin].
+///
+/// There are two ways to observe the lifecycle of [Route]s:
+/// 1. By providing a list of [listeners] to the constructor.
+/// 2. By calling [NavigatorEventObserverState.addListener] to add a listener
+///   dynamically. You can use [NavigatorEventObserver.of] to obtain the
+///  [NavigatorEventObserverState] from the given [BuildContext].
 class NavigatorEventObserver extends StatefulWidget {
+  /// Creates a widget that observes the lifecycle of [Route]s.
   const NavigatorEventObserver({
     super.key,
     this.listeners = const [],
     required this.child,
   });
 
+  /// The listeners that observe the lifecycle of [Route]s.
+  ///
+  /// Even if this list is empty, listeners that are registered
+  /// using [NavigatorEventObserverState.addListener] will be notified
+  /// unless they are removed by [NavigatorEventObserverState.removeListener].
   final List<NavigatorEventListener> listeners;
+
+  /// The widget below this widget in the tree.
+  ///
+  /// Typically a [Navigator] widget.
   final Widget child;
 
   @override
   State<NavigatorEventObserver> createState() => NavigatorEventObserverState();
 
+  /// Obtains the [NavigatorEventObserverState] from the given [context].
   static NavigatorEventObserverState? of(BuildContext context) {
     return context
         .dependOnInheritedWidgetOfExactType<_InheritedRouteTransitionObserver>()
@@ -39,6 +121,7 @@ class NavigatorEventObserver extends StatefulWidget {
   }
 }
 
+/// The state of [NavigatorEventObserver].
 class NavigatorEventObserverState extends State<NavigatorEventObserver> {
   final Set<NavigatorEventListener> _listeners = {};
   final Map<Route<dynamic>, Route<dynamic>?> _nextRouteOf = {};
@@ -63,10 +146,12 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
     _listeners.forEach(fn);
   }
 
+  /// Adds a [listener] for observing navigator events.
   void addListener(NavigatorEventListener listener) {
     _listeners.add(listener);
   }
 
+  /// Removes a [listener] for observing navigator events.
   void removeListener(NavigatorEventListener listener) {
     _listeners.remove(listener);
   }
@@ -311,6 +396,8 @@ class _InheritedRouteTransitionObserver extends InheritedWidget {
   bool updateShouldNotify(_) => true;
 }
 
+/// A mixin for [Route]s that notifies the ancestor [NavigatorEventObserver]
+/// of lifecycle events.
 mixin ObservableRouteMixin<T> on Route<T> {
   NavigatorEventObserverState? _observer;
   VoidCallback? _onDisposeCallback;

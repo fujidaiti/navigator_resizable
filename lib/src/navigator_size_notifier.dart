@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:meta/meta.dart';
 
 import 'navigator_event_observer.dart';
+import 'navigator_resizable.dart';
 
 const _defaultPreferredSize = Size.infinite;
 
@@ -59,6 +60,8 @@ class NavigatorSizeNotifier extends ChangeNotifier
     super.dispose();
   }
 
+  /// Called by [ResizableNavigatorRouteContentBoundary] when the size of
+  /// its child widget changes.
   void didRouteContentSizeChange(Route<dynamic> route, Size contentSize) {
     assert(_routeContentSizes.containsKey(route));
     final oldPreferredSize = value;
