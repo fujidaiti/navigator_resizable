@@ -26,9 +26,9 @@ import 'resizable_navigator_routes.dart';
 /// only if the route mix-ins the [ObservableRouteMixin].
 /// This is especially important during route transitions, as the
 /// [NavigatorResizable] can animate its size in sync with the transition
-/// animation only when both the current route and the next route
-/// implement [ObservableRouteMixin]. Otherwise, the size
-/// remains unchanged before and after the transition.
+/// animation only when both the current route and the next route mix-in
+/// [ObservableRouteMixin]. Otherwise, the size remains unchanged before
+/// and after the transition.
 ///
 /// For convenience, the following built-in route classes already mix-in
 /// the [ObservableRouteMixin]:
@@ -56,6 +56,28 @@ import 'resizable_navigator_routes.dart';
 /// );
 /// ```
 ///
+/// For more advanced use cases, you can create a custom route
+/// compatible with [NavigatorResizable] by mixing in
+/// the [ObservableRouteMixin] and returning a
+/// [ResizableNavigatorRouteContentBoundary] in [ModalRoute.buildPage].
+///
+/// ```dart
+/// class CustomResizableRoute<T> extends ModalRoute<T>
+///   with ObservableRouteMixin<T>{
+///   CustomResizableRoute({
+///     required super.builder,
+///     ...
+///   });
+///
+///   @override
+///   Widget buildContent(BuildContext context) {
+///     return ResizableNavigatorRouteContentBoundary(
+///       child: builder(context),
+///     );
+///   }
+/// }
+/// ```
+///
 /// ### Caveats
 /// - Avoid wrapping the navigator in widgets that add additional space
 ///   (e.g., [Padding]). Zero-size widgets, such as [GestureDetector]
@@ -65,7 +87,7 @@ import 'resizable_navigator_routes.dart';
 ///   route's content and adopt the size dictated by the constraints.
 ///   In such cases, an assertion error will be thrown. Typically, [Center]
 ///   and [Align] are good choices for the parent widget.
-/// - The initial route of the [child] navigator must implement
+/// - The initial route of the [child] navigator must mix-ins the
 ///   [ObservableRouteMixin] (e.g., [ResizableMaterialPageRoute]),
 ///   otherwise, [NavigatorResizable] will be unable to determine the
 ///   initial size and will throw an assertion error.
