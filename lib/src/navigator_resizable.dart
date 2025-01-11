@@ -35,8 +35,8 @@ import 'resizable_navigator_routes.dart';
 /// the [ObservableRouteMixin]:
 /// - [ResizableMaterialPageRoute]: A replacement for [MaterialPageRoute].
 /// - [ResizableMaterialPage]: A replacement for [MaterialPage].
-/// - [ResizablePageRoutePageBuilder]: A replacement for [PageRouteBuilder].
-/// - [ResizablePageBuilder]: Similar to [ResizablePageRoutePageBuilder],
+/// - [ResizablePageRouteBuilder]: A replacement for [PageRouteBuilder].
+/// - [ResizablePageRoutePageBuilder]: Similar to [ResizablePageRouteBuilder],
 ///   but creates a [Page].
 ///
 /// Note that the [child] navigator and its routes are constrained by the
@@ -351,7 +351,7 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
 ///
 /// It is rarely used directly. Instead, use the built-in route classes
 /// that satisfy the requirements of [NavigatorResizable],
-/// such as [ResizableMaterialPageRoute] and [ResizablePageRoutePageBuilder].
+/// such as [ResizableMaterialPageRoute] and [ResizablePageRouteBuilder].
 class ResizableNavigatorRouteContentBoundary
     extends SingleChildRenderObjectWidget {
   /// Creates a widget that observes the layout of the [child].
