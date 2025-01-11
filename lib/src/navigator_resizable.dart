@@ -27,12 +27,13 @@ import 'resizable_navigator_routes.dart';
 /// is wrapped in a [ResizableNavigatorRouteContentBoundary].
 /// This is especially important during route transitions, as the
 /// [NavigatorResizable] can animate its size in sync with the transition
-/// animation only when both the current route and the next route mix-in
-/// [ObservableRouteMixin]. Otherwise, the size remains unchanged before
+/// animation only when both the current route and the next route satisfy
+/// these requirements. Otherwise, the size remains unchanged before
 /// and after the transition.
 ///
-/// For convenience, the following built-in route classes already mix-in
-/// the [ObservableRouteMixin]:
+/// For convenience, the following built-in route and page classes are provided,
+/// all of which satisfy the requirements of [NavigatorResizable]:
+///
 /// - [ResizableMaterialPageRoute]: A replacement for [MaterialPageRoute].
 /// - [ResizableMaterialPage]: A replacement for [MaterialPage].
 /// - [ResizablePageRouteBuilder]: A replacement for [PageRouteBuilder].
@@ -88,10 +89,9 @@ import 'resizable_navigator_routes.dart';
 ///   route's content and adopt the size dictated by the constraints.
 ///   In such cases, an assertion error will be thrown. Typically, [Center]
 ///   and [Align] are good choices for the parent widget.
-/// - The initial route of the [child] navigator must mix-ins the
-///   [ObservableRouteMixin] (e.g., [ResizableMaterialPageRoute]),
-///   otherwise, [NavigatorResizable] will be unable to determine the
-///   initial size and will throw an assertion error.
+/// - The initial route of the [child] navigator must satisfy the requirements
+///   of [NavigatorResizable]. Otherwise, [NavigatorResizable] will be unable
+///   to determine the initial size and will throw an assertion error.
 ///
 /// ### Example
 ///
