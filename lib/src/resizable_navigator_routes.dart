@@ -87,10 +87,10 @@ class _PageBasedResizableMaterialPageRoute<T> extends PageRoute<T>
 /// Almost identical to [PageRouteBuilder] but intended to be used with
 /// [NavigatorResizable].
 @optionalTypeArgs
-class ResizablePageRouteBuilder<T> extends PageRoute<T>
+class ResizablePageRoutePageBuilder<T> extends PageRoute<T>
     with ObservableRouteMixin<T> {
   /// Creates a route that delegates to builder callbacks.
-  ResizablePageRouteBuilder({
+  ResizablePageRoutePageBuilder({
     super.settings,
     super.requestFocus,
     required this.pageBuilder,
