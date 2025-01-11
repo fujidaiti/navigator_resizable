@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 import 'navigator_event_observer.dart';
 import 'navigator_resizable.dart';
 
+/// A specialized [MaterialPageRoute] compatible with [NavigatorResizable].
+///
+/// For a detailed explanation of each property, see [MaterialPageRoute].
 @optionalTypeArgs
 class ResizableMaterialPageRoute<T> extends MaterialPageRoute<T>
     with ObservableRouteMixin<T>, MaterialRouteTransitionMixin<T> {
+  /// Creates a [MaterialPageRoute] compatible with [NavigatorResizable].
   ResizableMaterialPageRoute({
     required super.builder,
     super.settings,
@@ -24,8 +28,12 @@ class ResizableMaterialPageRoute<T> extends MaterialPageRoute<T>
   }
 }
 
+/// A specialized [MaterialPage] compatible with [NavigatorResizable].
+///
+/// For a detailed explanation of each property, see [MaterialPage].
 @optionalTypeArgs
 class ResizableMaterialPage<T> extends MaterialPage<T> {
+  /// Creates a [MaterialPage] compatible with [NavigatorResizable].
   const ResizableMaterialPage({
     super.key,
     super.canPop,
@@ -78,6 +86,7 @@ class _PageBasedResizableMaterialPageRoute<T> extends PageRoute<T>
 ///
 /// Almost identical to [PageRouteBuilder] but intended to be used with
 /// [NavigatorResizable].
+@optionalTypeArgs
 class ResizablePageRouteBuilder<T> extends PageRoute<T>
     with ObservableRouteMixin<T> {
   /// Creates a route that delegates to builder callbacks.
@@ -154,6 +163,7 @@ class ResizablePageRouteBuilder<T> extends PageRoute<T>
 /// A utility class for defining one-off [Page]s in terms of callbacks.
 ///
 /// Intended to be used with [NavigatorResizable].
+@optionalTypeArgs
 class ResizablePageBuilder<T> extends Page<T> {
   /// Creates a page that delegates to builder callbacks.
   const ResizablePageBuilder({
