@@ -1,8 +1,8 @@
 name: navigator_resizable
 description: >
-  A thin wrapper around [Navigator] that **visually** resizes the child navigator
+  A thin wrapper around Navigator that *visually* resizes the child navigator
   to match the size of the content displayed in the current route.
-version: 1.0.0
+version: 1.0.1
 homepage: https://github.com/fujidaiti/navigator_resizable
 topics:
   - ui
