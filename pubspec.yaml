@@ -7,6 +7,7 @@ homepage: https://github.com/fujidaiti/navigator_resizable
 topics:
   - ui
   - widget
+  - navigation
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
