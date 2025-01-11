@@ -84,13 +84,13 @@ class _PageBasedResizableMaterialPageRoute<T> extends PageRoute<T>
 
 /// A utility class for defining one-off [PageRoute]s in terms of callbacks.
 ///
-/// Almost identical to [PageRouteBuilder] but intended to be used with
-/// [NavigatorResizable].
+/// Almost identical to [PageRouteBuilder] but specialized for compatibility
+/// with [NavigatorResizable].
 @optionalTypeArgs
-class ResizablePageRoutePageBuilder<T> extends PageRoute<T>
+class ResizablePageRouteBuilder<T> extends PageRoute<T>
     with ObservableRouteMixin<T> {
   /// Creates a route that delegates to builder callbacks.
-  ResizablePageRoutePageBuilder({
+  ResizablePageRouteBuilder({
     super.settings,
     super.requestFocus,
     required this.pageBuilder,
@@ -160,13 +160,14 @@ class ResizablePageRoutePageBuilder<T> extends PageRoute<T>
   }
 }
 
-/// A utility class for defining one-off [Page]s in terms of callbacks.
+/// A utility class for defining one-off [Page] that creates [PageRoute]
+/// in terms of callbacks.
 ///
 /// Intended to be used with [NavigatorResizable].
 @optionalTypeArgs
-class ResizablePageBuilder<T> extends Page<T> {
+class ResizablePageRoutePageBuilder<T> extends Page<T> {
   /// Creates a page that delegates to builder callbacks.
-  const ResizablePageBuilder({
+  const ResizablePageRoutePageBuilder({
     required this.child,
     required this.transitionsBuilder,
     this.requestFocus = true,
@@ -219,7 +220,7 @@ class ResizablePageBuilder<T> extends Page<T> {
 
   @override
   Route<T> createRoute(BuildContext context) {
-    return _PageBasedResizablePageBuilder<T>(
+    return _PageBasedResizablePageRoutePageBuilder<T>(
       page: this,
       requestFocus: requestFocus,
       allowSnapshotting: allowSnapshotting,
@@ -229,17 +230,18 @@ class ResizablePageBuilder<T> extends Page<T> {
   }
 }
 
-class _PageBasedResizablePageBuilder<T> extends PageRoute<T>
+class _PageBasedResizablePageRoutePageBuilder<T> extends PageRoute<T>
     with ObservableRouteMixin<T> {
-  _PageBasedResizablePageBuilder({
-    required ResizablePageBuilder<T> page,
+  _PageBasedResizablePageRoutePageBuilder({
+    required ResizablePageRoutePageBuilder<T> page,
     super.requestFocus,
     super.allowSnapshotting,
     super.fullscreenDialog,
     super.barrierDismissible,
   }) : super(settings: page);
 
-  ResizablePageBuilder<T> get _page => settings as ResizablePageBuilder<T>;
+  ResizablePageRoutePageBuilder<T> get _page =>
+      settings as ResizablePageRoutePageBuilder<T>;
 
   @override
   bool get maintainState => _page.maintainState;
