@@ -4,12 +4,15 @@ publish_to: "none"
 version: 0.1.0
 
 environment:
-  sdk: ">=3.5.0 <4.0.0"
-  flutter: ">=3.24.0"
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
 
 dependencies:
   flutter:
     sdk: flutter
+  go_router: ^14.6.2
+  navigator_resizable:
+    path: ../
 
 dev_dependencies:
   flutter_test:
