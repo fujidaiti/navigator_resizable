@@ -23,7 +23,8 @@ import 'resizable_navigator_routes.dart';
 /// ### Routes and Pages
 ///
 /// The [NavigatorResizable] can respect the content size of a route
-/// only if the route mix-ins the [ObservableRouteMixin].
+/// only if the route mix-ins the [ObservableRouteMixin] and its content
+/// is wrapped in a [ResizableNavigatorRouteContentBoundary].
 /// This is especially important during route transitions, as the
 /// [NavigatorResizable] can animate its size in sync with the transition
 /// animation only when both the current route and the next route mix-in
@@ -339,8 +340,21 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   }
 }
 
+/// Observes the layout of the [child] widget and notifies the ancestor
+/// [NavigatorResizable] when the child's size changes.
+///
+/// A route is compatible with [NavigatorResizable] only if it mixes-in
+/// the [ObservableRouteMixin] and wraps its content in
+/// a [ResizableNavigatorRouteContentBoundary]. For example, a subclass
+/// of [ModalRoute] should return a [ResizableNavigatorRouteContentBoundary]
+/// in [ModalRoute.buildPage].
+///
+/// It is rarely used directly. Instead, use the built-in route classes
+/// that satisfy the requirements of [NavigatorResizable],
+/// such as [ResizableMaterialPageRoute] and [ResizablePageRoutePageBuilder].
 class ResizableNavigatorRouteContentBoundary
     extends SingleChildRenderObjectWidget {
+  /// Creates a widget that observes the layout of the [child].
   const ResizableNavigatorRouteContentBoundary({
     super.key,
     required super.child,
