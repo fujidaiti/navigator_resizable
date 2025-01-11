@@ -6,7 +6,7 @@ A thin wrapper around `Navigator` that *visually* resizes the child navigator to
 
 <br/>
 
-<img src="art/demo_clip_minimal_example.gif" width="300" width="300"/> <img src="art/demo_clip_practical_example.gif" width="300" width="300"/>
+<img src="https://raw.githubusercontent.com/fujidaiti/navigator_resizable/refs/heads/main/art/demo_clip_minimal_example.gif" width="300" width="300"/> <img src="https://raw.githubusercontent.com/fujidaiti/navigator_resizable/refs/heads/main/art/demo_clip_practical_example.gif" width="300"/>
 
 <br/>
 
