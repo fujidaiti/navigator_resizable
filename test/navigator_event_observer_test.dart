@@ -340,12 +340,21 @@ void main() {
           argThat(isRoute(name: 'a')),
           argThat(isRoute(name: 'b')),
         ),
+        env.listener.didStartTransition(
+          argThat(isRoute(name: 'b')),
+          argThat(isRoute(name: 'a')),
+          any,
+          isUserGestureInProgress: false,
+        ),
+      ]);
+
+      reset(env.listener);
+      await tester.pumpAndSettle();
+      verifyInOrder([
         env.listener.didEndTransition(
           argThat(isRoute(name: 'a')),
         ),
       ]);
-
-      await tester.pumpAndSettle();
 
       verifyNoMoreInteractions(env.listener);
       expect(find.text('Page:b'), findsNothing);
@@ -874,9 +883,6 @@ void main() {
           argThat(isRoute(name: 'c')),
           argThat(isNull),
         ),
-        env.listener.didInstall(
-          argThat(isRoute(name: 'b')),
-        ),
         env.listener.didChangePrevious(
           argThat(isRoute(name: 'c')),
           argThat(isRoute(name: 'a')),
@@ -888,11 +894,13 @@ void main() {
       ]);
 
       final capturedAnimation = results[2].captured.single as Animation<double>;
+      reset(env.listener);
       startTrackingTransitionProgress(capturedAnimation);
       await tester.pumpAndSettle();
 
       verifyInOrder([
         env.listener.didEndTransition(argThat(isRoute(name: 'c'))),
+        env.listener.didInstall(argThat(isRoute(name: 'b'))),
         env.listener.didAdd(argThat(isRoute(name: 'b'))),
         env.listener.didChangePrevious(
           argThat(isRoute(name: 'c')),
@@ -1059,17 +1067,23 @@ void main() {
           argThat(isRoute(name: 'a')),
           argThat(isRoute(name: 'b')),
         ),
-        env.listener.didEndTransition(
+        env.listener.didStartTransition(
+          argThat(isRoute(name: 'b')),
           argThat(isRoute(name: 'a')),
+          any,
+          isUserGestureInProgress: false,
         ),
       ]);
 
+      reset(env.listener);
       await tester.pumpAndSettle();
-
+      verify(env.listener.didEndTransition(
+        argThat(isRoute(name: 'a')),
+      )).called(1);
+      verifyNoMoreInteractions(env.listener);
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:a'), findsOneWidget);
       expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
-      verifyNoMoreInteractions(env.listener);
     });
 
     testWidgets('When popping multiple routes simultaneously', (tester) async {
