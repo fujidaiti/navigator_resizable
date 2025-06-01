@@ -8,7 +8,7 @@ import 'navigator_resizable.dart';
 /// For a detailed explanation of each property, see [MaterialPageRoute].
 @optionalTypeArgs
 class ResizableMaterialPageRoute<T> extends MaterialPageRoute<T>
-    with ObservableRouteMixin<T>, MaterialRouteTransitionMixin<T> {
+    with ObservableRouteMixin<T> {
   /// Creates a [MaterialPageRoute] compatible with [NavigatorResizable].
   ResizableMaterialPageRoute({
     required super.builder,
