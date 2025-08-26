@@ -5,25 +5,32 @@
   "version": "0.1.0",
   "configurations": [
     {
-      "name": "Minimal Example",
+      "name": "Minimal Imperative Example",
       "request": "launch",
       "type": "dart",
-      "program": "lib/minimal_example.dart",
+      "program": "lib/minimal_imperative_example.dart",
       "cwd": "./example"
     },
     {
-      "name": "Declarative Example",
+      "name": "Minimal Declarative Example",
       "request": "launch",
       "type": "dart",
-      "program": "lib/declarative_example.dart",
+      "program": "lib/minimal_declarative_example.dart",
       "cwd": "./example"
     },
     {
-      "name": "Imperative Example",
+      "name": "Complex Imperative Example",
       "request": "launch",
       "type": "dart",
-      "program": "lib/imperative_example.dart",
+      "program": "lib/complex_imperative_example.dart",
       "cwd": "./example"
     },
+    {
+      "name": "Complex go_router Example",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/complex_go_router_example.dart",
+      "cwd": "./example"
+    }
   ]
 }
