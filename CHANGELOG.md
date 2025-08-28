@@ -1,5 +1,13 @@
 # Changelog
 
+## X.X.X
+
+- `NavigatorResizable` now asserts when provided with unbounded width or height constraints.
+
+### Breaking change in `NavigatorResizable`
+
+`NavigatorResizable` requires bounded constraints on both axes. If its parent passes unbounded constraints (e.g., from `Column`, `Row`), an assertion is thrown in debug mode. This helps catch cases where routes inside the underlying `Navigator` might otherwise receive infinite dimensions, which often surface when route content uses `double.infinity` for width/height to expand and fill the available space.
+
 ## 2.0.0
 
 - Updated minimum supported Flutter SDK to `3.29.0`.
