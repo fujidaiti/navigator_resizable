@@ -311,6 +311,19 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
       'The given constraints were: $constraints which was given by '
       'the parent: ${parent.runtimeType}',
     );
+    assert(
+      constraints.hasBoundedHeight && constraints.hasBoundedWidth,
+      'The NavigatorResizable widget was given unbounded constraints. '
+      'This is not allowed because otherwise the routes within the underlying '
+      'Navigator would not know their valid maximum size. This becomes '
+      'especially problematic when a route specifies double.infinity for width '
+      'or height to expand to the available space, which causes a layout error '
+      'since the parent Navigator does not provide finite bounds.\n'
+      'Make sure that NavigatorResizable is not wrapped in a widget that '
+      'passes unbounded constraints to its children, such as Column or Row. '
+      'The given constraints were:\n'
+      '$constraints (from parent: ${parent.runtimeType}).',
+    );
 
     // Pass the parent constraints directly to the child Navigator,
     // allowing it to overflow this render box if necessary.

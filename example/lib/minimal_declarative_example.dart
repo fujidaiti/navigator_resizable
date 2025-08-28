@@ -79,23 +79,25 @@ class _ExampleHomeState extends State<ExampleHome> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Spacer(),
-              Material(
-                elevation: 2,
-                color: Colors.white,
-                clipBehavior: Clip.antiAlias,
-                borderRadius: BorderRadius.circular(8),
-                // IMPORTANT: Wrap the Navigator in a NavigatorResizable.
-                child: NavigatorResizable(
-                  child: Navigator(
-                    pages: _pages,
-                    onDidRemovePage: (removedPage) {
-                      _pages.remove(removedPage);
-                    },
+              Expanded(
+                child: Center(
+                  child: Material(
+                    elevation: 2,
+                    color: Colors.white,
+                    clipBehavior: Clip.antiAlias,
+                    borderRadius: BorderRadius.circular(8),
+                    // IMPORTANT: Wrap the Navigator in a NavigatorResizable.
+                    child: NavigatorResizable(
+                      child: Navigator(
+                        pages: _pages,
+                        onDidRemovePage: (removedPage) {
+                          _pages.remove(removedPage);
+                        },
+                      ),
+                    ),
                   ),
                 ),
               ),
-              const Spacer(),
               SizedBox(
                 width: double.infinity,
                 child: Wrap(

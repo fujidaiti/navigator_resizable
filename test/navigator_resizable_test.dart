@@ -617,7 +617,7 @@ void main() {
       Widget testWidget,
     }) boilerplate({
       Size initialContentSize = const Size(100, 200),
-      bool useAlign = true,
+      Widget Function(Widget)? builder,
     }) {
       final navigatorResizableKey = GlobalKey();
       final routeContentKey = GlobalKey<_TestRouteWidgetState>();
@@ -650,12 +650,12 @@ void main() {
       );
 
       final testWidget = MaterialApp(
-        home: useAlign
-            ? Align(
-                alignment: Alignment.center,
-                child: navigatorResizable,
-              )
-            : navigatorResizable,
+        home: switch (builder) {
+          null => Center(
+              child: navigatorResizable,
+            ),
+          final builder => builder(navigatorResizable),
+        },
       );
 
       return (
@@ -707,7 +707,15 @@ void main() {
     testWidgets(
       'Throws assertion error when given tight constraint',
       (tester) async {
-        final env = boilerplate(useAlign: false);
+        final env = boilerplate(
+          builder: (child) => ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxHeight: 600,
+              maxWidth: 800,
+            ),
+            child: child,
+          ),
+        );
         final exceptions = <Object>[];
         final oldErrorHandler = FlutterError.onError;
         FlutterError.onError = (details) => exceptions.add(details.exception);
@@ -725,7 +733,45 @@ void main() {
                 'the NavigatorResizable with a widget that provides non-tight '
                 'constraints, such as Align and Center. \n'
                 'The given constraints were: BoxConstraints(w=800.0, h=600.0) '
-                'which was given by the parent: RenderSemanticsAnnotations',
+                'which was given by the parent: RenderConstrainedBox',
+          ),
+        );
+      },
+    );
+
+    testWidgets(
+      'Throws assertion error when given unbounded constraint',
+      (tester) async {
+        final env = boilerplate(
+          builder: (child) => Column(
+            mainAxisSize: MainAxisSize.max,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [child],
+          ),
+        );
+        final exceptions = <Object>[];
+        final oldErrorHandler = FlutterError.onError;
+        FlutterError.onError = (details) => exceptions.add(details.exception);
+        await tester.pumpWidget(env.testWidget);
+        FlutterError.onError = oldErrorHandler;
+
+        expect(
+          exceptions.firstOrNull,
+          isAssertionError.having(
+            (it) => it.message,
+            'message',
+            'The NavigatorResizable widget was given unbounded constraints. '
+                'This is not allowed because otherwise the routes within the '
+                'underlying Navigator would not know their valid maximum size. '
+                'This becomes especially problematic when a route specifies '
+                'double.infinity for width or height to expand to the available '
+                'space, which causes a layout error since the parent Navigator '
+                'does not provide finite bounds.\n'
+                'Make sure that NavigatorResizable is not wrapped in a widget '
+                'that passes unbounded constraints to its children, such as '
+                'Column or Row. The given constraints were:\n'
+                'BoxConstraints(0.0<=w<=800.0, 0.0<=h<=Infinity) '
+                '(from parent: RenderFlex).',
           ),
         );
       },
