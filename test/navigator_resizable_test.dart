@@ -172,6 +172,34 @@ void main() {
       expect(getBox(tester).size, const Size(100, 200));
     });
 
+    testWidgets(
+      'When pushing a route and reverting in mid-transition',
+      (tester) async {
+        await tester.pumpWidget(testWidget);
+        // Push b and forward the transition.
+        unawaited(navigatorKey.currentState!.pushNamed('b'));
+        await tester.pump();
+        expect(getBox(tester).size, const Size(100, 200));
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(getBox(tester).size, const Size(150, 250));
+
+        // Pop b in the middle of the transition.
+        navigatorKey.currentState!.pop();
+        await tester.pump();
+        expect(getBox(tester).size, const Size(150, 250));
+        await tester.pump(const Duration(milliseconds: 30));
+        expect(getBox(tester).size, const Size(140, 240));
+        await tester.pump(const Duration(milliseconds: 30));
+        expect(getBox(tester).size, const Size(130, 230));
+        await tester.pump(const Duration(milliseconds: 30));
+        expect(getBox(tester).size, const Size(120, 220));
+        await tester.pump(const Duration(milliseconds: 30));
+        expect(getBox(tester).size, const Size(110, 210));
+        await tester.pumpAndSettle();
+        expect(getBox(tester).size, const Size(100, 200));
+      },
+    );
+
     testWidgets('When replacing the current route', (tester) async {
       await tester.pumpWidget(testWidget);
       unawaited(navigatorKey.currentState!.pushNamed('b'));
@@ -434,6 +462,36 @@ void main() {
       expect(env.getBox(tester).size, const Size(800, 600));
     });
 
+    testWidgets(
+      'When pushing a route and reverting in mid-transition',
+      (tester) async {
+        final env = boilerplate(interpolationCurve: Curves.linear);
+        await tester.pumpWidget(env.testWidget);
+
+        // Navigate to /a/b.
+        env.setLocation('/a/b');
+        await tester.pump();
+        expect(env.getBox(tester).size, const Size(100, 200));
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(env.getBox(tester).size, const Size(150, 250));
+
+        // In the middle of the transition, return to /a.
+        env.setLocation('/a');
+        await tester.pump();
+        expect(env.getBox(tester).size, const Size(150, 250));
+        await tester.pump(const Duration(milliseconds: 30));
+        expect(env.getBox(tester).size, const Size(140, 240));
+        await tester.pump(const Duration(milliseconds: 30));
+        expect(env.getBox(tester).size, const Size(130, 230));
+        await tester.pump(const Duration(milliseconds: 30));
+        expect(env.getBox(tester).size, const Size(120, 220));
+        await tester.pump(const Duration(milliseconds: 30));
+        expect(env.getBox(tester).size, const Size(110, 210));
+        await tester.pumpAndSettle();
+        expect(env.getBox(tester).size, const Size(100, 200));
+      },
+    );
+
     testWidgets('When popping a route', (tester) async {
       final env = boilerplate(interpolationCurve: Curves.easeInOut);
       await tester.pumpWidget(env.testWidget);
@@ -525,6 +583,39 @@ void main() {
       await tester.pumpAndSettle();
       expect(env.getBox(tester).size, const Size(300, 400));
     });
+
+    testWidgets(
+      'When replacing the entire page stack and reverting in mid-transition',
+      (tester) async {
+        final env = boilerplate(
+          initialLocation: '/a/b',
+          interpolationCurve: Curves.linear,
+        );
+        await tester.pumpWidget(env.testWidget);
+
+        // Replace the page stack with /d.
+        env.setLocation('/d');
+        await tester.pump();
+        expect(env.getBox(tester).size, const Size(200, 300));
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(env.getBox(tester).size, const Size(250, 350));
+
+        // In the middle of the transition, return to /a/b.
+        env.setLocation('/a/b');
+        await tester.pump();
+        expect(env.getBox(tester).size, const Size(250, 350));
+        await tester.pump(const Duration(milliseconds: 60));
+        expect(env.getBox(tester).size, const Size(240, 340));
+        await tester.pump(const Duration(milliseconds: 60));
+        expect(env.getBox(tester).size, const Size(230, 330));
+        await tester.pump(const Duration(milliseconds: 60));
+        expect(env.getBox(tester).size, const Size(220, 320));
+        await tester.pump(const Duration(milliseconds: 60));
+        expect(env.getBox(tester).size, const Size(210, 310));
+        await tester.pumpAndSettle();
+        expect(env.getBox(tester).size, const Size(200, 300));
+      },
+    );
 
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
       final env = boilerplate();

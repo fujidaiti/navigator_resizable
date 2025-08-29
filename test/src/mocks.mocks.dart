@@ -154,8 +154,7 @@ class MockNavigatorEventListener extends _i1.Mock
 
   @override
   void didStartTransition(
-    _i4.Route<dynamic>? currentRoute,
-    _i4.Route<dynamic>? nextRoute,
+    _i4.Route<dynamic>? targetRoute,
     _i4.Animation<double>? animation, {
     bool? isUserGestureInProgress = false,
   }) =>
@@ -163,8 +162,7 @@ class MockNavigatorEventListener extends _i1.Mock
         Invocation.method(
           #didStartTransition,
           [
-            currentRoute,
-            nextRoute,
+            targetRoute,
             animation,
           ],
           {#isUserGestureInProgress: isUserGestureInProgress},
