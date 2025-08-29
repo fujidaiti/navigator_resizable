@@ -8,21 +8,21 @@ import 'package:navigator_resizable/src/resizable_navigator_routes.dart';
 
 void main() {
   group('Size transition test with imperative navigator API', () {
-    const interpolationCurve = Curves.easeInOut;
-
-    late GlobalKey<NavigatorState> navigatorKey;
-    late RenderBox Function(WidgetTester) getBox;
-    late Widget testWidget;
-
-    setUp(() {
-      navigatorKey = GlobalKey();
+    ({
+      GlobalKey<NavigatorState> navigatorKey,
+      RenderBox Function(WidgetTester) getBox,
+      Widget testWidget,
+    }) boilerplate({
+      Curve interpolationCurve = Curves.easeInOut,
+    }) {
+      final navigatorKey = GlobalKey<NavigatorState>();
       final navigatorResizableKey = UniqueKey();
       final routes = {
         'a': () => const _TestRouteWidget(initialSize: Size(100, 200)),
         'b': () => const _TestRouteWidget(initialSize: Size(200, 300)),
         'c': () => const _TestRouteWidget(initialSize: Size(150, 250)),
       };
-      testWidget = MaterialApp(
+      final testWidget = MaterialApp(
         home: Align(
           alignment: Alignment.center,
           child: NavigatorResizable(
@@ -42,170 +42,183 @@ void main() {
         ),
       );
 
-      getBox = (tester) {
+      RenderBox getBox(WidgetTester tester) {
         return tester.renderObject(find.byKey(navigatorResizableKey));
-      };
-    });
+      }
+
+      return (
+        navigatorKey: navigatorKey,
+        getBox: getBox,
+        testWidget: testWidget,
+      );
+    }
 
     testWidgets('After initial build', (tester) async {
-      await tester.pumpWidget(testWidget);
-      expect(getBox(tester).size, const Size(100, 200));
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      expect(env.getBox(tester).size, const Size(100, 200));
     });
 
     testWidgets('When pushing a new route', (tester) async {
-      await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
       await tester.pump();
-      expect(getBox(tester).size, const Size(100, 200));
+      expect(env.getBox(tester).size, const Size(100, 200));
 
       Size interpolatedSize(double progress) {
         return Size.lerp(
           const Size(100, 200),
           const Size(200, 300),
-          interpolationCurve.transform(progress),
+          Curves.easeInOut.transform(progress),
         )!;
       }
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.25));
+      expect(env.getBox(tester).size, interpolatedSize(0.25));
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.5));
+      expect(env.getBox(tester).size, interpolatedSize(0.5));
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.75));
+      expect(env.getBox(tester).size, interpolatedSize(0.75));
 
       await tester.pumpAndSettle();
-      expect(getBox(tester).size, const Size(200, 300));
+      expect(env.getBox(tester).size, const Size(200, 300));
     });
 
     testWidgets('When pushing multiple routes simultaneously', (tester) async {
-      await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('b'));
-      unawaited(navigatorKey.currentState!.pushNamed('c'));
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      unawaited(env.navigatorKey.currentState!.pushNamed('c'));
       await tester.pump();
-      expect(getBox(tester).size, const Size(100, 200));
+      expect(env.getBox(tester).size, const Size(100, 200));
 
       Size interpolatedSize(double progress) {
         return Size.lerp(
           const Size(100, 200),
           const Size(150, 250),
-          interpolationCurve.transform(progress),
+          Curves.easeInOut.transform(progress),
         )!;
       }
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.25));
+      expect(env.getBox(tester).size, interpolatedSize(0.25));
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.5));
+      expect(env.getBox(tester).size, interpolatedSize(0.5));
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.75));
+      expect(env.getBox(tester).size, interpolatedSize(0.75));
 
       await tester.pumpAndSettle();
-      expect(getBox(tester).size, const Size(150, 250));
+      expect(env.getBox(tester).size, const Size(150, 250));
     });
 
     testWidgets('When popping a route', (tester) async {
-      await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
       await tester.pumpAndSettle();
-      navigatorKey.currentState!.pop();
+      env.navigatorKey.currentState!.pop();
       await tester.pump();
-      expect(getBox(tester).size, const Size(200, 300));
+      expect(env.getBox(tester).size, const Size(200, 300));
 
       Size interpolatedSize(double progress) {
         return Size.lerp(
           const Size(200, 300),
           const Size(100, 200),
-          interpolationCurve.transform(progress),
+          Curves.easeInOut.transform(progress),
         )!;
       }
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.25));
+      expect(env.getBox(tester).size, interpolatedSize(0.25));
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.5));
+      expect(env.getBox(tester).size, interpolatedSize(0.5));
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.75));
+      expect(env.getBox(tester).size, interpolatedSize(0.75));
 
       await tester.pumpAndSettle();
-      expect(getBox(tester).size, const Size(100, 200));
+      expect(env.getBox(tester).size, const Size(100, 200));
     });
 
     testWidgets('When popping multiple routes simultaneously', (tester) async {
-      await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('b'));
-      unawaited(navigatorKey.currentState!.pushNamed('c'));
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      unawaited(env.navigatorKey.currentState!.pushNamed('c'));
       await tester.pumpAndSettle();
-      navigatorKey.currentState!.popUntil((r) => r.isFirst);
+      env.navigatorKey.currentState!.popUntil((r) => r.isFirst);
       await tester.pump();
-      expect(getBox(tester).size, const Size(150, 250));
+      expect(env.getBox(tester).size, const Size(150, 250));
 
       Size interpolatedSize(double progress) {
         return Size.lerp(
           const Size(150, 250),
           const Size(100, 200),
-          interpolationCurve.transform(progress),
+          Curves.easeInOut.transform(progress),
         )!;
       }
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.25));
+      expect(env.getBox(tester).size, interpolatedSize(0.25));
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.5));
+      expect(env.getBox(tester).size, interpolatedSize(0.5));
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.75));
+      expect(env.getBox(tester).size, interpolatedSize(0.75));
 
       await tester.pumpAndSettle();
-      expect(getBox(tester).size, const Size(100, 200));
+      expect(env.getBox(tester).size, const Size(100, 200));
     });
 
     testWidgets(
       'When pushing a route and reverting in mid-transition',
       (tester) async {
-        await tester.pumpWidget(testWidget);
+        final env = boilerplate(interpolationCurve: Curves.linear);
+        await tester.pumpWidget(env.testWidget);
         // Push b and forward the transition.
-        unawaited(navigatorKey.currentState!.pushNamed('b'));
+        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
         await tester.pump();
-        expect(getBox(tester).size, const Size(100, 200));
+        expect(env.getBox(tester).size, const Size(100, 200));
         await tester.pump(const Duration(milliseconds: 150));
-        expect(getBox(tester).size, const Size(150, 250));
+        expect(env.getBox(tester).size, const Size(150, 250));
 
         // Pop b in the middle of the transition.
-        navigatorKey.currentState!.pop();
+        env.navigatorKey.currentState!.pop();
         await tester.pump();
-        expect(getBox(tester).size, const Size(150, 250));
+        expect(env.getBox(tester).size, const Size(150, 250));
         await tester.pump(const Duration(milliseconds: 30));
-        expect(getBox(tester).size, const Size(140, 240));
+        expect(env.getBox(tester).size, const Size(140, 240));
         await tester.pump(const Duration(milliseconds: 30));
-        expect(getBox(tester).size, const Size(130, 230));
+        expect(env.getBox(tester).size, const Size(130, 230));
         await tester.pump(const Duration(milliseconds: 30));
-        expect(getBox(tester).size, const Size(120, 220));
+        expect(env.getBox(tester).size, const Size(120, 220));
         await tester.pump(const Duration(milliseconds: 30));
-        expect(getBox(tester).size, const Size(110, 210));
+        expect(env.getBox(tester).size, const Size(110, 210));
         await tester.pumpAndSettle();
-        expect(getBox(tester).size, const Size(100, 200));
+        expect(env.getBox(tester).size, const Size(100, 200));
       },
     );
 
     testWidgets('When replacing the current route', (tester) async {
-      await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
       await tester.pumpAndSettle();
-      unawaited(navigatorKey.currentState!.pushReplacementNamed('c'));
-      expect(getBox(tester).size, const Size(200, 300));
+      unawaited(env.navigatorKey.currentState!.pushReplacementNamed('c'));
+      expect(env.getBox(tester).size, const Size(200, 300));
 
       Size interpolatedSize(double progress) {
         return Size.lerp(
           const Size(200, 300),
           const Size(150, 250),
-          interpolationCurve.transform(progress),
+          Curves.easeInOut.transform(progress),
         )!;
       }
 
@@ -214,94 +227,96 @@ void main() {
       await tester.pump(Duration.zero);
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.25));
+      expect(env.getBox(tester).size, interpolatedSize(0.25));
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.5));
+      expect(env.getBox(tester).size, interpolatedSize(0.5));
 
       await tester.pump(const Duration(milliseconds: 75));
-      expect(getBox(tester).size, interpolatedSize(0.75));
+      expect(env.getBox(tester).size, interpolatedSize(0.75));
 
       await tester.pumpAndSettle();
-      expect(getBox(tester).size, const Size(150, 250));
+      expect(env.getBox(tester).size, const Size(150, 250));
     });
 
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
+      final env = boilerplate();
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
-      await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      await tester.pumpWidget(env.testWidget);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
       await tester.pumpAndSettle();
 
       final transitionProgress =
-          navigatorKey.currentState!.currentRoute.animation!;
+          env.navigatorKey.currentState!.currentRoute.animation!;
 
       // Start the swipe back gesture.
       // We assume that the screen size is 800x600.
       final gesture = await tester.startGesture(const Offset(300, 300));
       await gesture.moveBy(const Offset(80, 0));
       await tester.pump();
-      expect(navigatorKey.currentState!.userGestureInProgress, isTrue);
+      expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
       expect(transitionProgress.value, moreOrLessEquals(0.9));
-      expect(getBox(tester).size, const Size(190, 290));
+      expect(env.getBox(tester).size, const Size(190, 290));
 
       await gesture.moveBy(const Offset(80, 0));
       await tester.pump();
       expect(transitionProgress.value, moreOrLessEquals(0.8));
-      expect(getBox(tester).size, const Size(180, 280));
+      expect(env.getBox(tester).size, const Size(180, 280));
 
       await gesture.moveBy(const Offset(80, 0));
       await tester.pump();
       expect(transitionProgress.value, moreOrLessEquals(0.7));
-      expect(getBox(tester).size, const Size(170, 270));
+      expect(env.getBox(tester).size, const Size(170, 270));
 
       await gesture.moveBy(const Offset(80, 0));
       await tester.pump();
       expect(transitionProgress.value, moreOrLessEquals(0.6));
-      expect(getBox(tester).size, const Size(160, 260));
+      expect(env.getBox(tester).size, const Size(160, 260));
 
       await gesture.moveBy(const Offset(80, 0));
       await tester.pump();
       expect(transitionProgress.value, moreOrLessEquals(0.5));
-      expect(getBox(tester).size, const Size(150, 250));
+      expect(env.getBox(tester).size, const Size(150, 250));
 
       await gesture.moveBy(const Offset(80, 0));
       await tester.pump();
       expect(transitionProgress.value, moreOrLessEquals(0.4));
-      expect(getBox(tester).size, const Size(140, 240));
+      expect(env.getBox(tester).size, const Size(140, 240));
 
       await gesture.up();
       await tester.pumpAndSettle();
-      expect(navigatorKey.currentState!.userGestureInProgress, isFalse);
-      expect(getBox(tester).size, const Size(100, 200));
+      expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
+      expect(env.getBox(tester).size, const Size(100, 200));
 
       // Reset the default target platform.
       debugDefaultTargetPlatformOverride = null;
     });
 
     testWidgets('When iOS swipe back gesture is canceled', (tester) async {
+      final env = boilerplate();
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
-      await tester.pumpWidget(testWidget);
-      unawaited(navigatorKey.currentState!.pushNamed('b'));
+      await tester.pumpWidget(env.testWidget);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
       await tester.pumpAndSettle();
 
       final transitionProgress =
-          navigatorKey.currentState!.currentRoute.animation!;
+          env.navigatorKey.currentState!.currentRoute.animation!;
 
       // Start the swipe back gesture.
       // We assume that the screen size is 800x600.
       final gesture = await tester.startGesture(const Offset(300, 300));
       await gesture.moveBy(const Offset(80, 0));
       await tester.pump();
-      expect(navigatorKey.currentState!.userGestureInProgress, isTrue);
+      expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
       expect(transitionProgress.value, moreOrLessEquals(0.9));
-      expect(getBox(tester).size, const Size(190, 290));
+      expect(env.getBox(tester).size, const Size(190, 290));
 
       await gesture.up();
       await tester.pumpAndSettle();
-      expect(navigatorKey.currentState!.userGestureInProgress, isFalse);
-      expect(getBox(tester).size, const Size(200, 300));
+      expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
+      expect(env.getBox(tester).size, const Size(200, 300));
 
       // Reset the default target platform.
       debugDefaultTargetPlatformOverride = null;
