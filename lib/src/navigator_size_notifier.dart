@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:meta/meta.dart';
 
 import 'navigator_event_observer.dart';
 import 'navigator_resizable.dart';
@@ -97,6 +96,8 @@ class NavigatorSizeNotifier extends ChangeNotifier
   }) {
     assert(_routeContentSizes.containsKey(targetRoute));
 
+    debugPrint(
+        'didStartTransition: isUserGestureInProgress=$isUserGestureInProgress, target=${targetRoute.settings}');
     if (isUserGestureInProgress) {
       _interpolation = _RouteContentSizeInterpolation(
         initialSize: _lastReportedValidValue,
@@ -132,13 +133,15 @@ class _RouteContentSizeInterpolation extends Animation<Size?>
     required this.curve,
     required this.initialSize,
     required this.targetSize,
-  }) : parent = drivenBy;
+  })  : parent = drivenBy,
+        initialT = drivenBy.value;
 
   @override
   final Animation<double> parent;
   final Curve curve;
-  Size? initialSize;
-  ValueGetter<Size?> targetSize;
+  final double initialT;
+  final Size? initialSize;
+  final ValueGetter<Size?> targetSize;
 
   @override
   Size? get value {
@@ -149,13 +152,25 @@ class _RouteContentSizeInterpolation extends Animation<Size?>
     if (targetSize?.isFinite != true) {
       return null;
     }
+    final effectiveProgress = initialT > 0
+        ? _inverseLerp(parent.value, min: initialT, max: 1)
+        : parent.value;
+
     debugPrint(
-      'value(t=${parent.value}), curvedT=${curve.transform(parent.value)}, initialSize=$initialSize, targetSize=$targetSize) -> ${Size.lerp(initialSize, targetSize, curve.transform(parent.value))}',
+      'effectiveProgress=$effectiveProgress, initialT=$initialT, parent.value=${parent.value}, instance: ${identityHashCode(parent)}, status:${parent.status}',
     );
+
     return Size.lerp(
       initialSize,
       targetSize,
-      curve.transform(parent.value),
+      curve.transform(effectiveProgress),
     );
   }
 }
+
+double _inverseLerp(
+  double x, {
+  required double min,
+  required double max,
+}) =>
+    (x - min) / (max - min);

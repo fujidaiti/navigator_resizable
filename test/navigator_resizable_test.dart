@@ -18,15 +18,9 @@ void main() {
       navigatorKey = GlobalKey();
       final navigatorResizableKey = UniqueKey();
       final routes = {
-        'a': () => const _TestRouteWidget(
-              initialSize: Size(100, 200),
-            ),
-        'b': () => const _TestRouteWidget(
-              initialSize: Size(200, 300),
-            ),
-        'c': () => const _TestRouteWidget(
-              initialSize: Size(150, 250),
-            ),
+        'a': () => const _TestRouteWidget(initialSize: Size(100, 200)),
+        'b': () => const _TestRouteWidget(initialSize: Size(200, 300)),
+        'c': () => const _TestRouteWidget(initialSize: Size(150, 250)),
       };
       testWidget = MaterialApp(
         home: Align(

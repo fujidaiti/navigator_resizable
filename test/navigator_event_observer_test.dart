@@ -1510,17 +1510,41 @@ void main() {
           verification.captured.single as Animation<double>;
 
       startTrackingTransitionProgress(capturedAnimation);
-      // Cancel the swipe back gesture.
+
+      // Move the finger toward the right side of the screen.
+      await gesture.moveBy(const Offset(50, 0));
+      await tester.pumpAndSettle();
+      await gesture.moveBy(const Offset(50, 0));
+      await tester.pumpAndSettle();
+      await gesture.moveBy(const Offset(50, 0));
+      await tester.pumpAndSettle();
+      await gesture.moveBy(const Offset(200, 0));
+      await tester.pumpAndSettle();
+      // End the swipe back gesture.
       await gesture.up();
       await tester.pumpAndSettle();
 
-      expect(find.text('Page:a'), findsNothing);
-      expect(find.text('Page:b'), findsOneWidget);
-      expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
-      verify(env.listener.didEndTransition(
-        argThat(isRoute(name: 'b')),
-      )).called(1);
+      expect(find.text('Page:a'), findsOneWidget);
+      expect(find.text('Page:b'), findsNothing);
+      expect(transitionProgressHistory, isMonotonicallyDecreasing);
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
+      verifyInOrder([
+        env.listener.didComplete(
+          argThat(isRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        env.listener.didPop(
+          argThat(isRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        env.listener.didPopNext(
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
+        ),
+        env.listener.didEndTransition(
+          argThat(isRoute(name: 'a')),
+        ),
+      ]);
       verifyNoMoreInteractions(env.listener);
 
       // Reset the default target platform.
