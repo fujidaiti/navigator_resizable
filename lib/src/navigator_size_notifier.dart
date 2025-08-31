@@ -13,27 +13,25 @@ class NavigatorSizeNotifier extends ChangeNotifier
   NavigatorSizeNotifier({
     required this.interpolationCurve,
   });
+
   final _routeContentSizes = <Route<dynamic>, Size>{};
-
   final Curve interpolationCurve;
+  Animation<Size?>? _interpolation;
+  Route<dynamic>? _currentRoute;
 
-  _RouteContentSizeInterpolation? _interpolationRegistry;
-  _RouteContentSizeInterpolation? get _interpolation => _interpolationRegistry;
-  set _interpolation(_RouteContentSizeInterpolation? newValue) {
-    _interpolationRegistry?.removeListener(notifyListeners);
-    _interpolationRegistry = newValue?..addListener(notifyListeners);
+  void _updateInterpolation(Animation<Size?>? newValue) {
+    _interpolation?.removeListener(notifyListeners);
+    _interpolation = newValue?..addListener(notifyListeners);
     if (newValue != null) {
       _currentRoute = null;
     }
   }
 
-  Route<dynamic>? _currentRouteRegistry;
-  Route<dynamic>? get _currentRoute => _currentRouteRegistry;
-  set _currentRoute(Route<dynamic>? newRoute) {
+  void _updateCurrentRoute(Route<dynamic>? newRoute) {
     final oldSize = value;
-    _currentRouteRegistry = newRoute;
+    _currentRoute = newRoute;
     if (newRoute != null) {
-      _interpolation = null;
+      _updateInterpolation(null);
     }
     if (value != oldSize) {
       notifyListeners();
@@ -56,8 +54,8 @@ class NavigatorSizeNotifier extends ChangeNotifier
 
   @override
   void dispose() {
-    _interpolation = null;
-    _currentRoute = null;
+    _updateInterpolation(null);
+    _updateCurrentRoute(null);
     super.dispose();
   }
 
@@ -81,7 +79,7 @@ class NavigatorSizeNotifier extends ChangeNotifier
       assert(_routeContentSizes.containsKey(route));
       _routeContentSizes.remove(route);
       if (route == _currentRoute) {
-        _currentRoute = null;
+        _updateCurrentRoute(null);
       }
     }
 
@@ -95,82 +93,109 @@ class NavigatorSizeNotifier extends ChangeNotifier
     bool isUserGestureInProgress = false,
   }) {
     assert(_routeContentSizes.containsKey(targetRoute));
+    assert(_lastReportedValidValue != null);
 
-    debugPrint(
-        'didStartTransition: isUserGestureInProgress=$isUserGestureInProgress, target=${targetRoute.settings}');
+    final currentSize = _lastReportedValidValue!;
     if (isUserGestureInProgress) {
-      _interpolation = _RouteContentSizeInterpolation(
-        initialSize: _lastReportedValidValue,
-        targetSize: () => _routeContentSizes[targetRoute],
-        curve: Curves.linear,
-        drivenBy: animation.drive(Tween(begin: 1.0, end: 0.0)),
+      assert(animation.status == AnimationStatus.forward);
+      _updateInterpolation(
+        _LazySizeTween(
+          start: () => _routeContentSizes[targetRoute],
+          end: () => currentSize,
+        ).animate(animation),
       );
+    } else if (animation.status == AnimationStatus.forward) {
+      if (animation.value == 0) {
+        _updateInterpolation(
+          _LazySizeTween(
+            start: () => currentSize,
+            end: () => _routeContentSizes[targetRoute],
+          ).chain(CurveTween(curve: interpolationCurve)).animate(animation),
+        );
+      } else {
+        final animationOffset = animation.value;
+        _updateInterpolation(
+          _LazySizeTween(
+            start: () => _lerpStartSize(
+              _routeContentSizes[targetRoute]!,
+              currentSize,
+              animationOffset,
+            ),
+            end: () => _routeContentSizes[targetRoute],
+          ).animate(animation),
+        );
+      }
     } else {
-      _interpolation = _RouteContentSizeInterpolation(
-        initialSize: _lastReportedValidValue,
-        targetSize: () => _routeContentSizes[targetRoute],
-        curve: interpolationCurve,
-        drivenBy: switch (animation.status) {
-          AnimationStatus.reverse =>
-            animation.drive(Tween(begin: 1.0, end: 0.0)),
-          _ => animation,
-        },
-      );
+      assert(animation.status == AnimationStatus.reverse);
+      if (animation.value == 1) {
+        _updateInterpolation(
+          _LazySizeTween(
+            start: () => _routeContentSizes[targetRoute],
+            end: () => currentSize,
+          ).chain(CurveTween(curve: interpolationCurve)).animate(animation),
+        );
+      } else {
+        final animationOffset = animation.value;
+        _updateInterpolation(
+          _LazySizeTween(
+            start: () => _routeContentSizes[targetRoute],
+            end: () => _lerpEndSize(
+              _routeContentSizes[targetRoute]!,
+              currentSize,
+              animationOffset,
+            ),
+          ).animate(animation),
+        );
+      }
     }
   }
 
   @override
   void didEndTransition(Route<dynamic> route) {
     assert(_routeContentSizes.containsKey(route));
-    _currentRoute = route;
+    _updateCurrentRoute(route);
   }
 }
 
-class _RouteContentSizeInterpolation extends Animation<Size?>
-    with AnimationWithParentMixin<double> {
-  _RouteContentSizeInterpolation({
-    required Animation<double> drivenBy,
-    required this.curve,
-    required this.initialSize,
-    required this.targetSize,
-  })  : parent = drivenBy,
-        initialT = drivenBy.value;
+class _LazySizeTween extends Animatable<Size?> {
+  _LazySizeTween({
+    required this.start,
+    required this.end,
+  });
+
+  final ValueGetter<Size?> start;
+  final ValueGetter<Size?> end;
 
   @override
-  final Animation<double> parent;
-  final Curve curve;
-  final double initialT;
-  final Size? initialSize;
-  final ValueGetter<Size?> targetSize;
-
-  @override
-  Size? get value {
-    if (initialSize?.isFinite != true) {
+  Size? transform(double t) {
+    final start = this.start();
+    if (start?.isFinite != true) {
       return null;
     }
-    final targetSize = this.targetSize();
-    if (targetSize?.isFinite != true) {
+    final end = this.end();
+    if (end?.isFinite != true) {
       return null;
     }
-    final effectiveProgress = initialT > 0
-        ? _inverseLerp(parent.value, min: initialT, max: 1)
-        : parent.value;
-
-    debugPrint(
-      'effectiveProgress=$effectiveProgress, initialT=$initialT, parent.value=${parent.value}, instance: ${identityHashCode(parent)}, status:${parent.status}',
-    );
-
-    return Size.lerp(
-      initialSize,
-      targetSize,
-      curve.transform(effectiveProgress),
-    );
+    return Size.lerp(start, end, t);
   }
 }
 
-double _inverseLerp(
-  double x, {
-  required double min,
-  required double max,
-}) =>
-    (x - min) / (max - min);
+/// Returns `ss` that satisfies the equation `st = (1 - t) * se + t * ss`,
+/// where [se] is the end size and [st] is the interpolated size at time [t].
+Size _lerpStartSize(Size se, Size st, double t) {
+  assert(0 <= t && t < 1);
+  return Size(
+    (st.width - t * se.width) / (1 - t),
+    (st.height - t * se.height) / (1 - t),
+  );
+}
+
+/// Returns `se` that satisfies the equation `st = (1 - t) * se + t * ss`,
+/// where [ss] is the start size and [st] is the interpolated size at time [t].
+Size _lerpEndSize(Size ss, Size st, double t) {
+  assert(0 < t && t <= 1);
+  return Size(
+    (st.width - (1 - t) * ss.width) / t,
+    (st.height - (1 - t) * ss.height) / t,
+  );
+}
