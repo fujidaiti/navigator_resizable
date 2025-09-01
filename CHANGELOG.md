@@ -2,11 +2,41 @@
 
 ## X.X.X
 
-- `NavigatorResizable` now asserts when provided with unbounded width or height constraints.
+- Fix: assertion error when popping route in the middle of transition animation ([#16](https://github.com/fujidaiti/navigator_resizable/issues/16))
+- `NavigatorResizable` now asserts when provided with unbounded width or height constraints([#12](https://github.com/fujidaiti/navigator_resizable/issues/12)).
 
 ### Breaking change in `NavigatorResizable`
 
-`NavigatorResizable` requires bounded constraints on both axes. If its parent passes unbounded constraints (e.g., from `Column`, `Row`), an assertion is thrown in debug mode. This helps catch cases where routes inside the underlying `Navigator` might otherwise receive infinite dimensions, which often surface when route content uses `double.infinity` for width/height to expand and fill the available space.
+`NavigatorResizable` now requires bounded constraints on both axes. If its parent passes unbounded constraints (e.g., from `Column` or `Row`), an assertion will be thrown in debug mode. This helps catch cases where routes inside the underlying `Navigator` might otherwise receive infinite dimensions, which often surface when route content uses `double.infinity` for width/height to expand and fill the available space.
+
+### Breaking change in `NavigatorEventListener`
+
+The signature of `NavigatorEventListener.didStartTransition` has been changed to handle edge cases where a transition is started in the middle of another transition, for example, when a route is pushed and immediately popped.
+
+**BEFORE**
+
+Previously, the route that is placed on top of the navigation stack before the transition starts is passed as the first argument of `didStartTransition`.
+
+```dart
+void didStartTransition(
+  Route<dynamic> currentRoute,
+  Route<dynamic> nextRoute,
+  Animation<double> animation, {
+  bool isUserGestureInProgress = false,
+});
+```
+
+**AFTER**
+
+In the new signature, the first argument `currentRoute` was removed, and the second argument was renamed to `targetRoute`. You can still keep track of the top-most route by capturing the `route` object reported by the `NavigatorEventObserver.didEndTransition` callback.
+
+```dart
+void didStartTransition(
+  Route<dynamic> targetRoute,
+  Animation<double> animation, {
+  bool isUserGestureInProgress = false,
+});
+```
 
 ## 2.0.0
 
