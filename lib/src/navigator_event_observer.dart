@@ -52,11 +52,14 @@ mixin NavigatorEventListener {
   /// See [Route.didChangePrevious] for more details.
   void didChangePrevious(Route<dynamic> route, Route<dynamic>? previousRoute) {}
 
-  /// Called when a route transition starts between [currentRoute] and
-  /// [nextRoute].
+  /// Called when a route transition starts toward [targetRoute].
   ///
-  /// This is called only when the [currentRoute] and [nextRoute] are both
-  /// [TransitionRoute]s. If the transition is driven by a user gesture,
+  /// The [targetRoute] is the route that will be the top-most route in
+  /// the navigation stack after the transition is completed.
+  /// Note that this method is called only when the [targetRoute] is of type
+  /// [TransitionRoute].
+  ///
+  /// If the transition is driven by a user gesture,
   /// typically a swipe back gesture on iOS, [isUserGestureInProgress] is true.
   ///
   /// The [animation] is the animation that drives the transition
@@ -68,8 +71,7 @@ mixin NavigatorEventListener {
   /// calling [Navigator.pop] consecutively. Even in such cases,
   /// [didEndTransition] is called only once for each route transition.
   void didStartTransition(
-    Route<dynamic> currentRoute,
-    Route<dynamic> nextRoute,
+    Route<dynamic> targetRoute,
     Animation<double> animation, {
     bool isUserGestureInProgress = false,
   }) {}
@@ -242,7 +244,6 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
     _notifyListeners((it) {
       it.didPush(route);
       it.didStartTransition(
-        _lastSettledRoute!,
         route,
         _TransitionProgress(animationOwner: route),
       );
@@ -270,7 +271,7 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
     _notifyListeners((it) => it.didPop(route, result));
   }
 
-  void _didPopNextInternal(Route<dynamic> route) {
+  void _didPopNextInternal(Route<dynamic> route, Route<dynamic> poppedRoute) {
     if (_navigator!.userGestureInProgress) {
       // A swipe back gesture has popped the current route off.
       // This is handled by `_didUserGestureInProgressChange`,
@@ -279,26 +280,24 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
     }
 
     assert(route.isCurrent);
-    final currentRoute = _lastSettledRoute!;
-    if (currentRoute is! TransitionRoute<dynamic> ||
-        currentRoute.animation!.status == AnimationStatus.dismissed) {
+    if (poppedRoute is! TransitionRoute<dynamic> ||
+        poppedRoute.animation!.status == AnimationStatus.dismissed) {
       _lastSettledRoute = route;
       _notifyListeners((it) => it.didEndTransition(route));
       return;
     }
 
-    assert(currentRoute.animation!.status == AnimationStatus.reverse);
+    assert(poppedRoute.animation!.status == AnimationStatus.reverse);
     _notifyListeners((it) {
       it.didStartTransition(
-        currentRoute,
         route,
-        _TransitionProgress(animationOwner: currentRoute),
+        _TransitionProgress(animationOwner: poppedRoute),
       );
     });
 
     void notifyTransitionEnd(AnimationStatus status) {
       if (status == AnimationStatus.dismissed) {
-        currentRoute.animation!.removeStatusListener(notifyTransitionEnd);
+        poppedRoute.animation!.removeStatusListener(notifyTransitionEnd);
         // At this point, the `route` might no longer be the current route.
         // This can happen, for example, if multiple routes are popped
         // in the same frame by calling `Navigator.pop` consecutively.
@@ -309,13 +308,13 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
       }
     }
 
-    currentRoute.animation!.addStatusListener(notifyTransitionEnd);
+    poppedRoute.animation!.addStatusListener(notifyTransitionEnd);
   }
 
   void _didPopNext(Route<dynamic> route, Route<dynamic> nextRoute) {
     assert(_lastSettledRoute != null);
     _notifyListeners((it) => it.didPopNext(route, nextRoute));
-    _didPopNextInternal(route);
+    _didPopNextInternal(route, nextRoute);
   }
 
   void _didChangeNext(Route<dynamic> route, Route<dynamic>? nextRoute) {
@@ -323,7 +322,8 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
     _nextRouteOf[route] = nextRoute;
     _notifyListeners((it) => it.didChangeNext(route, nextRoute));
     if (didPopNext) {
-      _didPopNextInternal(route);
+      assert(_lastSettledRoute != null);
+      _didPopNextInternal(route, _lastSettledRoute!);
     }
   }
 
@@ -355,7 +355,6 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
           case AnimationStatus.forward:
             _notifyListeners(
               (it) => it.didStartTransition(
-                originRoute,
                 destinationRoute,
                 _TransitionProgress(animationOwner: originRoute),
                 isUserGestureInProgress: true,

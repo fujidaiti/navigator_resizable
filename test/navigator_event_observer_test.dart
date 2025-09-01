@@ -109,7 +109,6 @@ void main() {
           argThat(isRoute(name: 'b')),
         ),
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'a')),
           argThat(isRoute(name: 'b')),
           captureAny,
           isUserGestureInProgress: false,
@@ -204,7 +203,6 @@ void main() {
             argThat(isRoute(name: 'b')),
           ),
           env.listener.didStartTransition(
-            argThat(isRoute(name: 'a')),
             argThat(isRoute(name: 'b')),
             any,
             isUserGestureInProgress: false,
@@ -228,7 +226,6 @@ void main() {
             argThat(isRoute(name: 'c')),
           ),
           env.listener.didStartTransition(
-            argThat(isRoute(name: 'a')),
             argThat(isRoute(name: 'c')),
             captureAny,
             isUserGestureInProgress: false,
@@ -291,7 +288,6 @@ void main() {
           argThat(isRoute(name: 'b')),
         ),
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'b')),
           argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: false,
@@ -341,7 +337,6 @@ void main() {
           argThat(isRoute(name: 'b')),
         ),
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'b')),
           argThat(isRoute(name: 'a')),
           any,
           isUserGestureInProgress: false,
@@ -388,7 +383,6 @@ void main() {
           argThat(isRoute(name: 'c')),
         ),
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'c')),
           argThat(isRoute(name: 'b')),
           any,
           isUserGestureInProgress: false,
@@ -406,7 +400,6 @@ void main() {
           argThat(isRoute(name: 'b')),
         ),
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'c')),
           argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: false,
@@ -447,7 +440,6 @@ void main() {
         env.listener.didInstall(argThat(isRoute(name: 'b'))),
         env.listener.didPush(argThat(isRoute(name: 'b'))),
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'a')),
           argThat(isRoute(name: 'b')),
           captureAny,
           isUserGestureInProgress: false,
@@ -487,6 +479,177 @@ void main() {
       verifyNoMoreInteractions(env.listener);
     });
 
+    testWidgets(
+      'When pushing to a sibling route then reverting mid-transition',
+      (tester) async {
+        final env = boilerplate(
+          transitionDuration: const Duration(milliseconds: 300),
+        );
+        await tester.pumpWidget(env.testWidget);
+        expect(find.text('Page:a'), findsOneWidget);
+
+        // Start navigating to b and stop at the middle of the transition.
+        reset(env.listener);
+        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        await tester.pump(); // Required to kick off the animation clock.
+        await tester.pump(const Duration(milliseconds: 150));
+        var verificationResults = verifyInOrder([
+          env.listener.didInstall(argThat(isRoute(name: 'b'))),
+          env.listener.didPush(argThat(isRoute(name: 'b'))),
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'b')),
+            captureAny,
+            isUserGestureInProgress: false,
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didChangePrevious(
+            argThat(isRoute(name: 'b')),
+            argThat(isRoute(name: 'a')),
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'b')),
+          ),
+        ]);
+        verifyNoMoreInteractions(env.listener);
+        final capturedForwardAnimation =
+            verificationResults[2].captured.single as Animation<double>;
+        expect(capturedForwardAnimation.status, AnimationStatus.forward);
+        expect(capturedForwardAnimation.value, 0.5);
+
+        // Then, go back to a.
+        reset(env.listener);
+        env.navigatorKey.currentState!.pop();
+        await tester.pump();
+        verificationResults = verifyInOrder([
+          env.listener.didComplete(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didPop(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didPopNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'b')),
+          ),
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'a')),
+            captureAny,
+            isUserGestureInProgress: false,
+          ),
+        ]);
+        verifyNoMoreInteractions(env.listener);
+        final capturedBackwardAnimation =
+            verificationResults[3].captured.single as Animation<double>;
+        expect(capturedBackwardAnimation.status, AnimationStatus.reverse);
+        expect(capturedBackwardAnimation.value, 0.5);
+
+        await tester.pumpAndSettle();
+        verify(env.listener.didEndTransition(argThat(isRoute(name: 'a'))));
+        verifyNoMoreInteractions(env.listener);
+      },
+    );
+
+    testWidgets(
+      'When replacing a route then reverting mid-transition',
+      (tester) async {
+        final env = boilerplate(
+          transitionDuration: const Duration(milliseconds: 300),
+        );
+        await tester.pumpWidget(env.testWidget);
+        expect(find.text('Page:a'), findsOneWidget);
+
+        // Start navigating to d and stop at the middle of the transition.
+        reset(env.listener);
+        unawaited(env.navigatorKey.currentState!.pushReplacementNamed('d'));
+        await tester.pump(); // Required to kick off the animation clock.
+        await tester.pump(const Duration(milliseconds: 150));
+        var verificationResults = verifyInOrder([
+          env.listener.didInstall(argThat(isRoute(name: 'd'))),
+          env.listener.didPush(argThat(isRoute(name: 'd'))),
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'd')),
+            captureAny,
+            isUserGestureInProgress: false,
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'd')),
+            argThat(isNull),
+          ),
+          env.listener.didComplete(
+            argThat(isRoute(name: 'a')),
+            argThat(isNull),
+          ),
+          env.listener.didChangePrevious(
+            argThat(isRoute(name: 'd')),
+            argThat(isNull),
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'd')),
+          ),
+        ]);
+        verifyNoMoreInteractions(env.listener);
+        final capturedForwardAnimation =
+            verificationResults[2].captured.single as Animation<double>;
+        expect(capturedForwardAnimation.status, AnimationStatus.forward);
+        expect(capturedForwardAnimation.value, 0.5);
+
+        // Then, revert the replacement by replacing d with a.
+        reset(env.listener);
+        unawaited(env.navigatorKey.currentState!.pushReplacementNamed('a'));
+        await tester.pump();
+        verificationResults = verifyInOrder([
+          env.listener.didInstall(
+            argThat(isRoute(name: 'a')),
+          ),
+          env.listener.didPush(
+            argThat(isRoute(name: 'a')),
+          ),
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'a')),
+            captureAny,
+            isUserGestureInProgress: false,
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isNull),
+          ),
+          env.listener.didComplete(
+            argThat(isRoute(name: 'd')),
+            argThat(isNull),
+          ),
+          env.listener.didChangePrevious(
+            argThat(isRoute(name: 'a')),
+            argThat(isNull),
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'd')),
+            argThat(isRoute(name: 'a')),
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'a')),
+          ),
+        ]);
+        verifyNoMoreInteractions(env.listener);
+        final capturedForwardAnimationBack =
+            verificationResults[2].captured.single as Animation<double>;
+        expect(capturedForwardAnimationBack.status, AnimationStatus.forward);
+        expect(capturedForwardAnimationBack.value, isZero);
+
+        reset(env.listener);
+        await tester.pumpAndSettle();
+        verify(env.listener.didEndTransition(argThat(isRoute(name: 'a'))));
+        verifyNoMoreInteractions(env.listener);
+      },
+    );
+
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
@@ -506,7 +669,6 @@ void main() {
 
       final verification = verify(
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'b')),
           argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: true,
@@ -576,7 +738,6 @@ void main() {
 
       final verification = verify(
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'b')),
           argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: true,
@@ -781,7 +942,6 @@ void main() {
           argThat(isRoute(name: 'b')),
         ),
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'a')),
           argThat(isRoute(name: 'b')),
           captureAny,
           isUserGestureInProgress: false,
@@ -816,6 +976,183 @@ void main() {
       )).called(1);
       verifyNoMoreInteractions(env.listener);
     });
+
+    testWidgets(
+      'When pushing to a sibling route then reverting mid-transition',
+      (tester) async {
+        final env = boilerplate(
+          initialLocation: '/a',
+          transitionDuration: const Duration(milliseconds: 300),
+        );
+        await tester.pumpWidget(env.testWidget);
+        expect(find.text('Page:a'), findsOneWidget);
+
+        // Start navigating to /b and stop at the middle of the transition.
+        reset(env.listener);
+        env.setLocation('/a/b');
+        await tester.pump(); // Required to kick off the animation clock.
+        await tester.pump(const Duration(milliseconds: 150));
+        var verificationResults = verifyInOrder([
+          env.listener.didInstall(argThat(isRoute(name: 'b'))),
+          env.listener.didPush(argThat(isRoute(name: 'b'))),
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'b')),
+            captureAny,
+            isUserGestureInProgress: false,
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didChangePrevious(
+            argThat(isRoute(name: 'b')),
+            argThat(isRoute(name: 'a')),
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'b')),
+          ),
+        ]);
+        verifyNoMoreInteractions(env.listener);
+        final capturedForwardAnimation =
+            verificationResults[2].captured.single as Animation<double>;
+        expect(capturedForwardAnimation.status, AnimationStatus.forward);
+        expect(capturedForwardAnimation.value, 0.5);
+
+        // Then, go back to /a.
+        reset(env.listener);
+        env.setLocation('/a');
+        await tester.pump();
+        verificationResults = verifyInOrder([
+          env.listener.didComplete(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didPop(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didPopNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'b')),
+          ),
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'a')),
+            captureAny,
+            isUserGestureInProgress: false,
+          ),
+        ]);
+        verifyNoMoreInteractions(env.listener);
+        final capturedBackwardAnimation =
+            verificationResults[3].captured.single as Animation<double>;
+        expect(capturedBackwardAnimation.status, AnimationStatus.reverse);
+        expect(capturedBackwardAnimation.value, 0.5);
+
+        await tester.pumpAndSettle();
+        verify(env.listener.didEndTransition(argThat(isRoute(name: 'a'))));
+        verifyNoMoreInteractions(env.listener);
+      },
+    );
+
+    testWidgets(
+      'When replacing the root then reverting mid-transition',
+      (tester) async {
+        final env = boilerplate(
+          initialLocation: '/a',
+          transitionDuration: const Duration(milliseconds: 300),
+        );
+        await tester.pumpWidget(env.testWidget);
+        expect(find.text('Page:a'), findsOneWidget);
+
+        // Start navigating to /d and stop at the middle of the transition.
+        reset(env.listener);
+        env.setLocation('/d');
+        await tester.pump(); // Required to kick off the animation clock.
+        await tester.pump(const Duration(milliseconds: 150));
+        var verificationResults = verifyInOrder([
+          env.listener.didInstall(argThat(isRoute(name: 'd'))),
+          env.listener.didPush(argThat(isRoute(name: 'd'))),
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'd')),
+            captureAny,
+            isUserGestureInProgress: false,
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'd')),
+            argThat(isNull),
+          ),
+          env.listener.didComplete(
+            argThat(isRoute(name: 'a')),
+            argThat(isNull),
+          ),
+          env.listener.didChangePrevious(
+            argThat(isRoute(name: 'd')),
+            argThat(isNull),
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'd')),
+          ),
+        ]);
+        verifyNoMoreInteractions(env.listener);
+        var capturedForwardAnimation =
+            verificationResults[2].captured.single as Animation<double>;
+        expect(capturedForwardAnimation.status, AnimationStatus.forward);
+        expect(capturedForwardAnimation.value, 0.5);
+
+        // Then, go back to /a.
+        reset(env.listener);
+        env.setLocation('/a');
+        await tester.pump();
+        verificationResults = verifyInOrder([
+          env.listener.didInstall(
+            argThat(isRoute(name: 'a')),
+          ),
+          env.listener.didPush(
+            argThat(isRoute(name: 'a')),
+          ),
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'a')),
+            captureAny,
+            isUserGestureInProgress: false,
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isNull),
+          ),
+          env.listener.didComplete(
+            argThat(isRoute(name: 'd')),
+            argThat(isNull),
+          ),
+          env.listener.didChangePrevious(
+            argThat(isRoute(name: 'a')),
+            argThat(isNull),
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'd')),
+            argThat(isRoute(name: 'a')),
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'a')),
+          ),
+        ]);
+        verifyNoMoreInteractions(env.listener);
+        capturedForwardAnimation =
+            verificationResults[2].captured.single as Animation<double>;
+        expect(capturedForwardAnimation.status, AnimationStatus.forward);
+        // Even though we are conceptually going to return to the first route /a,
+        // the internal process is to push /a again over /d. So the transition
+        // animation starts from the beginning, not from the middle.
+        expect(capturedForwardAnimation.value, isZero);
+
+        reset(env.listener);
+        // Resume the transition and wait for it to complete.
+        await tester.pumpAndSettle();
+        verify(env.listener.didEndTransition(argThat(isRoute(name: 'a'))));
+        verifyNoMoreInteractions(env.listener);
+      },
+    );
 
     testWidgets('When pushing a route without animation', (tester) async {
       final env = boilerplate(transitionDuration: Duration.zero);
@@ -874,7 +1211,6 @@ void main() {
           argThat(isRoute(name: 'c')),
         ),
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'a')),
           argThat(isRoute(name: 'c')),
           captureAny,
           isUserGestureInProgress: false,
@@ -945,7 +1281,6 @@ void main() {
           argThat(isRoute(name: 'd')),
         ),
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'b')),
           argThat(isRoute(name: 'd')),
           captureAny,
           isUserGestureInProgress: false,
@@ -1018,7 +1353,6 @@ void main() {
           argThat(isRoute(name: 'b')),
         ),
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'b')),
           argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: false,
@@ -1068,7 +1402,6 @@ void main() {
           argThat(isRoute(name: 'b')),
         ),
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'b')),
           argThat(isRoute(name: 'a')),
           any,
           isUserGestureInProgress: false,
@@ -1114,7 +1447,6 @@ void main() {
           argThat(isRoute(name: 'c')),
         ),
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'c')),
           argThat(isRoute(name: 'b')),
           any,
           isUserGestureInProgress: false,
@@ -1128,7 +1460,6 @@ void main() {
           argThat(isNull),
         ),
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'c')),
           argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: false,
@@ -1170,7 +1501,6 @@ void main() {
 
       final verification = verify(
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'b')),
           argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: true,
@@ -1180,17 +1510,41 @@ void main() {
           verification.captured.single as Animation<double>;
 
       startTrackingTransitionProgress(capturedAnimation);
-      // Cancel the swipe back gesture.
+
+      // Move the finger toward the right side of the screen.
+      await gesture.moveBy(const Offset(50, 0));
+      await tester.pumpAndSettle();
+      await gesture.moveBy(const Offset(50, 0));
+      await tester.pumpAndSettle();
+      await gesture.moveBy(const Offset(50, 0));
+      await tester.pumpAndSettle();
+      await gesture.moveBy(const Offset(200, 0));
+      await tester.pumpAndSettle();
+      // End the swipe back gesture.
       await gesture.up();
       await tester.pumpAndSettle();
 
-      expect(find.text('Page:a'), findsNothing);
-      expect(find.text('Page:b'), findsOneWidget);
-      expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
-      verify(env.listener.didEndTransition(
-        argThat(isRoute(name: 'b')),
-      )).called(1);
+      expect(find.text('Page:a'), findsOneWidget);
+      expect(find.text('Page:b'), findsNothing);
+      expect(transitionProgressHistory, isMonotonicallyDecreasing);
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
+      verifyInOrder([
+        env.listener.didComplete(
+          argThat(isRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        env.listener.didPop(
+          argThat(isRoute(name: 'b')),
+          argThat(isNull),
+        ),
+        env.listener.didPopNext(
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'b')),
+        ),
+        env.listener.didEndTransition(
+          argThat(isRoute(name: 'a')),
+        ),
+      ]);
       verifyNoMoreInteractions(env.listener);
 
       // Reset the default target platform.
@@ -1215,7 +1569,6 @@ void main() {
 
       final verification = verify(
         env.listener.didStartTransition(
-          argThat(isRoute(name: 'b')),
           argThat(isRoute(name: 'a')),
           captureAny,
           isUserGestureInProgress: true,
