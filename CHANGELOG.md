@@ -1,6 +1,6 @@
 # Changelog
 
-## X.X.X
+## 3.0.0
 
 - Fix: assertion error when popping route in the middle of transition animation ([#16](https://github.com/fujidaiti/navigator_resizable/issues/16))
 - `NavigatorResizable` now asserts when provided with unbounded width or height constraints([#12](https://github.com/fujidaiti/navigator_resizable/issues/12)).
