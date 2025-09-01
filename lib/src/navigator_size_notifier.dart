@@ -93,60 +93,78 @@ class NavigatorSizeNotifier extends ChangeNotifier
     bool isUserGestureInProgress = false,
   }) {
     assert(_routeContentSizes.containsKey(targetRoute));
-    assert(_lastReportedValidValue != null);
-
-    final currentSize = _lastReportedValidValue!;
     if (isUserGestureInProgress) {
-      assert(animation.status == AnimationStatus.forward);
+      _startUserGestureTransition(targetRoute, animation);
+    } else if (animation.status == AnimationStatus.forward) {
+      _startPushTransition(targetRoute, animation);
+    } else {
+      assert(animation.status == AnimationStatus.reverse);
+      _startPopTransition(targetRoute, animation);
+    }
+  }
+
+  void _startUserGestureTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation,
+  ) {
+    assert(animation.status == AnimationStatus.forward);
+    final initialSize = _lastReportedValidValue!;
+    _updateInterpolation(
+      _LazySizeTween(
+        start: () => _routeContentSizes[targetRoute],
+        end: () => initialSize,
+      ).animate(animation),
+    );
+  }
+
+  void _startPushTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation,
+  ) {
+    assert(animation.status == AnimationStatus.forward);
+    final initialSize = _lastReportedValidValue!;
+    _updateInterpolation(
+      _LazySizeTween(
+        start: () => initialSize,
+        end: () => _routeContentSizes[targetRoute],
+      ).chain(CurveTween(curve: interpolationCurve)).animate(animation),
+    );
+  }
+
+  void _startPopTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation,
+  ) {
+    assert(animation.status == AnimationStatus.reverse);
+    final initialSize = _lastReportedValidValue!;
+    if (animation.value == 1) {
       _updateInterpolation(
         _LazySizeTween(
           start: () => _routeContentSizes[targetRoute],
-          end: () => currentSize,
+          end: () => initialSize,
+        ).chain(CurveTween(curve: interpolationCurve)).animate(animation),
+      );
+    } else {
+      // In this case, a pop transition has started in the middle of
+      // another transition. This can happen, for example, when a route
+      // is popped immediately after being pushed.
+      // To avoid layout shifts, we start a linear size transition
+      // from a synthetic start size to the `targetRoute`'s size,
+      // where the synthetic start size is calculated by _lerpEndSize.
+      // This transition is such that the size equals the `initialSize`
+      // at `animation.value == initialAnimationProgress`, and it eventually
+      // reaches the `targetRoute`'s size at `animation.value == 1`.
+      final initialAnimationProgress = animation.value;
+      _updateInterpolation(
+        _LazySizeTween(
+          start: () => _routeContentSizes[targetRoute],
+          end: () => _lerpEndSize(
+            _routeContentSizes[targetRoute]!,
+            initialSize,
+            initialAnimationProgress,
+          ),
         ).animate(animation),
       );
-    } else if (animation.status == AnimationStatus.forward) {
-      if (animation.value == 0) {
-        _updateInterpolation(
-          _LazySizeTween(
-            start: () => currentSize,
-            end: () => _routeContentSizes[targetRoute],
-          ).chain(CurveTween(curve: interpolationCurve)).animate(animation),
-        );
-      } else {
-        final animationOffset = animation.value;
-        _updateInterpolation(
-          _LazySizeTween(
-            start: () => _lerpStartSize(
-              _routeContentSizes[targetRoute]!,
-              currentSize,
-              animationOffset,
-            ),
-            end: () => _routeContentSizes[targetRoute],
-          ).animate(animation),
-        );
-      }
-    } else {
-      assert(animation.status == AnimationStatus.reverse);
-      if (animation.value == 1) {
-        _updateInterpolation(
-          _LazySizeTween(
-            start: () => _routeContentSizes[targetRoute],
-            end: () => currentSize,
-          ).chain(CurveTween(curve: interpolationCurve)).animate(animation),
-        );
-      } else {
-        final animationOffset = animation.value;
-        _updateInterpolation(
-          _LazySizeTween(
-            start: () => _routeContentSizes[targetRoute],
-            end: () => _lerpEndSize(
-              _routeContentSizes[targetRoute]!,
-              currentSize,
-              animationOffset,
-            ),
-          ).animate(animation),
-        );
-      }
     }
   }
 
@@ -178,16 +196,6 @@ class _LazySizeTween extends Animatable<Size?> {
     }
     return Size.lerp(start, end, t);
   }
-}
-
-/// Returns `ss` that satisfies the equation `st = (1 - t) * se + t * ss`,
-/// where [se] is the end size and [st] is the interpolated size at time [t].
-Size _lerpStartSize(Size se, Size st, double t) {
-  assert(0 <= t && t < 1);
-  return Size(
-    (st.width - t * se.width) / (1 - t),
-    (st.height - t * se.height) / (1 - t),
-  );
 }
 
 /// Returns `se` that satisfies the equation `st = (1 - t) * se + t * ss`,
