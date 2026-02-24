@@ -124,11 +124,13 @@ class NavigatorEventObserver extends StatefulWidget {
 }
 
 /// The state of [NavigatorEventObserver].
-class NavigatorEventObserverState extends State<NavigatorEventObserver> {
+class NavigatorEventObserverState extends State<NavigatorEventObserver>
+    with TickerProviderStateMixin {
   final Set<NavigatorEventListener> _listeners = {};
   final Map<Route<dynamic>, Route<dynamic>?> _nextRouteOf = {};
   final Map<Route<dynamic>, Route<dynamic>?> _previousRouteOf = {};
   NavigatorState? _navigator;
+  AnimationController? _replaceAnimationController;
 
   @visibleForTesting
   Route<dynamic>? get lastSettledRoute => _lastSettledRoute;
@@ -185,6 +187,8 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
     _listeners.clear();
     _nextRouteOf.clear();
     _previousRouteOf.clear();
+    _replaceAnimationController?.dispose();
+    _replaceAnimationController = null;
     _navigator?.userGestureInProgressNotifier
         .removeListener(_didUserGestureInProgressChange);
     _navigator = null;
@@ -341,6 +345,43 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
 
   void _didReplace(Route<dynamic> route, Route<dynamic>? oldRoute) {
     _notifyListeners((it) => it.didReplace(route, oldRoute));
+
+    // Only animate if the replaced route was the current (settled) route.
+    if (oldRoute != _lastSettledRoute) return;
+
+    // Cancel any in-progress replace animation.
+    _replaceAnimationController?.dispose();
+    _replaceAnimationController = null;
+
+    final duration = route is TransitionRoute<dynamic>
+        ? route.transitionDuration
+        : Duration.zero;
+
+    if (duration == Duration.zero || route is! TransitionRoute<dynamic>) {
+      _lastSettledRoute = route;
+      _notifyListeners((it) => it.didEndTransition(route));
+      return;
+    }
+
+    final controller = AnimationController(vsync: this, duration: duration);
+    _replaceAnimationController = controller;
+
+    // Start the animation before notifying listeners so that
+    // the animation status is AnimationStatus.forward.
+    controller.forward().then((_) {
+      if (_replaceAnimationController == controller) {
+        _replaceAnimationController = null;
+        if (route.isCurrent) {
+          _lastSettledRoute = route;
+          _notifyListeners((it) => it.didEndTransition(route));
+        }
+        controller.dispose();
+      }
+    });
+
+    _notifyListeners((it) {
+      it.didStartTransition(route, controller);
+    });
   }
 
   void _didUserGestureInProgressChange() {
