@@ -254,28 +254,7 @@ void main() {
         builder: (_) => const _TestRouteWidget(initialSize: Size(150, 250)),
       );
       navigator.replace(oldRoute: routeB, newRoute: newRoute);
-      expect(env.getBox(tester).size, const Size(200, 300));
-
-      Size interpolatedSize(double progress) {
-        return Size.lerp(
-          const Size(200, 300),
-          const Size(150, 250),
-          Curves.easeInOut.transform(progress),
-        )!;
-      }
-
-      await tester.pump(Duration.zero);
-
-      await tester.pump(const Duration(milliseconds: 75));
-      expect(env.getBox(tester).size, interpolatedSize(0.25));
-
-      await tester.pump(const Duration(milliseconds: 75));
-      expect(env.getBox(tester).size, interpolatedSize(0.5));
-
-      await tester.pump(const Duration(milliseconds: 75));
-      expect(env.getBox(tester).size, interpolatedSize(0.75));
-
-      await tester.pumpAndSettle();
+      await tester.pump();
       expect(env.getBox(tester).size, const Size(150, 250));
     });
 

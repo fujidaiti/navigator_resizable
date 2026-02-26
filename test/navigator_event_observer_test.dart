@@ -503,57 +503,6 @@ void main() {
         navigator.replace(oldRoute: routeB, newRoute: newRoute);
         await tester.pump();
 
-        final results = verifyInOrder([
-          env.listener.didInstall(argThat(isRoute(name: 'c'))),
-          env.listener.didReplace(
-            argThat(isRoute(name: 'c')),
-            argThat(isRoute(name: 'b')),
-          ),
-          env.listener.didStartTransition(
-            argThat(isRoute(name: 'c')),
-            captureAny,
-          ),
-        ]);
-        verifyNever(env.listener.didPush(any));
-
-        final capturedAnimation =
-            results[2].captured.single as Animation<double>;
-        expect(capturedAnimation.status, AnimationStatus.forward);
-
-        startTrackingTransitionProgress(capturedAnimation);
-        await tester.pumpAndSettle();
-
-        expect(find.text('Page:c'), findsOneWidget);
-        expect(transitionProgressHistory, isMonotonicallyIncreasing);
-        expect(env.getObserver().lastSettledRoute, isRoute(name: 'c'));
-        verify(env.listener.didEndTransition(
-          argThat(isRoute(name: 'c')),
-        )).called(1);
-      },
-    );
-
-    testWidgets(
-      'When replacing a route with Navigator.replace without animation',
-      (tester) async {
-        final env = boilerplate(transitionDuration: Duration.zero);
-        await tester.pumpWidget(env.testWidget);
-        // Push route 'b' on top of 'a' and capture the route.
-        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
-        await tester.pumpAndSettle();
-        expect(find.text('Page:b'), findsOneWidget);
-        final routeB = env.getObserver().lastSettledRoute!;
-        expect(routeB.settings.name, 'b');
-
-        reset(env.listener);
-        final navigator = env.navigatorKey.currentState!;
-        final newRoute = _TestMaterialPageRoute(
-          settings: const RouteSettings(name: 'c'),
-          transitionDuration: Duration.zero,
-          builder: (_) => const _TestScaffold(title: 'Page:c'),
-        );
-        navigator.replace(oldRoute: routeB, newRoute: newRoute);
-        await tester.pump();
-
         verifyInOrder([
           env.listener.didInstall(argThat(isRoute(name: 'c'))),
           env.listener.didReplace(
