@@ -239,6 +239,46 @@ void main() {
       expect(env.getBox(tester).size, const Size(150, 250));
     });
 
+    testWidgets('When replacing a route with Navigator.replace',
+        (tester) async {
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      await tester.pumpAndSettle();
+      expect(env.getBox(tester).size, const Size(200, 300));
+
+      final routeB = env.navigatorKey.currentState!.currentRoute;
+      final navigator = env.navigatorKey.currentState!;
+      final newRoute = ResizableMaterialPageRoute(
+        settings: const RouteSettings(name: 'c'),
+        builder: (_) => const _TestRouteWidget(initialSize: Size(150, 250)),
+      );
+      navigator.replace(oldRoute: routeB, newRoute: newRoute);
+      expect(env.getBox(tester).size, const Size(200, 300));
+
+      Size interpolatedSize(double progress) {
+        return Size.lerp(
+          const Size(200, 300),
+          const Size(150, 250),
+          Curves.easeInOut.transform(progress),
+        )!;
+      }
+
+      await tester.pump(Duration.zero);
+
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(env.getBox(tester).size, interpolatedSize(0.25));
+
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(env.getBox(tester).size, interpolatedSize(0.5));
+
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(env.getBox(tester).size, interpolatedSize(0.75));
+
+      await tester.pumpAndSettle();
+      expect(env.getBox(tester).size, const Size(150, 250));
+    });
+
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
       final env = boilerplate();
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;

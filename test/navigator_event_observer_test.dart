@@ -1248,6 +1248,60 @@ void main() {
       },
     );
 
+    testWidgets('When replacing the root page', (tester) async {
+      final env = boilerplate(
+        initialLocation: '/a',
+        transitionDuration: const Duration(milliseconds: 300),
+      );
+      await tester.pumpWidget(env.testWidget);
+      expect(find.text('Page:a'), findsOneWidget);
+
+      reset(env.listener);
+      env.setLocation('/d');
+      await tester.pump();
+
+      final results = verifyInOrder([
+        env.listener.didInstall(argThat(isRoute(name: 'd'))),
+        env.listener.didPush(argThat(isRoute(name: 'd'))),
+        env.listener.didStartTransition(
+          argThat(isRoute(name: 'd')),
+          captureAny,
+          isUserGestureInProgress: false,
+        ),
+        env.listener.didChangeNext(
+          argThat(isRoute(name: 'd')),
+          argThat(isNull),
+        ),
+        env.listener.didComplete(
+          argThat(isRoute(name: 'a')),
+          argThat(isNull),
+        ),
+        env.listener.didChangePrevious(
+          argThat(isRoute(name: 'd')),
+          argThat(isNull),
+        ),
+        env.listener.didChangeNext(
+          argThat(isRoute(name: 'a')),
+          argThat(isRoute(name: 'd')),
+        ),
+      ]);
+      verifyNoMoreInteractions(env.listener);
+
+      final capturedAnimation =
+          results[2].captured.single as Animation<double>;
+      expect(capturedAnimation.status, AnimationStatus.forward);
+
+      startTrackingTransitionProgress(capturedAnimation);
+      reset(env.listener);
+      await tester.pumpAndSettle();
+
+      verify(env.listener.didEndTransition(argThat(isRoute(name: 'd'))));
+      verifyNoMoreInteractions(env.listener);
+      expect(transitionProgressHistory, isMonotonicallyIncreasing);
+      expect(env.getObserver().lastSettledRoute, isRoute(name: 'd'));
+      expect(find.text('Page:d'), findsOneWidget);
+    });
+
     testWidgets('When pushing a route without animation', (tester) async {
       final env = boilerplate(transitionDuration: Duration.zero);
       await tester.pumpWidget(env.testWidget);
