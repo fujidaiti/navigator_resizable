@@ -1287,8 +1287,7 @@ void main() {
       ]);
       verifyNoMoreInteractions(env.listener);
 
-      final capturedAnimation =
-          results[2].captured.single as Animation<double>;
+      final capturedAnimation = results[2].captured.single as Animation<double>;
       expect(capturedAnimation.status, AnimationStatus.forward);
 
       startTrackingTransitionProgress(capturedAnimation);
