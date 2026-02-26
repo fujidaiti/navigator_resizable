@@ -357,7 +357,7 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver>
         ? route.transitionDuration
         : Duration.zero;
 
-    if (duration == Duration.zero || route is! TransitionRoute<dynamic>) {
+    if (duration == Duration.zero) {
       _lastSettledRoute = route;
       _notifyListeners((it) => it.didEndTransition(route));
       return;
