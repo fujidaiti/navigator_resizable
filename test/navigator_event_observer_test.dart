@@ -480,27 +480,24 @@ void main() {
     });
 
     testWidgets(
-      'When replacing a route with Navigator.replace',
+      'When replacing a non-root route with Navigator.replace',
       (tester) async {
         final env = boilerplate();
         await tester.pumpWidget(env.testWidget);
-        // Push route 'b' on top of 'a' and capture the route object.
         unawaited(env.navigatorKey.currentState!.pushNamed('b'));
-        // Capture routeB via the lastSettledRoute after settling.
         await tester.pumpAndSettle();
         expect(find.text('Page:b'), findsOneWidget);
         final routeB = env.getObserver().lastSettledRoute!;
         expect(routeB.settings.name, 'b');
 
-        reset(env.listener);
-        // Use Navigator.replace to swap 'b' with 'c'.
         final navigator = env.navigatorKey.currentState!;
-        final newRoute = _TestMaterialPageRoute(
+        final routeC = _TestMaterialPageRoute(
           settings: const RouteSettings(name: 'c'),
           transitionDuration: const Duration(milliseconds: 300),
           builder: (_) => const _TestScaffold(title: 'Page:c'),
         );
-        navigator.replace(oldRoute: routeB, newRoute: newRoute);
+        reset(env.listener);
+        navigator.replace(oldRoute: routeB, newRoute: routeC);
         await tester.pump();
 
         verifyInOrder([
@@ -512,11 +509,27 @@ void main() {
           env.listener.didEndTransition(
             argThat(isRoute(name: 'c')),
           ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'c')),
+            argThat(isNull),
+          ),
+          env.listener.didComplete(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didChangePrevious(
+            argThat(isRoute(name: 'c')),
+            argThat(isRoute(name: 'a')),
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'c')),
+          ),
         ]);
-        verifyNever(env.listener.didPush(any));
-        verifyNever(env.listener.didStartTransition(any, any));
+        verifyNoMoreInteractions(env.listener);
 
         await tester.pumpAndSettle();
+        verifyNoMoreInteractions(env.listener);
         expect(find.text('Page:c'), findsOneWidget);
         expect(env.getObserver().lastSettledRoute, isRoute(name: 'c'));
       },
