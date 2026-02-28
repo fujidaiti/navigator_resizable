@@ -168,6 +168,10 @@ class ResizablePageRouteBuilder<T> extends PageRoute<T>
 class ResizablePageRoutePageBuilder<T> extends Page<T> {
   /// Creates a page that delegates to builder callbacks.
   const ResizablePageRoutePageBuilder({
+    super.key,
+    super.name,
+    super.arguments,
+    super.restorationId,
     required this.child,
     required this.transitionsBuilder,
     this.requestFocus = true,
