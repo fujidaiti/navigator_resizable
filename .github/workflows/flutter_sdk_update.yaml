@@ -119,10 +119,10 @@ jobs:
         run: |
           UNIQUE_ID=$(uuidgen)
           BRANCH_NAME="flutter-sdk-${LATEST_VERSION}-${UNIQUE_ID}"
-          git checkout -b $BRANCH_NAME
+          git checkout -b "$BRANCH_NAME"
           git add .fvmrc .vscode/settings.json
           git commit -m "chore: Update Flutter SDK to ${LATEST_VERSION}"
-          git push origin $BRANCH_NAME
+          git push origin "$BRANCH_NAME"
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
