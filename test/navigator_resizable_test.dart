@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:navigator_resizable/src/navigator_resizable.dart';
@@ -32,9 +31,11 @@ void main() {
               key: navigatorKey,
               initialRoute: 'a',
               onGenerateRoute: (settings) {
-                return ResizableMaterialPageRoute(
+                return ResizablePageRouteBuilder(
                   settings: settings,
-                  builder: (_) => routes[settings.name]!(),
+                  transitionDuration: const Duration(milliseconds: 300),
+                  pageBuilder: (_, __, ___) => routes[settings.name]!(),
+                  transitionsBuilder: _testTransitionsBuilder,
                 );
               },
             ),
@@ -257,89 +258,132 @@ void main() {
       await tester.pump();
       expect(env.getBox(tester).size, const Size(150, 250));
     });
+  });
 
-    testWidgets('When iOS swipe back gesture is performed', (tester) async {
-      final env = boilerplate();
-      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+  group('iOS swipe back gesture test with imperative navigator API', () {
+    ({
+      GlobalKey<NavigatorState> navigatorKey,
+      RenderBox Function(WidgetTester) getBox,
+      Widget testWidget,
+    }) boilerplate() {
+      final navigatorKey = GlobalKey<NavigatorState>();
+      final navigatorResizableKey = UniqueKey();
+      final routes = {
+        'a': () => const _TestRouteWidget(initialSize: Size(100, 200)),
+        'b': () => const _TestRouteWidget(initialSize: Size(200, 300)),
+      };
+      final testWidget = MaterialApp(
+        home: Align(
+          alignment: Alignment.center,
+          child: NavigatorResizable(
+            key: navigatorResizableKey,
+            child: Navigator(
+              key: navigatorKey,
+              initialRoute: 'a',
+              onGenerateRoute: (settings) {
+                return ResizableMaterialPageRoute(
+                  settings: settings,
+                  builder: (_) => routes[settings.name]!(),
+                );
+              },
+            ),
+          ),
+        ),
+      );
 
-      await tester.pumpWidget(env.testWidget);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
-      await tester.pumpAndSettle();
+      RenderBox getBox(WidgetTester tester) {
+        return tester.renderObject(find.byKey(navigatorResizableKey));
+      }
 
-      final transitionProgress =
-          env.navigatorKey.currentState!.currentRoute.animation!;
+      return (
+        navigatorKey: navigatorKey,
+        getBox: getBox,
+        testWidget: testWidget,
+      );
+    }
 
-      // Start the swipe back gesture.
-      // We assume that the screen size is 800x600.
-      final gesture = await tester.startGesture(const Offset(300, 300));
-      await gesture.moveBy(const Offset(80, 0));
-      await tester.pump();
-      expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
-      expect(transitionProgress.value, moreOrLessEquals(0.9));
-      expect(env.getBox(tester).size, const Size(190, 290));
+    testWidgets(
+      'When iOS swipe back gesture is performed',
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
 
-      await gesture.moveBy(const Offset(80, 0));
-      await tester.pump();
-      expect(transitionProgress.value, moreOrLessEquals(0.8));
-      expect(env.getBox(tester).size, const Size(180, 280));
+        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        await tester.pumpAndSettle();
 
-      await gesture.moveBy(const Offset(80, 0));
-      await tester.pump();
-      expect(transitionProgress.value, moreOrLessEquals(0.7));
-      expect(env.getBox(tester).size, const Size(170, 270));
+        final transitionProgress =
+            env.navigatorKey.currentState!.currentRoute.animation!;
 
-      await gesture.moveBy(const Offset(80, 0));
-      await tester.pump();
-      expect(transitionProgress.value, moreOrLessEquals(0.6));
-      expect(env.getBox(tester).size, const Size(160, 260));
+        // Start the swipe back gesture.
+        // We assume that the screen size is 800x600.
+        final gesture = await tester.startGesture(const Offset(300, 300));
+        await gesture.moveBy(const Offset(80, 0));
+        await tester.pump();
+        expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
+        expect(transitionProgress.value, moreOrLessEquals(0.9));
+        expect(env.getBox(tester).size, const Size(190, 290));
 
-      await gesture.moveBy(const Offset(80, 0));
-      await tester.pump();
-      expect(transitionProgress.value, moreOrLessEquals(0.5));
-      expect(env.getBox(tester).size, const Size(150, 250));
+        await gesture.moveBy(const Offset(80, 0));
+        await tester.pump();
+        expect(transitionProgress.value, moreOrLessEquals(0.8));
+        expect(env.getBox(tester).size, const Size(180, 280));
 
-      await gesture.moveBy(const Offset(80, 0));
-      await tester.pump();
-      expect(transitionProgress.value, moreOrLessEquals(0.4));
-      expect(env.getBox(tester).size, const Size(140, 240));
+        await gesture.moveBy(const Offset(80, 0));
+        await tester.pump();
+        expect(transitionProgress.value, moreOrLessEquals(0.7));
+        expect(env.getBox(tester).size, const Size(170, 270));
 
-      await gesture.up();
-      await tester.pumpAndSettle();
-      expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
-      expect(env.getBox(tester).size, const Size(100, 200));
+        await gesture.moveBy(const Offset(80, 0));
+        await tester.pump();
+        expect(transitionProgress.value, moreOrLessEquals(0.6));
+        expect(env.getBox(tester).size, const Size(160, 260));
 
-      // Reset the default target platform.
-      debugDefaultTargetPlatformOverride = null;
-    });
+        await gesture.moveBy(const Offset(80, 0));
+        await tester.pump();
+        expect(transitionProgress.value, moreOrLessEquals(0.5));
+        expect(env.getBox(tester).size, const Size(150, 250));
 
-    testWidgets('When iOS swipe back gesture is canceled', (tester) async {
-      final env = boilerplate();
-      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        await gesture.moveBy(const Offset(80, 0));
+        await tester.pump();
+        expect(transitionProgress.value, moreOrLessEquals(0.4));
+        expect(env.getBox(tester).size, const Size(140, 240));
 
-      await tester.pumpWidget(env.testWidget);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
-      await tester.pumpAndSettle();
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
+        expect(env.getBox(tester).size, const Size(100, 200));
+      },
+    );
 
-      final transitionProgress =
-          env.navigatorKey.currentState!.currentRoute.animation!;
+    testWidgets(
+      'When iOS swipe back gesture is canceled',
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
 
-      // Start the swipe back gesture.
-      // We assume that the screen size is 800x600.
-      final gesture = await tester.startGesture(const Offset(300, 300));
-      await gesture.moveBy(const Offset(80, 0));
-      await tester.pump();
-      expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
-      expect(transitionProgress.value, moreOrLessEquals(0.9));
-      expect(env.getBox(tester).size, const Size(190, 290));
+        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        await tester.pumpAndSettle();
 
-      await gesture.up();
-      await tester.pumpAndSettle();
-      expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
-      expect(env.getBox(tester).size, const Size(200, 300));
+        final transitionProgress =
+            env.navigatorKey.currentState!.currentRoute.animation!;
 
-      // Reset the default target platform.
-      debugDefaultTargetPlatformOverride = null;
-    });
+        // Start the swipe back gesture.
+        // We assume that the screen size is 800x600.
+        final gesture = await tester.startGesture(const Offset(300, 300));
+        await gesture.moveBy(const Offset(80, 0));
+        await tester.pump();
+        expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
+        expect(transitionProgress.value, moreOrLessEquals(0.9));
+        expect(env.getBox(tester).size, const Size(190, 290));
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
+        expect(env.getBox(tester).size, const Size(200, 300));
+      },
+    );
   });
 
   group('Size transition test with declarative navigator API', () {
@@ -352,24 +396,32 @@ void main() {
       String initialLocation = '/a',
       Curve interpolationCurve = Curves.easeInOut,
     }) {
-      const pageA = ResizableMaterialPage(
+      const pageA = ResizablePageRoutePageBuilder(
         name: 'a',
         key: ValueKey('a'),
+        transitionDuration: Duration(milliseconds: 300),
+        transitionsBuilder: _testTransitionsBuilder,
         child: _TestRouteWidget(initialSize: Size(100, 200)),
       );
-      const pageB = ResizableMaterialPage(
+      const pageB = ResizablePageRoutePageBuilder(
         name: 'b',
         key: ValueKey('b'),
+        transitionDuration: Duration(milliseconds: 300),
+        transitionsBuilder: _testTransitionsBuilder,
         child: _TestRouteWidget(initialSize: Size(200, 300)),
       );
-      const pageC = ResizableMaterialPage(
+      const pageC = ResizablePageRoutePageBuilder(
         name: 'c',
         key: ValueKey('c'),
+        transitionDuration: Duration(milliseconds: 300),
+        transitionsBuilder: _testTransitionsBuilder,
         child: _TestRouteWidget(initialSize: Size.infinite),
       );
-      const pageD = ResizableMaterialPage(
+      const pageD = ResizablePageRoutePageBuilder(
         name: 'd',
         key: ValueKey('d'),
+        transitionDuration: Duration(milliseconds: 300),
+        transitionsBuilder: _testTransitionsBuilder,
         child: _TestRouteWidget(initialSize: Size(300, 400)),
       );
 
@@ -644,89 +696,151 @@ void main() {
         expect(env.getBox(tester).size, const Size(200, 300));
       },
     );
+  });
 
-    testWidgets('When iOS swipe back gesture is performed', (tester) async {
-      final env = boilerplate();
-      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+  group('iOS swipe back gesture test with declarative navigator API', () {
+    ({
+      GlobalKey<NavigatorState> navigatorKey,
+      RenderBox Function(WidgetTester) getBox,
+      ValueSetter<String> setLocation,
+      Widget testWidget,
+    }) boilerplate() {
+      final navigatorKey = GlobalKey<NavigatorState>();
+      final navigatorResizableKey = UniqueKey();
+      const pageA = ResizableMaterialPage(
+        name: 'a',
+        key: ValueKey('a'),
+        child: _TestRouteWidget(initialSize: Size(100, 200)),
+      );
+      const pageB = ResizableMaterialPage(
+        name: 'b',
+        key: ValueKey('b'),
+        child: _TestRouteWidget(initialSize: Size(200, 300)),
+      );
 
-      await tester.pumpWidget(env.testWidget);
-      env.setLocation('/a/b');
-      await tester.pumpAndSettle();
+      var location = '/a';
+      late StateSetter setStateFn;
+      void setLocation(String newLocation) {
+        location = newLocation;
+        setStateFn(() {});
+      }
 
-      final transitionProgress =
-          env.navigatorKey.currentState!.currentRoute.animation!;
+      RenderBox getBox(WidgetTester tester) {
+        return tester.renderObject(find.byKey(navigatorResizableKey));
+      }
 
-      // Start the swipe back gesture.
-      // We assume that the screen size is 800x600.
-      final gesture = await tester.startGesture(const Offset(300, 300));
-      await gesture.moveBy(const Offset(80, 0));
-      await tester.pump();
-      expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
-      expect(transitionProgress.value, moreOrLessEquals(0.9));
-      expect(env.getBox(tester).size, const Size(190, 290));
+      final testWidget = MaterialApp(
+        home: Center(
+          child: NavigatorResizable(
+            key: navigatorResizableKey,
+            child: StatefulBuilder(
+              builder: (_, setState) {
+                setStateFn = setState;
+                return Navigator(
+                  key: navigatorKey,
+                  onDidRemovePage: (page) {},
+                  pages: switch (location) {
+                    '/a' => [pageA],
+                    '/a/b' => [pageA, pageB],
+                    _ => throw StateError('Unknown location: $location'),
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      );
 
-      await gesture.moveBy(const Offset(80, 0));
-      await tester.pump();
-      expect(transitionProgress.value, moreOrLessEquals(0.8));
-      expect(env.getBox(tester).size, const Size(180, 280));
+      return (
+        navigatorKey: navigatorKey,
+        getBox: getBox,
+        setLocation: setLocation,
+        testWidget: testWidget,
+      );
+    }
 
-      await gesture.moveBy(const Offset(80, 0));
-      await tester.pump();
-      expect(transitionProgress.value, moreOrLessEquals(0.7));
-      expect(env.getBox(tester).size, const Size(170, 270));
+    testWidgets(
+      'When iOS swipe back gesture is performed',
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
 
-      await gesture.moveBy(const Offset(80, 0));
-      await tester.pump();
-      expect(transitionProgress.value, moreOrLessEquals(0.6));
-      expect(env.getBox(tester).size, const Size(160, 260));
+        env.setLocation('/a/b');
+        await tester.pumpAndSettle();
 
-      await gesture.moveBy(const Offset(80, 0));
-      await tester.pump();
-      expect(transitionProgress.value, moreOrLessEquals(0.5));
-      expect(env.getBox(tester).size, const Size(150, 250));
+        final transitionProgress =
+            env.navigatorKey.currentState!.currentRoute.animation!;
 
-      await gesture.moveBy(const Offset(80, 0));
-      await tester.pump();
-      expect(transitionProgress.value, moreOrLessEquals(0.4));
-      expect(env.getBox(tester).size, const Size(140, 240));
+        // Start the swipe back gesture.
+        // We assume that the screen size is 800x600.
+        final gesture = await tester.startGesture(const Offset(300, 300));
+        await gesture.moveBy(const Offset(80, 0));
+        await tester.pump();
+        expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
+        expect(transitionProgress.value, moreOrLessEquals(0.9));
+        expect(env.getBox(tester).size, const Size(190, 290));
 
-      await gesture.up();
-      await tester.pumpAndSettle();
-      expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
-      expect(env.getBox(tester).size, const Size(100, 200));
+        await gesture.moveBy(const Offset(80, 0));
+        await tester.pump();
+        expect(transitionProgress.value, moreOrLessEquals(0.8));
+        expect(env.getBox(tester).size, const Size(180, 280));
 
-      // Reset the default target platform.
-      debugDefaultTargetPlatformOverride = null;
-    });
+        await gesture.moveBy(const Offset(80, 0));
+        await tester.pump();
+        expect(transitionProgress.value, moreOrLessEquals(0.7));
+        expect(env.getBox(tester).size, const Size(170, 270));
 
-    testWidgets('When iOS swipe back gesture is canceled', (tester) async {
-      final env = boilerplate();
-      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        await gesture.moveBy(const Offset(80, 0));
+        await tester.pump();
+        expect(transitionProgress.value, moreOrLessEquals(0.6));
+        expect(env.getBox(tester).size, const Size(160, 260));
 
-      await tester.pumpWidget(env.testWidget);
-      env.setLocation('/a/b');
-      await tester.pumpAndSettle();
+        await gesture.moveBy(const Offset(80, 0));
+        await tester.pump();
+        expect(transitionProgress.value, moreOrLessEquals(0.5));
+        expect(env.getBox(tester).size, const Size(150, 250));
 
-      final transitionProgress =
-          env.navigatorKey.currentState!.currentRoute.animation!;
+        await gesture.moveBy(const Offset(80, 0));
+        await tester.pump();
+        expect(transitionProgress.value, moreOrLessEquals(0.4));
+        expect(env.getBox(tester).size, const Size(140, 240));
 
-      // Start the swipe back gesture.
-      // We assume that the screen size is 800x600.
-      final gesture = await tester.startGesture(const Offset(300, 300));
-      await gesture.moveBy(const Offset(80, 0));
-      await tester.pump();
-      expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
-      expect(transitionProgress.value, moreOrLessEquals(0.9));
-      expect(env.getBox(tester).size, const Size(190, 290));
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
+        expect(env.getBox(tester).size, const Size(100, 200));
+      },
+    );
 
-      await gesture.up();
-      await tester.pumpAndSettle();
-      expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
-      expect(env.getBox(tester).size, const Size(200, 300));
+    testWidgets(
+      'When iOS swipe back gesture is canceled',
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
 
-      // Reset the default target platform.
-      debugDefaultTargetPlatformOverride = null;
-    });
+        env.setLocation('/a/b');
+        await tester.pumpAndSettle();
+
+        final transitionProgress =
+            env.navigatorKey.currentState!.currentRoute.animation!;
+
+        // Start the swipe back gesture.
+        // We assume that the screen size is 800x600.
+        final gesture = await tester.startGesture(const Offset(300, 300));
+        await gesture.moveBy(const Offset(80, 0));
+        await tester.pump();
+        expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
+        expect(transitionProgress.value, moreOrLessEquals(0.9));
+        expect(env.getBox(tester).size, const Size(190, 290));
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
+        expect(env.getBox(tester).size, const Size(200, 300));
+      },
+    );
   });
 
   group('Layout test', () {
@@ -756,12 +870,13 @@ void main() {
         child: Navigator(
           onGenerateInitialRoutes: (navigator, initialRoute) {
             return [
-              ResizableMaterialPageRoute(
+              ResizablePageRouteBuilder(
                 settings: const RouteSettings(name: 'a'),
-                builder: (_) => _TestRouteWidget(
+                pageBuilder: (_, __, ___) => _TestRouteWidget(
                   key: routeContentKey,
                   initialSize: initialContentSize,
                 ),
+                transitionsBuilder: _testTransitionsBuilder,
               ),
             ];
           },
@@ -916,9 +1031,10 @@ void main() {
               child: NavigatorResizable(
                 child: Navigator(
                   onGenerateRoute: (settings) {
-                    return ResizableMaterialPageRoute(
+                    return ResizablePageRouteBuilder(
                       settings: settings,
-                      builder: (_) => GestureDetector(
+                      transitionsBuilder: _testTransitionsBuilder,
+                      pageBuilder: (_, __, ___) => GestureDetector(
                         onTap: () => isRouteContentTapped = true,
                         child: const _TestRouteWidget(
                           initialSize: Size(200, 200),
@@ -1071,4 +1187,13 @@ extension on NavigatorState {
     });
     return result;
   }
+}
+
+Widget _testTransitionsBuilder(
+  BuildContext context,
+  Animation<double> animation,
+  Animation<double> secondaryAnimation,
+  Widget child,
+) {
+  return FadeTransition(opacity: animation, child: child);
 }
