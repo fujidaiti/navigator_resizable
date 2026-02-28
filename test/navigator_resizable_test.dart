@@ -240,6 +240,38 @@ void main() {
       await tester.pumpAndSettle();
       expect(env.getBox(tester).size, const Size(150, 250));
     });
+
+    testWidgets('When replacing a route with Navigator.replace', (
+      tester,
+    ) async {
+      final env = boilerplate();
+      await tester.pumpWidget(env.testWidget);
+      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      await tester.pumpAndSettle();
+      expect(env.getBox(tester).size, const Size(200, 300));
+
+      final routeB = env.navigatorKey.currentState!.currentRoute;
+      final navigator = env.navigatorKey.currentState!;
+      final newRoute = ResizablePageRouteBuilder(
+        settings: const RouteSettings(name: 'c'),
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (_, __, ___) =>
+            const _TestRouteWidget(initialSize: Size(150, 250)),
+        transitionsBuilder: _testTransitionsBuilder,
+      );
+      navigator.replace(oldRoute: routeB, newRoute: newRoute);
+
+      await tester.pump();
+      expect(
+        env.getBox(tester).size,
+        const Size(150, 250),
+        reason:
+            'The size should immediately change to the new route '
+            'without animation.',
+      );
+      await tester.pumpAndSettle();
+      expect(env.getBox(tester).size, const Size(150, 250));
+    });
   });
 
   group('iOS swipe back gesture test with imperative navigator API', () {

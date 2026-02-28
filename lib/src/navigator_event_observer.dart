@@ -129,7 +129,6 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
   final Map<Route<dynamic>, Route<dynamic>?> _nextRouteOf = {};
   final Map<Route<dynamic>, Route<dynamic>?> _previousRouteOf = {};
   NavigatorState? _navigator;
-
   @visibleForTesting
   Route<dynamic>? get lastSettledRoute => _lastSettledRoute;
   Route<dynamic>? _lastSettledRoute;
@@ -344,6 +343,9 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
 
   void _didReplace(Route<dynamic> route, Route<dynamic>? oldRoute) {
     _notifyListeners((it) => it.didReplace(route, oldRoute));
+    if (oldRoute != _lastSettledRoute) return;
+    _lastSettledRoute = route;
+    _notifyListeners((it) => it.didEndTransition(route));
   }
 
   void _didUserGestureInProgressChange() {
