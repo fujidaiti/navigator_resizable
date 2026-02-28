@@ -1,8 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-// TODO: Remove this once the minimum SDK is updated to 3.5
-// ignore: unnecessary_import
-import 'package:meta/meta.dart';
 
 import 'navigator_event_observer.dart';
 import 'navigator_resizable.dart';
