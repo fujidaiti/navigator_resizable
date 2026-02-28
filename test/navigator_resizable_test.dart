@@ -5,15 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:navigator_resizable/src/navigator_resizable.dart';
 import 'package:navigator_resizable/src/resizable_navigator_routes.dart';
 
-Widget _defaultTransitionsBuilder(
-  BuildContext context,
-  Animation<double> animation,
-  Animation<double> secondaryAnimation,
-  Widget child,
-) {
-  return FadeTransition(opacity: animation, child: child);
-}
-
 void main() {
   group('Size transition test with imperative navigator API', () {
     ({
@@ -42,8 +33,9 @@ void main() {
               onGenerateRoute: (settings) {
                 return ResizablePageRouteBuilder(
                   settings: settings,
+                  transitionDuration: const Duration(milliseconds: 300),
                   pageBuilder: (_, __, ___) => routes[settings.name]!(),
-                  transitionsBuilder: _defaultTransitionsBuilder,
+                  transitionsBuilder: _testTransitionsBuilder,
                 );
               },
             ),
@@ -388,25 +380,29 @@ void main() {
       const pageA = ResizablePageRoutePageBuilder(
         name: 'a',
         key: ValueKey('a'),
-        transitionsBuilder: _defaultTransitionsBuilder,
+        transitionDuration: Duration(milliseconds: 300),
+        transitionsBuilder: _testTransitionsBuilder,
         child: _TestRouteWidget(initialSize: Size(100, 200)),
       );
       const pageB = ResizablePageRoutePageBuilder(
         name: 'b',
         key: ValueKey('b'),
-        transitionsBuilder: _defaultTransitionsBuilder,
+        transitionDuration: Duration(milliseconds: 300),
+        transitionsBuilder: _testTransitionsBuilder,
         child: _TestRouteWidget(initialSize: Size(200, 300)),
       );
       const pageC = ResizablePageRoutePageBuilder(
         name: 'c',
         key: ValueKey('c'),
-        transitionsBuilder: _defaultTransitionsBuilder,
+        transitionDuration: Duration(milliseconds: 300),
+        transitionsBuilder: _testTransitionsBuilder,
         child: _TestRouteWidget(initialSize: Size.infinite),
       );
       const pageD = ResizablePageRoutePageBuilder(
         name: 'd',
         key: ValueKey('d'),
-        transitionsBuilder: _defaultTransitionsBuilder,
+        transitionDuration: Duration(milliseconds: 300),
+        transitionsBuilder: _testTransitionsBuilder,
         child: _TestRouteWidget(initialSize: Size(300, 400)),
       );
 
@@ -861,7 +857,7 @@ void main() {
                   key: routeContentKey,
                   initialSize: initialContentSize,
                 ),
-                transitionsBuilder: _defaultTransitionsBuilder,
+                transitionsBuilder: _testTransitionsBuilder,
               ),
             ];
           },
@@ -1018,7 +1014,7 @@ void main() {
                   onGenerateRoute: (settings) {
                     return ResizablePageRouteBuilder(
                       settings: settings,
-                      transitionsBuilder: _defaultTransitionsBuilder,
+                      transitionsBuilder: _testTransitionsBuilder,
                       pageBuilder: (_, __, ___) => GestureDetector(
                         onTap: () => isRouteContentTapped = true,
                         child: const _TestRouteWidget(
@@ -1172,4 +1168,13 @@ extension on NavigatorState {
     });
     return result;
   }
+}
+
+Widget _testTransitionsBuilder(
+  BuildContext context,
+  Animation<double> animation,
+  Animation<double> secondaryAnimation,
+  Widget child,
+) {
+  return FadeTransition(opacity: animation, child: child);
 }
