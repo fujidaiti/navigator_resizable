@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.1
+
+- Add `key`, `name`, `arguments`, and `restorationId` parameters to `ResizablePageRoutePageBuilder`
+- Fix: `NavigatorResizable` size doesn't update when the current route is changed via `Navigator.replace`
+- Bump minimum Flutter SDK version to 3.35.1
+
 ## 3.0.0
 
 - Fix: assertion error when popping route in the middle of transition animation ([#16](https://github.com/fujidaiti/navigator_resizable/issues/16))
