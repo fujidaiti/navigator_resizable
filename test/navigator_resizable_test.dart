@@ -35,7 +35,7 @@ void main() {
                 return ResizablePageRouteBuilder(
                   settings: settings,
                   transitionDuration: const Duration(milliseconds: 300),
-                  pageBuilder: (_, __, ___) => routes[settings.name]!(),
+                  pageBuilder: (_, _, _) => routes[settings.name]!(),
                   transitionsBuilder: _testTransitionsBuilder,
                 );
               },
@@ -255,7 +255,7 @@ void main() {
       final newRoute = ResizablePageRouteBuilder(
         settings: const RouteSettings(name: 'c'),
         transitionDuration: const Duration(milliseconds: 300),
-        pageBuilder: (_, __, ___) =>
+        pageBuilder: (_, _, _) =>
             const _TestRouteWidget(initialSize: Size(150, 250)),
         transitionsBuilder: _testTransitionsBuilder,
       );
@@ -890,7 +890,7 @@ void main() {
             return [
               ResizablePageRouteBuilder(
                 settings: const RouteSettings(name: 'a'),
-                pageBuilder: (_, __, ___) => _TestRouteWidget(
+                pageBuilder: (_, _, _) => _TestRouteWidget(
                   key: routeContentKey,
                   initialSize: initialContentSize,
                 ),
@@ -1052,7 +1052,7 @@ void main() {
                     return ResizablePageRouteBuilder(
                       settings: settings,
                       transitionsBuilder: _testTransitionsBuilder,
-                      pageBuilder: (_, __, ___) => GestureDetector(
+                      pageBuilder: (_, _, _) => GestureDetector(
                         onTap: () => isRouteContentTapped = true,
                         child: const _TestRouteWidget(
                           initialSize: Size(200, 200),
