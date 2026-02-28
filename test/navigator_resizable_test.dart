@@ -11,7 +11,8 @@ void main() {
       GlobalKey<NavigatorState> navigatorKey,
       RenderBox Function(WidgetTester) getBox,
       Widget testWidget,
-    }) boilerplate({
+    })
+    boilerplate({
       Curve interpolationCurve = Curves.easeInOut,
     }) {
       final navigatorKey = GlobalKey<NavigatorState>();
@@ -246,7 +247,8 @@ void main() {
       GlobalKey<NavigatorState> navigatorKey,
       RenderBox Function(WidgetTester) getBox,
       Widget testWidget,
-    }) boilerplate() {
+    })
+    boilerplate() {
       final navigatorKey = GlobalKey<NavigatorState>();
       final navigatorResizableKey = UniqueKey();
       final routes = {
@@ -373,7 +375,8 @@ void main() {
       RenderBox Function(WidgetTester) getBox,
       ValueSetter<String> setLocation,
       Widget testWidget,
-    }) boilerplate({
+    })
+    boilerplate({
       String initialLocation = '/a',
       Curve interpolationCurve = Curves.easeInOut,
     }) {
@@ -685,7 +688,8 @@ void main() {
       RenderBox Function(WidgetTester) getBox,
       ValueSetter<String> setLocation,
       Widget testWidget,
-    }) boilerplate() {
+    })
+    boilerplate() {
       final navigatorKey = GlobalKey<NavigatorState>();
       final navigatorResizableKey = UniqueKey();
       const pageA = ResizableMaterialPage(
@@ -829,7 +833,8 @@ void main() {
       ValueGetter<Size> getBoxSize,
       ValueSetter<Size> setContentSize,
       Widget testWidget,
-    }) boilerplate({
+    })
+    boilerplate({
       Size initialContentSize = const Size(100, 200),
       Widget Function(Widget)? builder,
     }) {
@@ -867,8 +872,8 @@ void main() {
       final testWidget = MaterialApp(
         home: switch (builder) {
           null => Center(
-              child: navigatorResizable,
-            ),
+            child: navigatorResizable,
+          ),
           final builder => builder(navigatorResizable),
         },
       );

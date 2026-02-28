@@ -22,6 +22,7 @@ import 'package:navigator_resizable/src/navigator_event_observer.dart' as _i2;
 // ignore_for_file: unnecessary_parenthesis
 // ignore_for_file: camel_case_types
 // ignore_for_file: subtype_of_sealed_class
+// ignore_for_file: invalid_use_of_internal_member
 
 /// A class which mocks [NavigatorEventListener].
 ///
@@ -31,92 +32,47 @@ class MockNavigatorEventListener extends _i1.Mock
   @override
   _i3.VoidCallback? didInstall(_i4.Route<dynamic>? route) =>
       (super.noSuchMethod(
-        Invocation.method(
-          #didInstall,
-          [route],
-        ),
-        returnValueForMissingStub: null,
-      ) as _i3.VoidCallback?);
+            Invocation.method(#didInstall, [route]),
+            returnValueForMissingStub: null,
+          )
+          as _i3.VoidCallback?);
 
   @override
-  void didReplace(
-    _i4.Route<dynamic>? route,
-    _i4.Route<dynamic>? oldRoute,
-  ) =>
+  void didReplace(_i4.Route<dynamic>? route, _i4.Route<dynamic>? oldRoute) =>
       super.noSuchMethod(
-        Invocation.method(
-          #didReplace,
-          [
-            route,
-            oldRoute,
-          ],
-        ),
+        Invocation.method(#didReplace, [route, oldRoute]),
         returnValueForMissingStub: null,
       );
 
   @override
   void didAdd(_i4.Route<dynamic>? route) => super.noSuchMethod(
-        Invocation.method(
-          #didAdd,
-          [route],
-        ),
-        returnValueForMissingStub: null,
-      );
+    Invocation.method(#didAdd, [route]),
+    returnValueForMissingStub: null,
+  );
 
   @override
   void didPush(_i4.Route<dynamic>? route) => super.noSuchMethod(
-        Invocation.method(
-          #didPush,
-          [route],
-        ),
+    Invocation.method(#didPush, [route]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void didComplete(_i4.Route<dynamic>? route, Object? result) =>
+      super.noSuchMethod(
+        Invocation.method(#didComplete, [route, result]),
         returnValueForMissingStub: null,
       );
 
   @override
-  void didComplete(
-    _i4.Route<dynamic>? route,
-    Object? result,
-  ) =>
-      super.noSuchMethod(
-        Invocation.method(
-          #didComplete,
-          [
-            route,
-            result,
-          ],
-        ),
-        returnValueForMissingStub: null,
-      );
+  void didPop(_i4.Route<dynamic>? route, Object? result) => super.noSuchMethod(
+    Invocation.method(#didPop, [route, result]),
+    returnValueForMissingStub: null,
+  );
 
   @override
-  void didPop(
-    _i4.Route<dynamic>? route,
-    Object? result,
-  ) =>
+  void didPopNext(_i4.Route<dynamic>? route, _i4.Route<dynamic>? nextRoute) =>
       super.noSuchMethod(
-        Invocation.method(
-          #didPop,
-          [
-            route,
-            result,
-          ],
-        ),
-        returnValueForMissingStub: null,
-      );
-
-  @override
-  void didPopNext(
-    _i4.Route<dynamic>? route,
-    _i4.Route<dynamic>? nextRoute,
-  ) =>
-      super.noSuchMethod(
-        Invocation.method(
-          #didPopNext,
-          [
-            route,
-            nextRoute,
-          ],
-        ),
+        Invocation.method(#didPopNext, [route, nextRoute]),
         returnValueForMissingStub: null,
       );
 
@@ -124,58 +80,37 @@ class MockNavigatorEventListener extends _i1.Mock
   void didChangeNext(
     _i4.Route<dynamic>? route,
     _i4.Route<dynamic>? nextRoute,
-  ) =>
-      super.noSuchMethod(
-        Invocation.method(
-          #didChangeNext,
-          [
-            route,
-            nextRoute,
-          ],
-        ),
-        returnValueForMissingStub: null,
-      );
+  ) => super.noSuchMethod(
+    Invocation.method(#didChangeNext, [route, nextRoute]),
+    returnValueForMissingStub: null,
+  );
 
   @override
   void didChangePrevious(
     _i4.Route<dynamic>? route,
     _i4.Route<dynamic>? previousRoute,
-  ) =>
-      super.noSuchMethod(
-        Invocation.method(
-          #didChangePrevious,
-          [
-            route,
-            previousRoute,
-          ],
-        ),
-        returnValueForMissingStub: null,
-      );
+  ) => super.noSuchMethod(
+    Invocation.method(#didChangePrevious, [route, previousRoute]),
+    returnValueForMissingStub: null,
+  );
 
   @override
   void didStartTransition(
     _i4.Route<dynamic>? targetRoute,
     _i4.Animation<double>? animation, {
     bool? isUserGestureInProgress = false,
-  }) =>
-      super.noSuchMethod(
-        Invocation.method(
-          #didStartTransition,
-          [
-            targetRoute,
-            animation,
-          ],
-          {#isUserGestureInProgress: isUserGestureInProgress},
-        ),
-        returnValueForMissingStub: null,
-      );
+  }) => super.noSuchMethod(
+    Invocation.method(
+      #didStartTransition,
+      [targetRoute, animation],
+      {#isUserGestureInProgress: isUserGestureInProgress},
+    ),
+    returnValueForMissingStub: null,
+  );
 
   @override
   void didEndTransition(_i4.Route<dynamic>? route) => super.noSuchMethod(
-        Invocation.method(
-          #didEndTransition,
-          [route],
-        ),
-        returnValueForMissingStub: null,
-      );
+    Invocation.method(#didEndTransition, [route]),
+    returnValueForMissingStub: null,
+  );
 }

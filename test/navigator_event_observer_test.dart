@@ -30,7 +30,8 @@ void main() {
       MockNavigatorEventListener listener,
       GlobalKey<NavigatorState> navigatorKey,
       ValueGetter<NavigatorEventObserverState> getObserver,
-    }) boilerplate({
+    })
+    boilerplate({
       Duration transitionDuration = const Duration(milliseconds: 300),
     }) {
       final navigatorKey = GlobalKey<NavigatorState>();
@@ -138,9 +139,11 @@ void main() {
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
       expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
-      verify(env.listener.didEndTransition(
-        argThat(isRoute(name: 'b')),
-      )).called(1);
+      verify(
+        env.listener.didEndTransition(
+          argThat(isRoute(name: 'b')),
+        ),
+      ).called(1);
       verifyNoMoreInteractions(env.listener);
     });
 
@@ -255,9 +258,11 @@ void main() {
         expect(env.getObserver().lastSettledRoute, isRoute(name: 'c'));
         expect(find.text('Page:b'), findsNothing);
         expect(find.text('Page:c'), findsOneWidget);
-        verify(env.listener.didEndTransition(
-          argThat(isRoute(name: 'c')),
-        )).called(1);
+        verify(
+          env.listener.didEndTransition(
+            argThat(isRoute(name: 'c')),
+          ),
+        ).called(1);
         verifyNoMoreInteractions(env.listener);
       },
     );
@@ -305,9 +310,11 @@ void main() {
       expect(find.text('Page:a'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
       expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
-      verify(env.listener.didEndTransition(
-        argThat(isRoute(name: 'a')),
-      )).called(1);
+      verify(
+        env.listener.didEndTransition(
+          argThat(isRoute(name: 'a')),
+        ),
+      ).called(1);
       verifyNoMoreInteractions(env.listener);
     });
 
@@ -421,9 +428,11 @@ void main() {
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:c'), findsNothing);
-      verify(env.listener.didEndTransition(
-        argThat(isRoute(name: 'a')),
-      )).called(1);
+      verify(
+        env.listener.didEndTransition(
+          argThat(isRoute(name: 'a')),
+        ),
+      ).called(1);
       verifyNoMoreInteractions(env.listener);
     });
 
@@ -473,9 +482,11 @@ void main() {
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
       expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
-      verify(env.listener.didEndTransition(
-        argThat(isRoute(name: 'b')),
-      )).called(1);
+      verify(
+        env.listener.didEndTransition(
+          argThat(isRoute(name: 'b')),
+        ),
+      ).called(1);
       verifyNoMoreInteractions(env.listener);
     });
 
@@ -755,9 +766,11 @@ void main() {
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
       expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
-      verify(env.listener.didEndTransition(
-        argThat(isRoute(name: 'b')),
-      )).called(1);
+      verify(
+        env.listener.didEndTransition(
+          argThat(isRoute(name: 'b')),
+        ),
+      ).called(1);
       verifyNoMoreInteractions(env.listener);
 
       // Reset the default target platform.
@@ -771,7 +784,8 @@ void main() {
       MockNavigatorEventListener listener,
       ValueSetter<String> setLocation,
       ValueGetter<NavigatorEventObserverState> getObserver,
-    }) boilerplate({
+    })
+    boilerplate({
       String initialLocation = '/a',
       Duration transitionDuration = const Duration(milliseconds: 300),
     }) {
@@ -971,9 +985,11 @@ void main() {
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
       expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
-      verify(env.listener.didEndTransition(
-        argThat(isRoute(name: 'b')),
-      )).called(1);
+      verify(
+        env.listener.didEndTransition(
+          argThat(isRoute(name: 'b')),
+        ),
+      ).called(1);
       verifyNoMoreInteractions(env.listener);
     });
 
@@ -1322,9 +1338,11 @@ void main() {
       expect(find.text('Page:d'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
       expect(env.getObserver().lastSettledRoute, isRoute(name: 'd'));
-      verify(env.listener.didEndTransition(
-        argThat(isRoute(name: 'd')),
-      )).called(1);
+      verify(
+        env.listener.didEndTransition(
+          argThat(isRoute(name: 'd')),
+        ),
+      ).called(1);
       verifyNoMoreInteractions(env.listener);
     });
 
@@ -1369,9 +1387,11 @@ void main() {
       expect(find.text('Page:a'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyDecreasing);
       expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
-      verify(env.listener.didEndTransition(
-        argThat(isRoute(name: 'a')),
-      )).called(1);
+      verify(
+        env.listener.didEndTransition(
+          argThat(isRoute(name: 'a')),
+        ),
+      ).called(1);
       verifyNoMoreInteractions(env.listener);
     });
 
@@ -1410,9 +1430,11 @@ void main() {
 
       reset(env.listener);
       await tester.pumpAndSettle();
-      verify(env.listener.didEndTransition(
-        argThat(isRoute(name: 'a')),
-      )).called(1);
+      verify(
+        env.listener.didEndTransition(
+          argThat(isRoute(name: 'a')),
+        ),
+      ).called(1);
       verifyNoMoreInteractions(env.listener);
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:a'), findsOneWidget);
@@ -1477,9 +1499,11 @@ void main() {
       expect(find.text('Page:a'), findsOneWidget);
       expect(find.text('Page:b'), findsNothing);
       expect(find.text('Page:c'), findsNothing);
-      verify(env.listener.didEndTransition(
-        argThat(isRoute(name: 'a')),
-      )).called(1);
+      verify(
+        env.listener.didEndTransition(
+          argThat(isRoute(name: 'a')),
+        ),
+      ).called(1);
       verifyNoMoreInteractions(env.listener);
     });
 
@@ -1586,9 +1610,11 @@ void main() {
       expect(find.text('Page:b'), findsOneWidget);
       expect(transitionProgressHistory, isMonotonicallyIncreasing);
       expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
-      verify(env.listener.didEndTransition(
-        argThat(isRoute(name: 'b')),
-      )).called(1);
+      verify(
+        env.listener.didEndTransition(
+          argThat(isRoute(name: 'b')),
+        ),
+      ).called(1);
       verifyNoMoreInteractions(env.listener);
 
       // Reset the default target platform.
