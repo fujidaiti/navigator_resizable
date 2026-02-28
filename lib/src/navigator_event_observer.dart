@@ -135,11 +135,13 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
 
   void _setNavigator(NavigatorState navigator) {
     if (navigator != _navigator) {
-      _navigator?.userGestureInProgressNotifier
-          .removeListener(_didUserGestureInProgressChange);
+      _navigator?.userGestureInProgressNotifier.removeListener(
+        _didUserGestureInProgressChange,
+      );
       _navigator = navigator
-        ..userGestureInProgressNotifier
-            .addListener(_didUserGestureInProgressChange);
+        ..userGestureInProgressNotifier.addListener(
+          _didUserGestureInProgressChange,
+        );
     }
   }
 
@@ -184,8 +186,9 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
     _listeners.clear();
     _nextRouteOf.clear();
     _previousRouteOf.clear();
-    _navigator?.userGestureInProgressNotifier
-        .removeListener(_didUserGestureInProgressChange);
+    _navigator?.userGestureInProgressNotifier.removeListener(
+      _didUserGestureInProgressChange,
+    );
     _navigator = null;
     _lastSettledRoute = null;
     super.dispose();
@@ -492,7 +495,7 @@ class _TransitionProgress extends Animation<double>
   // To address this, the value is set to 0.0 when the route is offstage.
   @override
   double get value => switch (animationOwner) {
-        ModalRoute<dynamic>(offstage: true) => 0.0,
-        final it => it.animation!.value,
-      };
+    ModalRoute<dynamic>(offstage: true) => 0.0,
+    final it => it.animation!.value,
+  };
 }

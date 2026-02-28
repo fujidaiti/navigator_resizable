@@ -239,11 +239,11 @@ class _RenderNavigatorResizableWidget extends SingleChildRenderObjectWidget {
 class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   _RenderNavigatorResizable({
     required ValueListenable<Size> preferredSize,
-  })  : _preferredSize = preferredSize,
-        super(
-          alignment: Alignment.topLeft,
-          textDirection: null,
-        ) {
+  }) : _preferredSize = preferredSize,
+       super(
+         alignment: Alignment.topLeft,
+         textDirection: null,
+       ) {
     preferredSize.addListener(_onPreferredSizeChanged);
   }
 
