@@ -250,12 +250,23 @@ void main() {
 
       final routeB = env.navigatorKey.currentState!.currentRoute;
       final navigator = env.navigatorKey.currentState!;
-      final newRoute = ResizableMaterialPageRoute(
+      final newRoute = ResizablePageRouteBuilder(
         settings: const RouteSettings(name: 'c'),
-        builder: (_) => const _TestRouteWidget(initialSize: Size(150, 250)),
+        transitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (_, __, ___) =>
+            const _TestRouteWidget(initialSize: Size(150, 250)),
+        transitionsBuilder: _testTransitionsBuilder,
       );
       navigator.replace(oldRoute: routeB, newRoute: newRoute);
+
       await tester.pump();
+      expect(
+        env.getBox(tester).size,
+        const Size(150, 250),
+        reason: 'The size should immediately change to the new route '
+            'without animation.',
+      );
+      await tester.pumpAndSettle();
       expect(env.getBox(tester).size, const Size(150, 250));
     });
   });
