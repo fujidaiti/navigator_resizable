@@ -8,6 +8,7 @@ import 'package:navigator_resizable/src/navigator_event_observer.dart';
 
 import 'src/matchers.dart';
 import 'src/mocks.dart';
+import 'src/widget_tester_x.dart';
 
 void main() {
   late List<double> transitionProgressHistory;
@@ -33,6 +34,7 @@ void main() {
     })
     boilerplate({
       Duration transitionDuration = const Duration(milliseconds: 300),
+      PageTransitionsBuilder? transitionsBuilder,
     }) {
       final navigatorKey = GlobalKey<NavigatorState>();
       final navigatorResizableKey = GlobalKey<NavigatorEventObserverState>();
@@ -44,6 +46,7 @@ void main() {
           return _TestMaterialPageRoute(
             settings: settings,
             transitionDuration: transitionDuration,
+            transitionsBuilder: transitionsBuilder,
             builder: (_) => _TestScaffold(
               title: 'Page:${settings.name}',
             ),
@@ -832,6 +835,149 @@ void main() {
       // Reset the default target platform.
       debugDefaultTargetPlatformOverride = null;
     });
+
+    testWidgets(
+      'When Android predictive back gesture is performed',
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+      (tester) async {
+        final env = boilerplate(
+          transitionsBuilder:
+              const PredictiveBackFullscreenPageTransitionsBuilder(),
+        );
+        await tester.pumpWidget(env.testWidget);
+        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Page:a'), findsNothing);
+        expect(find.text('Page:b'), findsOneWidget);
+
+        reset(env.listener);
+
+        // Start the back gesture.
+        await tester.startAndroidBackGesture(
+          touchOffset: [5.0, 300.0],
+        );
+        await tester.pump();
+        final verification = verify(
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'a')),
+            captureAny,
+            isUserGestureInProgress: true,
+          ),
+        );
+
+        final capturedAnimation =
+            verification.captured.single as Animation<double>;
+
+        // Update progress.
+        await tester.updateAndroidBackGestureProgress(
+          x: 100.0,
+          y: 300.0,
+          progress: 0.3,
+        );
+        await tester.pump();
+        expect(capturedAnimation.value, 0.7);
+
+        await tester.updateAndroidBackGestureProgress(
+          x: 200.0,
+          y: 300.0,
+          progress: 0.6,
+        );
+        await tester.pump();
+        expect(capturedAnimation.value, 0.4);
+
+        startTrackingTransitionProgress(capturedAnimation);
+        // Commit the back gesture.
+        await tester.commitAndroidBackGesture();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Page:a'), findsOneWidget);
+        expect(find.text('Page:b'), findsNothing);
+        expect(transitionProgressHistory.first, 1.0);
+        expect(transitionProgressHistory, isMonotonicallyDecreasing);
+        expect(transitionProgressHistory.last, 0.0);
+        expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
+        verifyInOrder([
+          env.listener.didComplete(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didPop(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didPopNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'b')),
+          ),
+          env.listener.didEndTransition(
+            argThat(isRoute(name: 'a')),
+          ),
+        ]);
+        verifyNoMoreInteractions(env.listener);
+      },
+    );
+
+    testWidgets(
+      'When Android predictive back gesture is canceled',
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+      (tester) async {
+        final env = boilerplate(
+          transitionsBuilder:
+              const PredictiveBackFullscreenPageTransitionsBuilder(),
+        );
+        await tester.pumpWidget(env.testWidget);
+        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        await tester.pumpAndSettle();
+        expect(find.text('Page:a'), findsNothing);
+        expect(find.text('Page:b'), findsOneWidget);
+
+        reset(env.listener);
+
+        // Start the back gesture.
+        await tester.startAndroidBackGesture(
+          touchOffset: [5.0, 300.0],
+        );
+        await tester.pump();
+        final verification = verify(
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'a')),
+            captureAny,
+            isUserGestureInProgress: true,
+          ),
+        );
+        final capturedAnimation =
+            verification.captured.single as Animation<double>;
+
+        // Update progress.
+        await tester.updateAndroidBackGestureProgress(
+          x: 100.0,
+          y: 300.0,
+          progress: 0.3,
+        );
+        await tester.pump();
+        expect(capturedAnimation.value, 0.7);
+
+        startTrackingTransitionProgress(capturedAnimation);
+
+        // Cancel the back gesture.
+        await tester.cancelAndroidBackGesture();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Page:a'), findsNothing);
+        expect(find.text('Page:b'), findsOneWidget);
+        expect(transitionProgressHistory, isMonotonicallyIncreasing);
+        expect(transitionProgressHistory.last, 1.0);
+        expect(capturedAnimation.value, 1.0);
+        expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
+        verify(
+          env.listener.didEndTransition(
+            argThat(isRoute(name: 'b')),
+          ),
+        );
+        verifyNoMoreInteractions(env.listener);
+      },
+    );
   });
 
   group('Navigator event capturing test with declarative navigator API', () {
@@ -844,29 +990,34 @@ void main() {
     boilerplate({
       String initialLocation = '/a',
       Duration transitionDuration = const Duration(milliseconds: 300),
+      PageTransitionsBuilder? transitionsBuilder,
     }) {
       final pageA = _TestMaterialPage(
         name: 'a',
         key: const ValueKey('a'),
         transitionDuration: transitionDuration,
+        transitionsBuilder: transitionsBuilder,
         child: const _TestScaffold(title: 'Page:a'),
       );
       final pageB = _TestMaterialPage(
         name: 'b',
         key: const ValueKey('b'),
         transitionDuration: transitionDuration,
+        transitionsBuilder: transitionsBuilder,
         child: const _TestScaffold(title: 'Page:b'),
       );
       final pageC = _TestMaterialPage(
         name: 'c',
         key: const ValueKey('c'),
         transitionDuration: transitionDuration,
+        transitionsBuilder: transitionsBuilder,
         child: const _TestScaffold(title: 'Page:c'),
       );
       final pageD = _TestMaterialPage(
         name: 'd',
         key: const ValueKey('d'),
         transitionDuration: transitionDuration,
+        transitionsBuilder: transitionsBuilder,
         child: const _TestScaffold(title: 'Page:d'),
       );
 
@@ -1616,119 +1767,259 @@ void main() {
       verifyNoMoreInteractions(env.listener);
     });
 
-    testWidgets('When iOS swipe back gesture is performed', (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    testWidgets(
+      'When iOS swipe back gesture is performed',
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
+        env.setLocation('/a/b');
+        await tester.pumpAndSettle();
+        expect(find.text('Page:a'), findsNothing);
+        expect(find.text('Page:b'), findsOneWidget);
 
-      final env = boilerplate();
-      await tester.pumpWidget(env.testWidget);
-      env.setLocation('/a/b');
-      await tester.pumpAndSettle();
-      expect(find.text('Page:a'), findsNothing);
-      expect(find.text('Page:b'), findsOneWidget);
+        reset(env.listener);
+        // Start a swipe back gesture
+        final gesture = await tester.startGesture(const Offset(0, 200));
+        await gesture.moveBy(const Offset(50, 0));
+        await tester.pumpAndSettle();
 
-      reset(env.listener);
-      // Start a swipe back gesture
-      final gesture = await tester.startGesture(const Offset(0, 200));
-      await gesture.moveBy(const Offset(50, 0));
-      await tester.pumpAndSettle();
+        final verification = verify(
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'a')),
+            captureAny,
+            isUserGestureInProgress: true,
+          ),
+        )..called(1);
+        final capturedAnimation =
+            verification.captured.single as Animation<double>;
 
-      final verification = verify(
-        env.listener.didStartTransition(
-          argThat(isRoute(name: 'a')),
-          captureAny,
-          isUserGestureInProgress: true,
-        ),
-      )..called(1);
-      final capturedAnimation =
-          verification.captured.single as Animation<double>;
+        startTrackingTransitionProgress(capturedAnimation);
 
-      startTrackingTransitionProgress(capturedAnimation);
+        // Move the finger toward the right side of the screen.
+        await gesture.moveBy(const Offset(50, 0));
+        await tester.pumpAndSettle();
+        await gesture.moveBy(const Offset(50, 0));
+        await tester.pumpAndSettle();
+        await gesture.moveBy(const Offset(50, 0));
+        await tester.pumpAndSettle();
+        await gesture.moveBy(const Offset(200, 0));
+        await tester.pumpAndSettle();
+        // End the swipe back gesture.
+        await gesture.up();
+        await tester.pumpAndSettle();
 
-      // Move the finger toward the right side of the screen.
-      await gesture.moveBy(const Offset(50, 0));
-      await tester.pumpAndSettle();
-      await gesture.moveBy(const Offset(50, 0));
-      await tester.pumpAndSettle();
-      await gesture.moveBy(const Offset(50, 0));
-      await tester.pumpAndSettle();
-      await gesture.moveBy(const Offset(200, 0));
-      await tester.pumpAndSettle();
-      // End the swipe back gesture.
-      await gesture.up();
-      await tester.pumpAndSettle();
+        expect(find.text('Page:a'), findsOneWidget);
+        expect(find.text('Page:b'), findsNothing);
+        expect(transitionProgressHistory, isMonotonicallyDecreasing);
+        expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
+        verifyInOrder([
+          env.listener.didComplete(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didPop(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didPopNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'b')),
+          ),
+          env.listener.didEndTransition(
+            argThat(isRoute(name: 'a')),
+          ),
+        ]);
+        verifyNoMoreInteractions(env.listener);
+      },
+    );
 
-      expect(find.text('Page:a'), findsOneWidget);
-      expect(find.text('Page:b'), findsNothing);
-      expect(transitionProgressHistory, isMonotonicallyDecreasing);
-      expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
-      verifyInOrder([
-        env.listener.didComplete(
-          argThat(isRoute(name: 'b')),
-          argThat(isNull),
-        ),
-        env.listener.didPop(
-          argThat(isRoute(name: 'b')),
-          argThat(isNull),
-        ),
-        env.listener.didPopNext(
-          argThat(isRoute(name: 'a')),
-          argThat(isRoute(name: 'b')),
-        ),
-        env.listener.didEndTransition(
-          argThat(isRoute(name: 'a')),
-        ),
-      ]);
-      verifyNoMoreInteractions(env.listener);
+    testWidgets(
+      'When iOS swipe back gesture is canceled',
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
+        env.setLocation('/a/b');
+        await tester.pumpAndSettle();
+        expect(find.text('Page:a'), findsNothing);
+        expect(find.text('Page:b'), findsOneWidget);
 
-      // Reset the default target platform.
-      debugDefaultTargetPlatformOverride = null;
-    });
+        reset(env.listener);
+        // Start a swipe back gesture
+        final gesture = await tester.startGesture(const Offset(0, 200));
+        await gesture.moveBy(const Offset(50, 0));
+        await tester.pumpAndSettle();
 
-    testWidgets('When iOS swipe back gesture is canceled', (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        final verification = verify(
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'a')),
+            captureAny,
+            isUserGestureInProgress: true,
+          ),
+        )..called(1);
+        final capturedAnimation =
+            verification.captured.single as Animation<double>;
 
-      final env = boilerplate();
-      await tester.pumpWidget(env.testWidget);
-      env.setLocation('/a/b');
-      await tester.pumpAndSettle();
-      expect(find.text('Page:a'), findsNothing);
-      expect(find.text('Page:b'), findsOneWidget);
+        startTrackingTransitionProgress(capturedAnimation);
+        // Cancel the swipe back gesture.
+        await gesture.up();
+        await tester.pumpAndSettle();
 
-      reset(env.listener);
-      // Start a swipe back gesture
-      final gesture = await tester.startGesture(const Offset(0, 200));
-      await gesture.moveBy(const Offset(50, 0));
-      await tester.pumpAndSettle();
+        expect(find.text('Page:a'), findsNothing);
+        expect(find.text('Page:b'), findsOneWidget);
+        expect(transitionProgressHistory, isMonotonicallyIncreasing);
+        expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
+        verify(
+          env.listener.didEndTransition(
+            argThat(isRoute(name: 'b')),
+          ),
+        ).called(1);
+        verifyNoMoreInteractions(env.listener);
+      },
+    );
 
-      final verification = verify(
-        env.listener.didStartTransition(
-          argThat(isRoute(name: 'a')),
-          captureAny,
-          isUserGestureInProgress: true,
-        ),
-      )..called(1);
-      final capturedAnimation =
-          verification.captured.single as Animation<double>;
+    testWidgets(
+      'When Android predictive back gesture is performed',
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+      (tester) async {
+        final env = boilerplate(
+          transitionsBuilder:
+              const PredictiveBackFullscreenPageTransitionsBuilder(),
+        );
+        await tester.pumpWidget(env.testWidget);
+        env.setLocation('/a/b');
+        await tester.pumpAndSettle();
+        expect(find.text('Page:a'), findsNothing);
+        expect(find.text('Page:b'), findsOneWidget);
 
-      startTrackingTransitionProgress(capturedAnimation);
-      // Cancel the swipe back gesture.
-      await gesture.up();
-      await tester.pumpAndSettle();
+        reset(env.listener);
 
-      expect(find.text('Page:a'), findsNothing);
-      expect(find.text('Page:b'), findsOneWidget);
-      expect(transitionProgressHistory, isMonotonicallyIncreasing);
-      expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
-      verify(
-        env.listener.didEndTransition(
-          argThat(isRoute(name: 'b')),
-        ),
-      ).called(1);
-      verifyNoMoreInteractions(env.listener);
+        // Start the back gesture.
+        await tester.startAndroidBackGesture(
+          touchOffset: [5.0, 300.0],
+        );
+        await tester.pump();
+        final verification = verify(
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'a')),
+            captureAny,
+            isUserGestureInProgress: true,
+          ),
+        );
 
-      // Reset the default target platform.
-      debugDefaultTargetPlatformOverride = null;
-    });
+        final capturedAnimation =
+            verification.captured.single as Animation<double>;
+
+        // Update progress.
+        await tester.updateAndroidBackGestureProgress(
+          x: 100.0,
+          y: 300.0,
+          progress: 0.3,
+        );
+        await tester.pump();
+        expect(capturedAnimation.value, 0.7);
+
+        await tester.updateAndroidBackGestureProgress(
+          x: 200.0,
+          y: 300.0,
+          progress: 0.6,
+        );
+        await tester.pump();
+        expect(capturedAnimation.value, 0.4);
+
+        startTrackingTransitionProgress(capturedAnimation);
+        // Commit the back gesture.
+        await tester.commitAndroidBackGesture();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Page:a'), findsOneWidget);
+        expect(find.text('Page:b'), findsNothing);
+        expect(transitionProgressHistory.first, 1.0);
+        expect(transitionProgressHistory, isMonotonicallyDecreasing);
+        expect(transitionProgressHistory.last, 0.0);
+        expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
+        verifyInOrder([
+          env.listener.didComplete(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didPop(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didPopNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'b')),
+          ),
+          env.listener.didEndTransition(
+            argThat(isRoute(name: 'a')),
+          ),
+        ]);
+        verifyNoMoreInteractions(env.listener);
+      },
+    );
+
+    testWidgets(
+      'When Android predictive back gesture is canceled',
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+      (tester) async {
+        final env = boilerplate(
+          transitionsBuilder:
+              const PredictiveBackFullscreenPageTransitionsBuilder(),
+        );
+        await tester.pumpWidget(env.testWidget);
+        env.setLocation('/a/b');
+        await tester.pumpAndSettle();
+        expect(find.text('Page:a'), findsNothing);
+        expect(find.text('Page:b'), findsOneWidget);
+
+        reset(env.listener);
+
+        // Start the back gesture.
+        await tester.startAndroidBackGesture(
+          touchOffset: [5.0, 300.0],
+        );
+        await tester.pump();
+        final verification = verify(
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'a')),
+            captureAny,
+            isUserGestureInProgress: true,
+          ),
+        );
+        final capturedAnimation =
+            verification.captured.single as Animation<double>;
+
+        // Update progress.
+        await tester.updateAndroidBackGestureProgress(
+          x: 100.0,
+          y: 300.0,
+          progress: 0.3,
+        );
+        await tester.pump();
+        expect(capturedAnimation.value, 0.7);
+
+        startTrackingTransitionProgress(capturedAnimation);
+
+        // Cancel the back gesture.
+        await tester.cancelAndroidBackGesture();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Page:a'), findsNothing);
+        expect(find.text('Page:b'), findsOneWidget);
+        expect(transitionProgressHistory, isMonotonicallyIncreasing);
+        expect(transitionProgressHistory.last, 1.0);
+        expect(capturedAnimation.value, 1.0);
+        expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
+        verify(
+          env.listener.didEndTransition(
+            argThat(isRoute(name: 'b')),
+          ),
+        );
+        verifyNoMoreInteractions(env.listener);
+      },
+    );
   });
 }
 
@@ -1737,11 +2028,38 @@ class _TestMaterialPageRoute extends MaterialPageRoute<dynamic>
   _TestMaterialPageRoute({
     super.settings,
     required this.transitionDuration,
+    this.transitionsBuilder,
     required super.builder,
   });
 
   @override
   final Duration transitionDuration;
+
+  final PageTransitionsBuilder? transitionsBuilder;
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return switch (transitionsBuilder) {
+      null => super.buildTransitions(
+        context,
+        animation,
+        secondaryAnimation,
+        child,
+      ),
+      final builder => builder.buildTransitions(
+        this,
+        context,
+        animation,
+        secondaryAnimation,
+        child,
+      ),
+    };
+  }
 }
 
 class _TestMaterialPage extends MaterialPage<dynamic> {
@@ -1749,10 +2067,12 @@ class _TestMaterialPage extends MaterialPage<dynamic> {
     super.key,
     super.name,
     required this.transitionDuration,
+    this.transitionsBuilder,
     required super.child,
   });
 
   final Duration transitionDuration;
+  final PageTransitionsBuilder? transitionsBuilder;
 
   @override
   Route<dynamic> createRoute(BuildContext context) =>
@@ -1778,6 +2098,30 @@ class _TestPageBasedMaterialPageRoute extends PageRoute<dynamic>
   @override
   Widget buildContent(BuildContext context) =>
       (settings as _TestMaterialPage).child;
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return switch ((settings as _TestMaterialPage).transitionsBuilder) {
+      null => super.buildTransitions(
+        context,
+        animation,
+        secondaryAnimation,
+        child,
+      ),
+      final builder => builder.buildTransitions(
+        this,
+        context,
+        animation,
+        secondaryAnimation,
+        child,
+      ),
+    };
+  }
 }
 
 class _TestScaffold extends StatelessWidget {
