@@ -50,11 +50,6 @@ jobs:
     needs: setup
     if: ${{ needs.setup.outputs.flutter-file-changed == 'true' }}
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        flutter-version:
-          - ${{ needs.setup.outputs.flutter-lower-bound }}
-          - ${{ needs.setup.outputs.flutter-upper-bound }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,7 +57,7 @@ jobs:
       - name: Setup Flutter
         uses: ./.github/actions/setup_flutter
         with:
-          version: ${{ matrix.flutter-version }}
+          version: ${{ needs.setup.outputs.flutter-upper-bound }}
 
       - name: Format
         run: dart format . -o none --set-exit-if-changed
