@@ -193,7 +193,7 @@ class _AnimationLessAndroidBackGestureHandlerState
 
   @override
   bool handleStartBackGesture(PredictiveBackEvent backEvent) {
-    return !backEvent.isButtonEvent && _route.isCurrent;
+    return !backEvent.isButtonEvent && _route.isCurrent && !_route.isFirst;
   }
 
   @override
