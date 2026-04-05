@@ -129,6 +129,7 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
   final Map<Route<dynamic>, Route<dynamic>?> _nextRouteOf = {};
   final Map<Route<dynamic>, Route<dynamic>?> _previousRouteOf = {};
   NavigatorState? _navigator;
+
   @visibleForTesting
   Route<dynamic>? get lastSettledRoute => _lastSettledRoute;
   Route<dynamic>? _lastSettledRoute;
@@ -348,8 +349,61 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
     _notifyListeners((it) => it.didEndTransition(route));
   }
 
+  var _isAndroidBackGestureInProgress = false;
+
+  void _didStartAndroidBackGesture(TransitionRoute<dynamic> route) {
+    assert(route == _lastSettledRoute);
+    _isAndroidBackGestureInProgress = true;
+    _notifyListeners((it) {
+      it.didStartTransition(
+        _previousRouteOf[route]!,
+        _TransitionProgress(animationOwner: route),
+        isUserGestureInProgress: true,
+      );
+    });
+  }
+
+  void _didCancelAndroidBackGesture(TransitionRoute<dynamic> route) {
+    _handleAndroidBackGestureEnd(route, committed: false);
+  }
+
+  void _didCommitAndroidBackGesture(TransitionRoute<dynamic> route) {
+    _handleAndroidBackGestureEnd(route, committed: true);
+  }
+
+  void _handleAndroidBackGestureEnd(
+    TransitionRoute<dynamic> route, {
+    required bool committed,
+  }) {
+    assert(route == _lastSettledRoute);
+    final destinationRoute = committed ? _previousRouteOf[route]! : route;
+    if (!route.animation!.isAnimating) {
+      assert(destinationRoute.isCurrent);
+      _notifyListeners((it) => it.didEndTransition(destinationRoute));
+      return;
+    }
+
+    void notifyTransitionEnd(AnimationStatus status) {
+      if (!route.animation!.isAnimating) {
+        assert(destinationRoute.isCurrent);
+        _lastSettledRoute = destinationRoute;
+        _isAndroidBackGestureInProgress = false;
+        route.animation!.removeStatusListener(notifyTransitionEnd);
+        _notifyListeners((it) => it.didEndTransition(destinationRoute));
+      }
+    }
+
+    route.animation!.addStatusListener(notifyTransitionEnd);
+  }
+
   void _didUserGestureInProgressChange() {
     assert(_navigator != null);
+    if (_isAndroidBackGestureInProgress) {
+      // The Android's back gesture is handled by the _did<*>AndroidBackGesture
+      // methods above, so we do nothing here.
+      return;
+    }
+
     if (_navigator!.userGestureInProgress) {
       final originRoute = _lastSettledRoute! as TransitionRoute<dynamic>;
       assert(originRoute.animation!.status == AnimationStatus.completed);
@@ -400,9 +454,9 @@ class _InheritedRouteTransitionObserver extends InheritedWidget {
   bool updateShouldNotify(_) => true;
 }
 
-/// A mixin for [Route]s that notifies the ancestor [NavigatorEventObserver]
-/// of lifecycle events.
-mixin ObservableRouteMixin<T> on Route<T> {
+/// A mixin for [TransitionRoute]s that notifies the ancestor
+/// [NavigatorEventObserver] of lifecycle events.
+mixin ObservableRouteMixin<T> on TransitionRoute<T> {
   NavigatorEventObserverState? _observer;
   VoidCallback? _onDisposeCallback;
 
@@ -477,6 +531,27 @@ mixin ObservableRouteMixin<T> on Route<T> {
   void didPopNext(Route<dynamic> nextRoute) {
     super.didPopNext(nextRoute);
     _observer?._didPopNext(this, nextRoute);
+  }
+
+  @override
+  void handleStartBackGesture({double progress = 0.0}) {
+    // We must notify the observer before the super method calls
+    // NavigatorState.didStartUserGesture so that the observer can
+    // distinguish the Android's back gesture from the iOS's swipe back gesture.
+    _observer?._didStartAndroidBackGesture(this);
+    super.handleStartBackGesture(progress: progress);
+  }
+
+  @override
+  void handleCommitBackGesture() {
+    super.handleCommitBackGesture();
+    _observer?._didCommitAndroidBackGesture(this);
+  }
+
+  @override
+  void handleCancelBackGesture() {
+    super.handleCancelBackGesture();
+    _observer?._didCancelAndroidBackGesture(this);
   }
 }
 
