@@ -39,9 +39,9 @@ abstract class _BaseResizableMaterialPageRoute<T> extends PageRoute<T>
     return switch (Theme.of(context).platform) {
       // PredictiveBackFullscreenPageTransitionsBuilder is incompatible with
       // NavigatorResizable's size transition, so we use the older
-      // ZoomPageTransitionsBuilder for Android instead.
+      // FadeForwardsPageTransitionsBuilder for Android instead.
       TargetPlatform.android =>
-        const ZoomPageTransitionsBuilder().buildTransitions(
+        const FadeForwardsPageTransitionsBuilder().buildTransitions(
           this,
           context,
           animation,
