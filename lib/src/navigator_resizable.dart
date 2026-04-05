@@ -112,8 +112,8 @@ import 'resizable_navigator_routes.dart';
 /// );
 /// ```
 /// You can use any standard navigation methods, such as [Navigator.push],
-/// [Navigator.pop], [named routes](https://api.flutter.dev/flutter/widgets/Navigator-class.html#:~:text=Using%20named%20navigator%20routes),
-/// and the [Pages API](https://api.flutter.dev/flutter/widgets/Navigator-class.html#:~:text=the%20current%20page.-,Using%20the%20Pages%20API,-The%20Navigator%20will),
+/// [Navigator.pop], [named routes][1],
+/// and the [Pages API][2],
 /// with [NavigatorResizable] as you would with a regular [Navigator]:
 ///
 /// ```dart
@@ -131,8 +131,11 @@ import 'resizable_navigator_routes.dart';
 /// );
 /// ```
 ///
-/// For more practical examples, refer to the
-/// [/example](https://github.com/fujidaiti/navigator_resizable/tree/main/example/lib) directory.
+/// For more practical examples, refer to the [/example][3] directory.
+///
+/// [1]: https://api.flutter.dev/flutter/widgets/Navigator-class.html#:~:text=Using%20named%20navigator%20routes
+/// [2]: https://api.flutter.dev/flutter/widgets/Navigator-class.html#:~:text=the%20current%20page.-,Using%20the%20Pages%20API,-The%20Navigator%20will
+/// [3]: https://github.com/fujidaiti/navigator_resizable/tree/main/example/lib
 class NavigatorResizable extends StatefulWidget {
   /// Creates a thin wrapper around [Navigator] that **visually** resizes
   /// the [child] navigator to match the size of the content displayed
