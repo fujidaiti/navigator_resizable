@@ -107,7 +107,7 @@ class NavigatorSizeNotifier extends ChangeNotifier
     Route<dynamic> targetRoute,
     Animation<double> animation,
   ) {
-    assert(animation.status == AnimationStatus.forward);
+    assert(animation.isForwardOrCompleted);
     final initialSize = _lastReportedValidValue!;
     _updateInterpolation(
       _LazySizeTween(
@@ -121,7 +121,7 @@ class NavigatorSizeNotifier extends ChangeNotifier
     Route<dynamic> targetRoute,
     Animation<double> animation,
   ) {
-    assert(animation.status == AnimationStatus.forward);
+    assert(animation.isForwardOrCompleted);
     final initialSize = _lastReportedValidValue!;
     _updateInterpolation(
       _LazySizeTween(
@@ -135,7 +135,7 @@ class NavigatorSizeNotifier extends ChangeNotifier
     Route<dynamic> targetRoute,
     Animation<double> animation,
   ) {
-    assert(animation.status == AnimationStatus.reverse);
+    assert(!animation.isForwardOrCompleted);
     final initialSize = _lastReportedValidValue!;
     if (animation.value == 1) {
       _updateInterpolation(

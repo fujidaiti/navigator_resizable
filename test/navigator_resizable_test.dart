@@ -5,6 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:navigator_resizable/src/navigator_resizable.dart';
 import 'package:navigator_resizable/src/resizable_navigator_routes.dart';
 
+import 'src/matchers.dart';
+import 'src/widget_tester_x.dart';
+
 void main() {
   group('Size transition test with imperative navigator API', () {
     ({
@@ -400,6 +403,175 @@ void main() {
       },
     );
   });
+
+  group(
+    'Android predictive back gesture test with '
+    'imperative navigator API and ResizableMaterialPageRoute',
+    () {
+      ({
+        GlobalKey<NavigatorState> navigatorKey,
+        Widget testWidget,
+      })
+      boilerplate() {
+        final navigatorKey = GlobalKey<NavigatorState>();
+        final navigatorResizableKey = UniqueKey();
+        final routes = {
+          'a': () => const _TestRouteWidget(initialSize: Size(100, 200)),
+          'b': () => const _TestRouteWidget(initialSize: Size(200, 300)),
+        };
+        final testWidget = MaterialApp(
+          home: Align(
+            alignment: Alignment.center,
+            child: NavigatorResizable(
+              key: navigatorResizableKey,
+              child: Navigator(
+                key: navigatorKey,
+                initialRoute: 'a',
+                onGenerateRoute: (settings) {
+                  return ResizableMaterialPageRoute(
+                    settings: settings,
+                    builder: (_) => routes[settings.name]!(),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+
+        return (
+          navigatorKey: navigatorKey,
+          testWidget: testWidget,
+        );
+      }
+
+      testWidgets(
+        'When back gesture is performed',
+        variant: TargetPlatformVariant.only(TargetPlatform.android),
+        (tester) async {
+          final env = boilerplate();
+          await tester.pumpWidget(env.testWidget);
+
+          unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+          await tester.pumpAndSettle();
+
+          await tester.startAndroidBackGesture(
+            touchOffset: [5.0, 300.0],
+          );
+          await tester.pump();
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+          );
+
+          await tester.updateAndroidBackGestureProgress(
+            x: 100.0,
+            y: 300.0,
+            progress: 0.3,
+          );
+          await tester.pump();
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+            reason:
+                'With the default transition builder, '
+                'predictive back gesture should not affect the size.',
+          );
+
+          await tester.updateAndroidBackGestureProgress(
+            x: 200.0,
+            y: 300.0,
+            progress: 0.6,
+          );
+          await tester.pump();
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+          );
+
+          final sizeHistory = <Size>[];
+
+          await tester.commitAndroidBackGesture();
+          await tester.pump();
+          sizeHistory.add(tester.getRect(find.byType(NavigatorResizable)).size);
+          await tester.pump(const Duration(milliseconds: 50));
+          sizeHistory.add(tester.getRect(find.byType(NavigatorResizable)).size);
+          await tester.pump(const Duration(milliseconds: 50));
+          sizeHistory.add(tester.getRect(find.byType(NavigatorResizable)).size);
+          await tester.pump(const Duration(milliseconds: 50));
+          sizeHistory.add(tester.getRect(find.byType(NavigatorResizable)).size);
+          await tester.pump(const Duration(milliseconds: 50));
+          sizeHistory.add(tester.getRect(find.byType(NavigatorResizable)).size);
+          await tester.pumpAndSettle();
+          sizeHistory.add(tester.getRect(find.byType(NavigatorResizable)).size);
+
+          expect(sizeHistory.first, const Size(200, 300));
+          expect(sizeHistory.last, const Size(100, 200));
+          expect(
+            sizeHistory.map((s) => s.width),
+            isMonotonicallyDecreasing,
+            reason:
+                'After committing the back gesture, the size should animate to '
+                'the target size just like a normal pop transition.',
+          );
+          expect(sizeHistory.map((s) => s.height), isMonotonicallyDecreasing);
+        },
+      );
+
+      testWidgets(
+        'When back gesture is canceled',
+        variant: TargetPlatformVariant.only(TargetPlatform.android),
+        (tester) async {
+          final env = boilerplate();
+          await tester.pumpWidget(env.testWidget);
+
+          unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+          await tester.pumpAndSettle();
+
+          await tester.startAndroidBackGesture(
+            touchOffset: [5.0, 300.0],
+          );
+          await tester.pump();
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+          );
+
+          await tester.updateAndroidBackGestureProgress(
+            x: 100.0,
+            y: 300.0,
+            progress: 0.3,
+          );
+          await tester.pump();
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+          );
+
+          await tester.cancelAndroidBackGesture();
+          await tester.pump();
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+          );
+
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+            reason:
+                'The size is already at the target size, '
+                'no size animation should occur.',
+          );
+
+          await tester.pumpAndSettle();
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+          );
+        },
+      );
+    },
+  );
 
   group('Size transition test with declarative navigator API', () {
     ({
@@ -859,6 +1031,194 @@ void main() {
       },
     );
   });
+
+  group(
+    'Android predictive back gesture test with '
+    'declarative navigator API and ResizableMaterialPage',
+    () {
+      ({
+        GlobalKey<NavigatorState> navigatorKey,
+        ValueSetter<String> setLocation,
+        Widget testWidget,
+      })
+      boilerplate() {
+        final navigatorKey = GlobalKey<NavigatorState>();
+        final navigatorResizableKey = UniqueKey();
+        const pageA = ResizableMaterialPage(
+          name: 'a',
+          key: ValueKey('a'),
+          child: _TestRouteWidget(initialSize: Size(100, 200)),
+        );
+        const pageB = ResizableMaterialPage(
+          name: 'b',
+          key: ValueKey('b'),
+          child: _TestRouteWidget(initialSize: Size(200, 300)),
+        );
+
+        var location = '/a';
+        late StateSetter setStateFn;
+        void setLocation(String newLocation) {
+          location = newLocation;
+          setStateFn(() {});
+        }
+
+        final testWidget = MaterialApp(
+          home: Center(
+            child: NavigatorResizable(
+              key: navigatorResizableKey,
+              child: StatefulBuilder(
+                builder: (_, setState) {
+                  setStateFn = setState;
+                  return Navigator(
+                    key: navigatorKey,
+                    onDidRemovePage: (page) {},
+                    pages: switch (location) {
+                      '/a' => [pageA],
+                      '/a/b' => [pageA, pageB],
+                      _ => throw StateError('Unknown location: $location'),
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+
+        return (
+          navigatorKey: navigatorKey,
+          setLocation: setLocation,
+          testWidget: testWidget,
+        );
+      }
+
+      testWidgets(
+        'When back gesture is performed',
+        variant: TargetPlatformVariant.only(TargetPlatform.android),
+        (tester) async {
+          final env = boilerplate();
+          await tester.pumpWidget(env.testWidget);
+
+          env.setLocation('/a/b');
+          await tester.pumpAndSettle();
+
+          await tester.startAndroidBackGesture(
+            touchOffset: [5.0, 300.0],
+          );
+          await tester.pump();
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+          );
+
+          await tester.updateAndroidBackGestureProgress(
+            x: 100.0,
+            y: 300.0,
+            progress: 0.3,
+          );
+          await tester.pump();
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+            reason:
+                'With the default transition builder, '
+                'predictive back gesture should not affect the size.',
+          );
+
+          await tester.updateAndroidBackGestureProgress(
+            x: 200.0,
+            y: 300.0,
+            progress: 0.6,
+          );
+          await tester.pump();
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+          );
+
+          final sizeHistory = <Size>[];
+
+          await tester.commitAndroidBackGesture();
+          await tester.pump();
+          sizeHistory.add(tester.getRect(find.byType(NavigatorResizable)).size);
+          await tester.pump(const Duration(milliseconds: 50));
+          sizeHistory.add(tester.getRect(find.byType(NavigatorResizable)).size);
+          await tester.pump(const Duration(milliseconds: 50));
+          sizeHistory.add(tester.getRect(find.byType(NavigatorResizable)).size);
+          await tester.pump(const Duration(milliseconds: 50));
+          sizeHistory.add(tester.getRect(find.byType(NavigatorResizable)).size);
+          await tester.pump(const Duration(milliseconds: 50));
+          sizeHistory.add(tester.getRect(find.byType(NavigatorResizable)).size);
+          await tester.pumpAndSettle();
+          sizeHistory.add(tester.getRect(find.byType(NavigatorResizable)).size);
+
+          expect(sizeHistory.first, const Size(200, 300));
+          expect(sizeHistory.last, const Size(100, 200));
+          expect(
+            sizeHistory.map((s) => s.width),
+            isMonotonicallyDecreasing,
+            reason:
+                'After committing the back gesture, the size should animate to '
+                'the target size just like a normal pop transition.',
+          );
+          expect(sizeHistory.map((s) => s.height), isMonotonicallyDecreasing);
+        },
+      );
+
+      testWidgets(
+        'When back gesture is canceled',
+        variant: TargetPlatformVariant.only(TargetPlatform.android),
+        (tester) async {
+          final env = boilerplate();
+          await tester.pumpWidget(env.testWidget);
+
+          env.setLocation('/a/b');
+          await tester.pumpAndSettle();
+
+          await tester.startAndroidBackGesture(
+            touchOffset: [5.0, 300.0],
+          );
+          await tester.pump();
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+          );
+
+          await tester.updateAndroidBackGestureProgress(
+            x: 100.0,
+            y: 300.0,
+            progress: 0.3,
+          );
+          await tester.pump();
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+          );
+
+          await tester.cancelAndroidBackGesture();
+          await tester.pump();
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+          );
+
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+            reason:
+                'The size is already at the target size, '
+                'no size animation should occur.',
+          );
+
+          await tester.pumpAndSettle();
+          expect(
+            tester.getRect(find.byType(NavigatorResizable)).size,
+            const Size(200, 300),
+          );
+        },
+      );
+    },
+  );
 
   group('Layout test', () {
     ({
