@@ -1,30 +1,88 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'navigator_event_observer.dart';
 import 'navigator_resizable.dart';
 
-/// A specialized [MaterialPageRoute] compatible with [NavigatorResizable].
-///
-/// For a detailed explanation of each property, see [MaterialPageRoute].
-@optionalTypeArgs
-class ResizableMaterialPageRoute<T> extends MaterialPageRoute<T>
-    with ObservableRouteMixin<T> {
-  /// Creates a [MaterialPageRoute] compatible with [NavigatorResizable].
-  ResizableMaterialPageRoute({
-    required super.builder,
+abstract class _BaseResizableMaterialPageRoute<T> extends PageRoute<T>
+    with ObservableRouteMixin<T>, MaterialRouteTransitionMixin<T> {
+  _BaseResizableMaterialPageRoute({
     super.settings,
     super.requestFocus,
-    super.maintainState,
     super.fullscreenDialog,
     super.allowSnapshotting,
     super.barrierDismissible,
   });
 
+  Widget _buildContentInternal(BuildContext context);
+
   @override
   Widget buildContent(BuildContext context) {
-    return ResizableNavigatorRouteContentBoundary(
-      child: builder(context),
+    final result = ResizableNavigatorRouteContentBoundary(
+      child: _buildContentInternal(context),
     );
+    return switch (Theme.of(context).platform) {
+      TargetPlatform.android => _AnimationLessAndroidBackGestureHandler(
+        child: result,
+      ),
+      _ => result,
+    };
+  }
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return switch (Theme.of(context).platform) {
+      // PredictiveBackFullscreenPageTransitionsBuilder is incompatible with
+      // NavigatorResizable's size transition, so we use the older
+      // FadeForwardsPageTransitionsBuilder for Android instead.
+      TargetPlatform.android =>
+        const FadeForwardsPageTransitionsBuilder().buildTransitions(
+          this,
+          context,
+          animation,
+          secondaryAnimation,
+          child,
+        ),
+      _ => super.buildTransitions(
+        context,
+        animation,
+        secondaryAnimation,
+        child,
+      ),
+    };
+  }
+}
+
+/// A specialized [MaterialPageRoute] compatible with [NavigatorResizable].
+///
+/// For a detailed explanation of each property, see [MaterialPageRoute].
+@optionalTypeArgs
+class ResizableMaterialPageRoute<T> extends _BaseResizableMaterialPageRoute<T> {
+  /// Creates a [MaterialPageRoute] compatible with [NavigatorResizable].
+  ResizableMaterialPageRoute({
+    required this.builder,
+    super.settings,
+    super.requestFocus,
+    super.fullscreenDialog,
+    super.allowSnapshotting,
+    super.barrierDismissible,
+    this.maintainState = true,
+  });
+
+  @override
+  final bool maintainState;
+
+  /// Builds the primary contents of the route.
+  final WidgetBuilder builder;
+
+  @override
+  Widget _buildContentInternal(BuildContext context) {
+    return builder(context);
   }
 }
 
@@ -55,8 +113,8 @@ class ResizableMaterialPage<T> extends MaterialPage<T> {
       );
 }
 
-class _PageBasedResizableMaterialPageRoute<T> extends PageRoute<T>
-    with ObservableRouteMixin<T>, MaterialRouteTransitionMixin<T> {
+class _PageBasedResizableMaterialPageRoute<T>
+    extends _BaseResizableMaterialPageRoute<T> {
   _PageBasedResizableMaterialPageRoute({
     required ResizableMaterialPage<T> page,
     required super.allowSnapshotting,
@@ -75,10 +133,88 @@ class _PageBasedResizableMaterialPageRoute<T> extends PageRoute<T>
   String get debugLabel => '${super.debugLabel}(${page.name})';
 
   @override
-  Widget buildContent(BuildContext context) {
-    return ResizableNavigatorRouteContentBoundary(
-      child: page.child,
-    );
+  Widget _buildContentInternal(BuildContext context) {
+    return page.child;
+  }
+}
+
+/// Enables Android's predictive back gesture to pop routes within the
+/// nested [Navigator], without modifying route transition progress during
+/// the gesture.
+///
+/// This is a workaround for the issue where [TransitionRoute.animation]
+/// jumps from a mid-transition value to 1.0 when the back gesture is committed,
+/// causing an abrupt pop-transition animation.
+///
+/// The root cause is that [TransitionRoute.handleUpdateBackGestureProgress]
+/// updates the [TransitionRoute.controller]'s value as the gesture progresses,
+/// but [TransitionRoute.handleCommitBackGesture] triggers the transition
+/// animation via [AnimationController.reverse] with 1.0 as the starting point,
+/// regardless of the current [TransitionRoute.controller]'s value.
+///
+/// The default back gesture handler behaves this way, but is incompatible with
+/// [NavigatorResizable]'s size transition. This handler therefore suppresses
+/// gesture-driven transition progress while still allowing the gesture to
+/// commit a route pop.
+class _AnimationLessAndroidBackGestureHandler extends StatefulWidget {
+  const _AnimationLessAndroidBackGestureHandler({
+    required this.child,
+  });
+
+  final Widget child;
+
+  @override
+  State<_AnimationLessAndroidBackGestureHandler> createState() =>
+      _AnimationLessAndroidBackGestureHandlerState();
+}
+
+class _AnimationLessAndroidBackGestureHandlerState
+    extends State<_AnimationLessAndroidBackGestureHandler>
+    with WidgetsBindingObserver {
+  late ModalRoute<dynamic> _route;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _route = ModalRoute.of(context)!;
+  }
+
+  @override
+  bool handleStartBackGesture(PredictiveBackEvent backEvent) {
+    return !backEvent.isButtonEvent && _route.isCurrent && !_route.isFirst;
+  }
+
+  @override
+  void handleCancelBackGesture() {
+    _handleEndBackGesture(isCommitted: false);
+  }
+
+  @override
+  void handleCommitBackGesture() {
+    _handleEndBackGesture(isCommitted: true);
+  }
+
+  void _handleEndBackGesture({required bool isCommitted}) {
+    if (isCommitted && _route.isCurrent) {
+      _route.navigator?.pop();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }
 
