@@ -15,8 +15,8 @@ class ExampleApp extends StatelessWidget {
         body: Align(
           // Try changing the alignment for fun!
           alignment: Alignment.center,
-          child: ColoredBox(
-            color: Colors.purple,
+          child: Material(
+            elevation: 4,
             // STEP1: Wrap the navigator with NavigatorResizable.
             child: NavigatorResizable(
               child: Navigator(
