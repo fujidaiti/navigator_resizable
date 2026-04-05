@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.0.2
+
+- Fix jaggy route pop animation with predictive back gesture on Android
+- Fix assertion error after performing predictive back gesture on Android
+
 ## 3.0.1
 
 - Add `key`, `name`, `arguments`, and `restorationId` parameters to `ResizablePageRoutePageBuilder`
