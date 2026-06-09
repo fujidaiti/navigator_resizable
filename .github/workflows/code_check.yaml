@@ -29,6 +29,7 @@ jobs:
               - '**.dart'
               - 'pubspec.yaml'
               - 'pubspec.lock'
+              - '.fvmrc'
 
       - name: Get Flutter SDK version constraint
         id: flutter-version-constraint
