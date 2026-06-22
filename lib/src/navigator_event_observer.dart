@@ -460,6 +460,7 @@ mixin ObservableRouteMixin<T> on TransitionRoute<T> {
   NavigatorEventObserverState? _observer;
   VoidCallback? _onDisposeCallback;
 
+  @mustCallSuper
   @override
   void install() {
     super.install();
@@ -467,6 +468,7 @@ mixin ObservableRouteMixin<T> on TransitionRoute<T> {
     _onDisposeCallback = _observer?._didInstall(this);
   }
 
+  @mustCallSuper
   @override
   void dispose() {
     _onDisposeCallback?.call();
@@ -533,6 +535,7 @@ mixin ObservableRouteMixin<T> on TransitionRoute<T> {
     _observer?._didPopNext(this, nextRoute);
   }
 
+  @mustCallSuper
   @override
   void handleStartBackGesture({double progress = 0.0}) {
     // We must notify the observer before the super method calls
@@ -542,12 +545,14 @@ mixin ObservableRouteMixin<T> on TransitionRoute<T> {
     super.handleStartBackGesture(progress: progress);
   }
 
+  @mustCallSuper
   @override
   void handleCommitBackGesture() {
     super.handleCommitBackGesture();
     _observer?._didCommitAndroidBackGesture(this);
   }
 
+  @mustCallSuper
   @override
   void handleCancelBackGesture() {
     super.handleCancelBackGesture();
