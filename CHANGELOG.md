@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.0.3
+
+- Add missing `@mustCallSuper`s to ObservableRouteMixin
+
 ## 3.0.2
 
 - Fix jaggy route pop animation with predictive back gesture on Android
