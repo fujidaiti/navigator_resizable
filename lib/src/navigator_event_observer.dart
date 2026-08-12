@@ -282,15 +282,28 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
       return;
     }
 
-    assert(route.isCurrent);
+    if (!route.isCurrent) {
+      // The navigation stack was changed in a way that removed the
+      // `poppedRoute` without making the `route` the top-most one, e.g. when
+      // several routes are removed at once through the Pages API. Whichever
+      // route did become current reports its own push or pop, so there is no
+      // transition for us to start here.
+      return;
+    }
+
     if (poppedRoute is! TransitionRoute<dynamic> ||
-        poppedRoute.animation!.status == AnimationStatus.dismissed) {
+        poppedRoute.animation!.status != AnimationStatus.reverse) {
+      // Either the popped route has no transition animation at all, or it was
+      // removed without running one. The latter happens when the page stack
+      // shrinks while another transition is still in flight: the route is
+      // detached outright, so its animation never leaves the state it was in
+      // (typically `completed`). Both cases are instantaneous, so the `route`
+      // is settled right away.
       _lastSettledRoute = route;
       _notifyListeners((it) => it.didEndTransition(route));
       return;
     }
 
-    assert(poppedRoute.animation!.status == AnimationStatus.reverse);
     _notifyListeners((it) {
       it.didStartTransition(
         route,
