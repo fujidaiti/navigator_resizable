@@ -1,6 +1,6 @@
 # Mid-transition navigation crash — diagnosis
 
-**Status:** fixed in 3.0.4.
+**Status:** fixed in 3.1.0.
 **Affected:** `lib/src/navigator_event_observer.dart` (`NavigatorEventObserverState`).
 **Environment:** Flutter 3.47.0, `navigator_resizable` 3.0.3, branch `fix-mid-transition-issue`.
 
@@ -258,6 +258,36 @@ same destination route are started, so that route receives two matching
 `didEndTransition` calls. That is consistent with the documented contract
 (`didEndTransition` is called once per transition) and is asserted by the new
 tests.
+
+## Minimum supported Flutter version
+
+The same scenario also crashes the Flutter SDK itself on versions older than
+3.41.0, with no involvement from this package. A probe built from nothing but
+`MaterialApp`, `Navigator(pages:)` and `MaterialPageRoute` throws:
+
+```
+'package:flutter/src/widgets/routes.dart': Failed assertion: line 396 pos 7:
+'_controller != null': _PageBasedMaterialPageRoute.didPopNext called before
+calling install() or after calling dispose().
+```
+
+Measured across SDK versions, for both the probe and this package's test suite:
+
+| Flutter | SDK-only probe | Package test suite |
+| --- | --- | --- |
+| 3.35.1 | 4 / 4 scenarios fail | fails |
+| 3.38.0 | 4 / 4 scenarios fail | fails |
+| 3.41.0 | 4 / 4 scenarios pass | 87 / 87 pass |
+| 3.44.6 | 4 / 4 scenarios pass | 87 / 87 pass |
+| 3.47.0 | 4 / 4 scenarios pass | 87 / 87 pass |
+
+The SDK-side fix is [flutter/flutter#177338](https://github.com/flutter/flutter/pull/177338),
+first released in 3.41.0 and never backported to 3.38.x or 3.35.x. Because that
+assertion escapes through the same unprotected `_debugLocked` path described
+above, it bricks the navigator exactly as the defects in this package did, so
+the user-visible symptom cannot be fixed below 3.41.0 no matter what this
+package does. The minimum supported Flutter version was therefore raised from
+3.35.1 to 3.41.0 in 3.1.0.
 
 ## Baseline
 
