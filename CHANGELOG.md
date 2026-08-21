@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.0.4
+
+- Fix: assertion error and permanently broken navigator when the page stack is changed faster than the route transitions can settle
+- Fix: assertion error when a route is removed from the page stack before it finishes entering
+
 ## 3.0.3
 
 - Add missing `@mustCallSuper`s to ObservableRouteMixin

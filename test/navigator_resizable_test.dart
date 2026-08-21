@@ -211,6 +211,82 @@ void main() {
       },
     );
 
+    testWidgets(
+      'When pushing and popping routes faster than the transitions settle',
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
+
+        // Push b and stop at the middle of the transition.
+        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        // Pop b before it settles, then push c on top of the still-popping b
+        // and pop it again, all before any transition settles.
+        env.navigatorKey.currentState!.pop();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 16));
+        unawaited(env.navigatorKey.currentState!.pushNamed('c'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 16));
+        env.navigatorKey.currentState!.pop();
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        await tester.pump(const Duration(milliseconds: 16));
+
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(
+          env.getBox(tester).size,
+          const Size(100, 200),
+          reason: 'The size should settle to the size of the route a.',
+        );
+
+        // The navigator must still be usable afterwards.
+        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(env.getBox(tester).size, const Size(200, 300));
+      },
+    );
+
+    testWidgets(
+      'When removing a route that has not finished entering',
+      (tester) async {
+        final env = boilerplate(interpolationCurve: Curves.linear);
+        await tester.pumpWidget(env.testWidget);
+
+        // Push b and then c without letting either transition settle.
+        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        final routeB = env.navigatorKey.currentState!.currentRoute;
+        unawaited(env.navigatorKey.currentState!.pushNamed('c'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        // Pop c and remove b in the same frame. The size should follow the exit
+        // transition of c back to the size of the route a.
+        env.navigatorKey.currentState!
+          ..pop()
+          ..removeRoute(routeB);
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        expect(
+          env.getBox(tester).size,
+          isNot(const Size(100, 200)),
+          reason:
+              'The size should animate back to the size of the route a '
+              'instead of snapping to it.',
+        );
+
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(env.getBox(tester).size, const Size(100, 200));
+      },
+    );
+
     testWidgets('When replacing the current route', (tester) async {
       final env = boilerplate();
       await tester.pumpWidget(env.testWidget);
@@ -756,6 +832,81 @@ void main() {
         await tester.pump(const Duration(milliseconds: 30));
         expect(env.getBox(tester).size, const Size(110, 210));
         await tester.pumpAndSettle();
+        expect(env.getBox(tester).size, const Size(100, 200));
+      },
+    );
+
+    testWidgets(
+      'When changing the page stack faster than the transitions settle',
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
+
+        // Navigate to /a/b/c and stop at the middle of the transition.
+        env.setLocation('/a/b/c');
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        // Go back to /a before the transition settles, then navigate to /a/b/c
+        // again and go back once more, all before any transition settles.
+        env.setLocation('/a');
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 16));
+        env.setLocation('/a/b/c');
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 16));
+        env.setLocation('/a');
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        await tester.pump(const Duration(milliseconds: 16));
+
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(
+          env.getBox(tester).size,
+          const Size(100, 200),
+          reason: 'The size should settle to the size of the page a.',
+        );
+
+        // The navigator must still be usable afterwards.
+        env.setLocation('/a/b');
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(env.getBox(tester).size, const Size(200, 300));
+      },
+    );
+
+    testWidgets(
+      'When popping routes that have not finished entering',
+      (tester) async {
+        final env = boilerplate(interpolationCurve: Curves.linear);
+        await tester.pumpWidget(env.testWidget);
+
+        // Navigate to /a/b and then to /a/b/c without letting either transition
+        // settle.
+        env.setLocation('/a/b');
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        env.setLocation('/a/b/c');
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        // Going back to /a pops c and removes b in the same frame. The size
+        // should follow the exit transition of c back to the size of the
+        // page a.
+        env.setLocation('/a');
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        expect(
+          env.getBox(tester).size,
+          isNot(const Size(100, 200)),
+          reason:
+              'The size should animate back to the size of the page a '
+              'instead of snapping to it.',
+        );
+
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
         expect(env.getBox(tester).size, const Size(100, 200));
       },
     );

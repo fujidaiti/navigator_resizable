@@ -274,7 +274,13 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
     _notifyListeners((it) => it.didPop(route, result));
   }
 
-  void _didPopNextInternal(Route<dynamic> route, Route<dynamic> poppedRoute) {
+  /// Notifies the listeners that the [route] is becoming the current route
+  /// again because the routes above it are gone.
+  ///
+  /// [poppedRoute] is the route whose exit transition drives this transition,
+  /// or `null` if there is no such route, in which case the transition is
+  /// considered to be already over.
+  void _didPopNextInternal(Route<dynamic> route, Route<dynamic>? poppedRoute) {
     if (_navigator!.userGestureInProgress) {
       // A swipe back gesture has popped the current route off.
       // This is handled by `_didUserGestureInProgressChange`,
@@ -321,12 +327,38 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
   }
 
   void _didChangeNext(Route<dynamic> route, Route<dynamic>? nextRoute) {
-    final didPopNext = nextRoute == null && _nextRouteOf.containsKey(route);
+    // A route that has already been popped stays in the navigator's history
+    // until its exit transition finishes. During that window, a newer route
+    // can be pushed above it and popped again, which resets its next route
+    // back to null even though it will never become the current route again.
+    // The `route.isCurrent` check prevents such a route from being mistaken
+    // for a route whose next route was just popped off.
+    final didPopNext =
+        nextRoute == null && _nextRouteOf.containsKey(route) && route.isCurrent;
+
+    // The routes that used to be above the `route` may still be running their
+    // exit transitions, and the top-most of them is the one that drives the
+    // transition back to the `route`. Note that a route above the `route` is
+    // not always popped; it can also be removed without any transition, in
+    // which case there is nothing to wait for.
+    Route<dynamic>? exitingRoute;
+    if (didPopNext) {
+      for (
+        var above = _nextRouteOf[route];
+        above != null;
+        above = _nextRouteOf[above]
+      ) {
+        if (above is TransitionRoute<dynamic> &&
+            above.animation!.status == AnimationStatus.reverse) {
+          exitingRoute = above;
+        }
+      }
+    }
+
     _nextRouteOf[route] = nextRoute;
     _notifyListeners((it) => it.didChangeNext(route, nextRoute));
     if (didPopNext) {
-      assert(_lastSettledRoute != null);
-      _didPopNextInternal(route, _lastSettledRoute!);
+      _didPopNextInternal(route, exitingRoute);
     }
   }
 
