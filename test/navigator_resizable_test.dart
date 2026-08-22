@@ -217,13 +217,11 @@ void main() {
         final env = boilerplate();
         await tester.pumpWidget(env.testWidget);
 
-        // Push b and stop at the middle of the transition.
         unawaited(env.navigatorKey.currentState!.pushNamed('b'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpAndSettle();
 
-        // Pop b before it settles, then push c on top of the still-popping b
-        // and pop it again, all before any transition settles.
+        // Pop b, then push c on top of the still-popping b and pop it again,
+        // all before any transition settles.
         env.navigatorKey.currentState!.pop();
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 16));
@@ -839,16 +837,12 @@ void main() {
     testWidgets(
       'When changing the page stack faster than the transitions settle',
       (tester) async {
-        final env = boilerplate();
+        final env = boilerplate(initialLocation: '/a/b/c');
         await tester.pumpWidget(env.testWidget);
+        await tester.pumpAndSettle();
 
-        // Navigate to /a/b/c and stop at the middle of the transition.
-        env.setLocation('/a/b/c');
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
-
-        // Go back to /a before the transition settles, then navigate to /a/b/c
-        // again and go back once more, all before any transition settles.
+        // Go back to /a, then navigate to /a/b/c again and go back once more,
+        // all before any transition settles.
         env.setLocation('/a');
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 16));

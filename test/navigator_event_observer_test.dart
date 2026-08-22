@@ -728,16 +728,14 @@ void main() {
         );
         await tester.pumpWidget(env.testWidget);
 
-        // Push b and stop at the middle of the transition.
         unawaited(env.navigatorKey.currentState!.pushNamed('b'));
-        await tester.pump(); // Required to kick off the animation clock.
-        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpAndSettle();
 
-        // Pop b before it settles. b keeps running its exit transition,
-        // so it remains in the navigator's history as an inactive route
-        // that will never become the current route again.
+        // Pop b. It keeps running its exit transition, so it remains in the
+        // navigator's history as an inactive route that will never become
+        // the current route again.
         env.navigatorKey.currentState!.pop();
-        await tester.pump();
+        await tester.pump(); // Required to kick off the animation clock.
         await tester.pump(const Duration(milliseconds: 16));
 
         // Push c on top of the still-popping b.
@@ -1949,21 +1947,17 @@ void main() {
       'When changing the page stack faster than the transitions settle',
       (tester) async {
         final env = boilerplate(
-          initialLocation: '/a',
+          initialLocation: '/a/b/c',
           transitionDuration: const Duration(milliseconds: 300),
         );
         await tester.pumpWidget(env.testWidget);
+        await tester.pumpAndSettle();
 
-        // Navigate to /a/b/c and stop at the middle of the transition.
-        env.setLocation('/a/b/c');
-        await tester.pump(); // Required to kick off the animation clock.
-        await tester.pump(const Duration(milliseconds: 100));
-
-        // Go back to /a before the transition settles. The popped route c keeps
-        // running its exit transition, so it remains in the navigator's history
-        // as an inactive route that will never become the current route again.
+        // Go back to /a. The popped route c keeps running its exit transition,
+        // so it remains in the navigator's history as an inactive route that
+        // will never become the current route again.
         env.setLocation('/a');
-        await tester.pump();
+        await tester.pump(); // Required to kick off the animation clock.
         await tester.pump(const Duration(milliseconds: 16));
 
         // Navigate to /a/b/c again. A second c route is pushed on top of
