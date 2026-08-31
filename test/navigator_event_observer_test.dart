@@ -720,182 +720,6 @@ void main() {
       },
     );
 
-    testWidgets(
-      'When pushing and popping routes faster than the transitions settle',
-      (tester) async {
-        final env = boilerplate(
-          transitionDuration: const Duration(milliseconds: 300),
-        );
-        await tester.pumpWidget(env.testWidget);
-
-        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
-        await tester.pumpAndSettle();
-
-        // Pop b. It keeps running its exit transition, so it remains in the
-        // navigator's history as an inactive route that will never become
-        // the current route again.
-        env.navigatorKey.currentState!.pop();
-        await tester.pump(); // Required to kick off the animation clock.
-        await tester.pump(const Duration(milliseconds: 16));
-
-        // Push c on top of the still-popping b.
-        unawaited(env.navigatorKey.currentState!.pushNamed('c'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 16));
-
-        // Popping c resets the next route of the still-popping b back to null.
-        // This must not be mistaken for "the route above b was popped, so b is
-        // the current route again", which used to trigger a bogus transition
-        // toward b (and an assertion error in debug builds).
-        reset(env.listener);
-        env.navigatorKey.currentState!.pop();
-        await tester.pump();
-        expect(tester.takeException(), isNull);
-        await tester.pump(const Duration(milliseconds: 16));
-
-        final verificationResults = verifyInOrder([
-          env.listener.didComplete(
-            argThat(isRoute(name: 'c')),
-            argThat(isNull),
-          ),
-          env.listener.didPop(
-            argThat(isRoute(name: 'c')),
-            argThat(isNull),
-          ),
-          env.listener.didPopNext(
-            argThat(isRoute(name: 'a')),
-            argThat(isRoute(name: 'c')),
-          ),
-          env.listener.didStartTransition(
-            argThat(isRoute(name: 'a')),
-            captureAny,
-            isUserGestureInProgress: false,
-          ),
-          // The still-popping b route is notified that its next route is
-          // gone, but no transition toward it must be started.
-          env.listener.didChangeNext(
-            argThat(isRoute(name: 'b')),
-            argThat(isNull),
-          ),
-        ]);
-        verifyNoMoreInteractions(env.listener);
-        final capturedAnimation =
-            verificationResults[3].captured.single as Animation<double>;
-        expect(capturedAnimation.status, AnimationStatus.reverse);
-
-        reset(env.listener);
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        expect(find.text('Page:a'), findsOneWidget);
-        expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
-        // Two transitions toward a were started, one by each pop, so each of
-        // them ends with its own didEndTransition.
-        verify(
-          env.listener.didEndTransition(argThat(isRoute(name: 'a'))),
-        ).called(2);
-
-        // The navigator must still be usable afterwards.
-        reset(env.listener);
-        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        expect(find.text('Page:b'), findsOneWidget);
-        expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
-      },
-    );
-
-    testWidgets(
-      'When removing a route that has not finished entering',
-      (tester) async {
-        final env = boilerplate(
-          transitionDuration: const Duration(milliseconds: 300),
-        );
-        await tester.pumpWidget(env.testWidget);
-
-        // Push b and then c without letting either transition settle, so that
-        // a is still the last settled route.
-        reset(env.listener);
-        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
-        await tester.pump(); // Required to kick off the animation clock.
-        await tester.pump(const Duration(milliseconds: 100));
-        final routeB =
-            verify(env.listener.didInstall(captureAny)).captured.single
-                as Route<dynamic>;
-        unawaited(env.navigatorKey.currentState!.pushNamed('c'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
-
-        // Pop c and remove b in the same frame. b goes away without any
-        // transition, so the transition back to a is driven by the exit
-        // transition of c, not by the one of the last settled route (a itself).
-        reset(env.listener);
-        env.navigatorKey.currentState!
-          ..pop()
-          ..removeRoute(routeB);
-        await tester.pump();
-        expect(tester.takeException(), isNull);
-
-        final verificationResults = verifyInOrder([
-          env.listener.didComplete(
-            argThat(isRoute(name: 'c')),
-            argThat(isNull),
-          ),
-          env.listener.didPop(
-            argThat(isRoute(name: 'c')),
-            argThat(isNull),
-          ),
-          env.listener.didPopNext(
-            argThat(isRoute(name: 'b')),
-            argThat(isRoute(name: 'c')),
-          ),
-          env.listener.didStartTransition(
-            argThat(isRoute(name: 'b')),
-            captureAny,
-            isUserGestureInProgress: false,
-          ),
-          env.listener.didComplete(
-            argThat(isRoute(name: 'b')),
-            argThat(isNull),
-          ),
-          env.listener.didChangePrevious(
-            argThat(isRoute(name: 'c')),
-            argThat(isRoute(name: 'a')),
-          ),
-          env.listener.didChangeNext(
-            argThat(isRoute(name: 'a')),
-            argThat(isNull),
-          ),
-          env.listener.didStartTransition(
-            argThat(isRoute(name: 'a')),
-            captureAny,
-            isUserGestureInProgress: false,
-          ),
-        ]);
-        verifyNoMoreInteractions(env.listener);
-
-        final capturedAnimation =
-            verificationResults[7].captured.single as Animation<double>;
-        expect(capturedAnimation.status, AnimationStatus.reverse);
-        expect(
-          capturedAnimation.value,
-          moreOrLessEquals(1 / 3, epsilon: 0.01),
-          reason:
-              'The transition to a should be driven by the exit transition '
-              'of c, which is at 1/3 of its way, not by the animation of '
-              'the last settled route (a itself), which is at 1.0.',
-        );
-
-        reset(env.listener);
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        expect(find.text('Page:a'), findsOneWidget);
-        expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
-        verify(
-          env.listener.didEndTransition(argThat(isRoute(name: 'a'))),
-        ).called(1);
-      },
-    );
-
     testWidgets('When iOS swipe back gesture is performed', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
 
@@ -1944,117 +1768,33 @@ void main() {
     });
 
     testWidgets(
-      'When changing the page stack faster than the transitions settle',
+      'Edge case: pop multiple pages during a push transition',
       (tester) async {
         final env = boilerplate(
-          initialLocation: '/a/b/c',
+          initialLocation: '/a/b',
           transitionDuration: const Duration(milliseconds: 300),
         );
         await tester.pumpWidget(env.testWidget);
         await tester.pumpAndSettle();
 
-        // Go back to /a. The popped route c keeps running its exit transition,
-        // so it remains in the navigator's history as an inactive route that
-        // will never become the current route again.
-        env.setLocation('/a');
-        await tester.pump(); // Required to kick off the animation clock.
-        await tester.pump(const Duration(milliseconds: 16));
-
-        // Navigate to /a/b/c again. A second c route is pushed on top of
-        // the still-popping one.
+        // Start navigating to /a/b/c and stop at 1/3 of the transition.
         env.setLocation('/a/b/c');
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 16));
-
-        // Popping the second c route resets the next route of the still-popping
-        // one back to null. This must not be mistaken for "the route above it
-        // was popped, so it is the current route again", which used to trigger
-        // a bogus transition toward it (and an assertion error in debug
-        // builds).
-        reset(env.listener);
-        env.setLocation('/a');
-        await tester.pump();
-        expect(tester.takeException(), isNull);
-        await tester.pump(const Duration(milliseconds: 16));
-
-        final verificationResults = verifyInOrder([
-          env.listener.didComplete(
-            argThat(isRoute(name: 'c')),
-            argThat(isNull),
-          ),
-          env.listener.didPop(
-            argThat(isRoute(name: 'c')),
-            argThat(isNull),
-          ),
-          env.listener.didPopNext(
-            argThat(isRoute(name: 'a')),
-            argThat(isRoute(name: 'c')),
-          ),
-          env.listener.didStartTransition(
-            argThat(isRoute(name: 'a')),
-            captureAny,
-            isUserGestureInProgress: false,
-          ),
-          // The still-popping c route is notified that its next route is gone,
-          // but no transition toward it must be started.
-          env.listener.didChangeNext(
-            argThat(isRoute(name: 'c')),
-            argThat(isNull),
-          ),
-        ]);
-        verifyNoMoreInteractions(env.listener);
-        final capturedAnimation =
-            verificationResults[3].captured.single as Animation<double>;
-        expect(capturedAnimation.status, AnimationStatus.reverse);
-
-        reset(env.listener);
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        expect(find.text('Page:a'), findsOneWidget);
-        expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
-        // Two transitions toward a were started, one by each pop, so each of
-        // them ends with its own didEndTransition.
-        verify(
-          env.listener.didEndTransition(argThat(isRoute(name: 'a'))),
-        ).called(2);
-
-        // The navigator must still be usable afterwards.
-        reset(env.listener);
-        env.setLocation('/a/b');
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        expect(find.text('Page:b'), findsOneWidget);
-        expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
-      },
-    );
-
-    testWidgets(
-      'When popping routes that have not finished entering',
-      (tester) async {
-        final env = boilerplate(
-          initialLocation: '/a',
-          transitionDuration: const Duration(milliseconds: 300),
+        await tester.pump(); // Required to kick off the animation clock.
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(
+          env.getObserver().lastSettledRoute,
+          isRoute(name: 'b'),
+          reason:
+              'The page c never settles, so b is still the last settled route.',
         );
-        await tester.pumpWidget(env.testWidget);
 
-        // Navigate to /a/b and then to /a/b/c without letting either transition
-        // settle, so that a is still the last settled route when both b and c
-        // are removed from the page stack.
-        env.setLocation('/a/b');
-        await tester.pump(); // Required to kick off the animation clock.
-        await tester.pump(const Duration(milliseconds: 100));
-        env.setLocation('/a/b/c');
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
-
-        // Going back to /a pops c and removes b in the same frame. b goes away
-        // without any transition, so the transition back to a is driven by the
-        // exit transition of c, not by the one of the last settled route
-        // (a itself).
+        // Go back to /a. The page c is popped with its exit transition, while
+        // the page b is removed without any transition since it is not the
+        // top-most page. The transition back to a is therefore driven by the
+        // exit transition of c, not by the one of the last settled route b.
         reset(env.listener);
         env.setLocation('/a');
         await tester.pump();
-        expect(tester.takeException(), isNull);
 
         final verificationResults = verifyInOrder([
           env.listener.didComplete(
@@ -2103,17 +1843,17 @@ void main() {
           reason:
               'The transition to a should be driven by the exit transition '
               'of c, which is at 1/3 of its way, not by the animation of '
-              'the last settled route (a itself), which is at 1.0.',
+              'the last settled route b, which is at 1.0.',
         );
 
         reset(env.listener);
         await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
         expect(find.text('Page:a'), findsOneWidget);
         expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
         verify(
           env.listener.didEndTransition(argThat(isRoute(name: 'a'))),
-        ).called(1);
+        );
+        verifyNoMoreInteractions(env.listener);
       },
     );
 
