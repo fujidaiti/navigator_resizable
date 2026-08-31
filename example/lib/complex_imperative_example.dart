@@ -51,9 +51,8 @@ void pushVariableHeightPage(BuildContext context) {
   Navigator.push(
     context,
     ResizableMaterialPageRoute(
-      builder: (context) => VariableHeightPage(
-        onNext: () => pushFormPage(context),
-      ),
+      builder: (context) =>
+          VariableHeightPage(onNext: () => pushFormPage(context)),
     ),
   );
 }

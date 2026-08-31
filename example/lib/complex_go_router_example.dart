@@ -18,10 +18,8 @@ final _router = GoRouter(
       builder: (context, state) => const Home(),
       routes: [
         ShellRoute(
-          pageBuilder: (context, state, child) => MultiPageDialogPage(
-            key: state.pageKey,
-            navigator: child,
-          ),
+          pageBuilder: (context, state, child) =>
+              MultiPageDialogPage(key: state.pageKey, navigator: child),
           routes: [
             GoRoute(
               path: 'a',
@@ -59,32 +57,32 @@ final _router = GoRouter(
                           path: 'd',
                           pageBuilder: (context, state) =>
                               ResizableMaterialPage(
-                            key: state.pageKey,
-                            child: FormPage(
-                              autoFocus: true,
-                              submitButton: FilledButton(
-                                onPressed: () => context.go('/a/b/c/d/e'),
-                                child: Text('Next'),
+                                key: state.pageKey,
+                                child: FormPage(
+                                  autoFocus: true,
+                                  submitButton: FilledButton(
+                                    onPressed: () => context.go('/a/b/c/d/e'),
+                                    child: Text('Next'),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
                           routes: [
                             GoRoute(
                               path: 'e',
                               pageBuilder: (context, state) =>
                                   ResizableMaterialPage(
-                                key: state.pageKey,
-                                child: PortalPage(
-                                  destinations: [
-                                    '/a/b/c/d',
-                                    '/a/b/c',
-                                    '/a/b',
-                                    '/a',
-                                  ],
-                                  onGoToDestination: (destination) =>
-                                      context.go(destination),
-                                ),
-                              ),
+                                    key: state.pageKey,
+                                    child: PortalPage(
+                                      destinations: [
+                                        '/a/b/c/d',
+                                        '/a/b/c',
+                                        '/a/b',
+                                        '/a',
+                                      ],
+                                      onGoToDestination: (destination) =>
+                                          context.go(destination),
+                                    ),
+                                  ),
                             ),
                           ],
                         ),
@@ -99,12 +97,7 @@ final _router = GoRouter(
               pageBuilder: (context, state) => ResizableMaterialPage(
                 key: state.pageKey,
                 child: PortalPage(
-                  destinations: [
-                    '/a/b/c/d',
-                    '/a/b/c',
-                    '/a/b',
-                    '/a',
-                  ],
+                  destinations: ['/a/b/c/d', '/a/b/c', '/a/b', '/a'],
                   onGoToDestination: (destination) => context.go(destination),
                 ),
               ),
@@ -137,10 +130,7 @@ class Home extends StatelessWidget {
 /// Because the SDK does not provide [Page] for dialog widgets,
 /// we need to define one ourselves.
 class MultiPageDialogPage extends Page {
-  const MultiPageDialogPage({
-    super.key,
-    required this.navigator,
-  });
+  const MultiPageDialogPage({super.key, required this.navigator});
 
   final Widget navigator;
 
@@ -151,9 +141,8 @@ class MultiPageDialogPage extends Page {
 }
 
 class PageBasedMultiPageDialogRoute extends PageRoute<void> {
-  PageBasedMultiPageDialogRoute({
-    required MultiPageDialogPage page,
-  }) : super(settings: page);
+  PageBasedMultiPageDialogRoute({required MultiPageDialogPage page})
+    : super(settings: page);
 
   MultiPageDialogPage get page => settings as MultiPageDialogPage;
 
@@ -184,9 +173,7 @@ class PageBasedMultiPageDialogRoute extends PageRoute<void> {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
   ) {
-    return MultiPageDialog(
-      navigator: page.navigator,
-    );
+    return MultiPageDialog(navigator: page.navigator);
   }
 
   @override
@@ -196,9 +183,6 @@ class PageBasedMultiPageDialogRoute extends PageRoute<void> {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    return FadeTransition(
-      opacity: animation,
-      child: child,
-    );
+    return FadeTransition(opacity: animation, child: child);
   }
 }

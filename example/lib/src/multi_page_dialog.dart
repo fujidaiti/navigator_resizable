@@ -4,10 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:navigator_resizable/navigator_resizable.dart';
 
 class MultiPageDialog extends StatelessWidget {
-  const MultiPageDialog({
-    super.key,
-    required this.navigator,
-  });
+  const MultiPageDialog({super.key, required this.navigator});
 
   final Widget navigator;
 
@@ -27,9 +24,7 @@ class MultiPageDialog extends StatelessWidget {
         child: Material(
           borderRadius: BorderRadius.circular(12),
           clipBehavior: Clip.antiAlias,
-          child: NavigatorResizable(
-            child: navigator,
-          ),
+          child: NavigatorResizable(child: navigator),
         ),
       ),
     );
