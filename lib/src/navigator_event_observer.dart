@@ -327,12 +327,6 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
   }
 
   void _didChangeNext(Route<dynamic> route, Route<dynamic>? nextRoute) {
-    // A route that has already been popped stays in the navigator's history
-    // until its exit transition finishes. During that window, a newer route
-    // can be pushed above it and popped again, which resets its next route
-    // back to null even though it will never become the current route again.
-    // The `route.isCurrent` check prevents such a route from being mistaken
-    // for a route whose next route was just popped off.
     final didPopNext =
         nextRoute == null && _nextRouteOf.containsKey(route) && route.isCurrent;
 
