@@ -1,8 +1,7 @@
 # Changelog
 
-## 3.1.0
+## 3.0.4
 
-- **Breaking**: The minimum supported Flutter version is now 3.41.0 (was 3.35.1). Older versions cannot be supported because the `Navigator` in the Flutter SDK itself throws when the page stack is changed faster than the route transitions can settle, which was fixed in Flutter 3.41.0 by [flutter/flutter#177338](https://github.com/flutter/flutter/pull/177338).
 - Fix: assertion error and permanently broken navigator when the page stack is changed faster than the route transitions can settle
 - Fix: assertion error when a route is removed from the page stack before it finishes entering
 
