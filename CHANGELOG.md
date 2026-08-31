@@ -1,9 +1,9 @@
 # Changelog
 
-## 3.0.4-wip
+## 3.1.0
 
+- Bump minimum Flutter SDK version to 3.41.0 to avoid a mid-transition crash
 - Fix: assertion error when popping multiple routes in the middle of a push transition
-- Bump minimum Flutter SDK version to 3.41.0
 
 ## 3.0.3
 
