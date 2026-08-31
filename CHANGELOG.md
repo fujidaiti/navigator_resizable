@@ -1,9 +1,8 @@
 # Changelog
 
-## 3.0.4
+## 3.0.4-wip
 
-- Fix: assertion error and permanently broken navigator when the page stack is changed faster than the route transitions can settle
-- Fix: assertion error when a route is removed from the page stack before it finishes entering
+- Fix: assertion error when popping multiple routes in the middle of a push transition
 
 ## 3.0.3
 
