@@ -19,9 +19,7 @@ class WelcomePage extends StatelessWidget {
       children: [
         FilledButton(
           onPressed: onNext,
-          style: FilledButton.styleFrom(
-            minimumSize: Size(double.infinity, 48),
-          ),
+          style: FilledButton.styleFrom(minimumSize: Size(double.infinity, 48)),
           child: const Text('Next'),
         ),
         const SizedBox(height: 12),

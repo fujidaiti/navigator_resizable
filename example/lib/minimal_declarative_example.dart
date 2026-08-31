@@ -153,10 +153,7 @@ class _ExampleRouteContent extends StatelessWidget {
         color: color,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.displayMedium,
-      ),
+      child: Text(title, style: Theme.of(context).textTheme.displayMedium),
     );
   }
 }

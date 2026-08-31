@@ -4,10 +4,7 @@ import 'package:example/src/dialog_content_layout.dart';
 import 'package:flutter/material.dart';
 
 class VariableHeightPage extends StatefulWidget {
-  const VariableHeightPage({
-    super.key,
-    required this.onNext,
-  });
+  const VariableHeightPage({super.key, required this.onNext});
 
   final VoidCallback onNext;
 
@@ -38,9 +35,7 @@ class _VariableHeightPageState extends State<VariableHeightPage> {
             ),
           ),
         ),
-        const Divider(
-          height: 24,
-        ),
+        const Divider(height: 24),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -54,10 +49,7 @@ class _VariableHeightPageState extends State<VariableHeightPage> {
               icon: Icon(Icons.remove),
             ),
             const Spacer(),
-            FilledButton(
-              onPressed: widget.onNext,
-              child: Text('Next'),
-            ),
+            FilledButton(onPressed: widget.onNext, child: Text('Next')),
           ],
         ),
       ],
