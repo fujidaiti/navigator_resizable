@@ -1768,6 +1768,96 @@ void main() {
     });
 
     testWidgets(
+      'Edge case: pop multiple pages during a push transition',
+      (tester) async {
+        final env = boilerplate(
+          initialLocation: '/a/b',
+          transitionDuration: const Duration(milliseconds: 300),
+        );
+        await tester.pumpWidget(env.testWidget);
+        await tester.pumpAndSettle();
+
+        // Start navigating to /a/b/c and stop at 1/3 of the transition.
+        env.setLocation('/a/b/c');
+        await tester.pump(); // Required to kick off the animation clock.
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(
+          env.getObserver().lastSettledRoute,
+          isRoute(name: 'b'),
+          reason:
+              'The page c never settles, so b is still the last settled route.',
+        );
+
+        // Go back to /a. The page c is popped with its exit transition, while
+        // the page b is removed without any transition since it is not the
+        // top-most page. The transition back to a is therefore driven by the
+        // exit transition of c, not by the one of the last settled route b.
+        reset(env.listener);
+        env.setLocation('/a');
+        await tester.pump();
+
+        final verificationResults = verifyInOrder([
+          env.listener.didComplete(
+            argThat(isRoute(name: 'c')),
+            argThat(isNull),
+          ),
+          env.listener.didPop(
+            argThat(isRoute(name: 'c')),
+            argThat(isNull),
+          ),
+          env.listener.didComplete(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didPopNext(
+            argThat(isRoute(name: 'b')),
+            argThat(isRoute(name: 'c')),
+          ),
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'b')),
+            captureAny,
+            isUserGestureInProgress: false,
+          ),
+          env.listener.didChangePrevious(
+            argThat(isRoute(name: 'c')),
+            argThat(isRoute(name: 'a')),
+          ),
+          env.listener.didChangeNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isNull),
+          ),
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'a')),
+            captureAny,
+            isUserGestureInProgress: false,
+          ),
+        ]);
+        verifyNoMoreInteractions(env.listener);
+
+        final capturedAnimation =
+            verificationResults[7].captured.single as Animation<double>;
+        expect(capturedAnimation.status, AnimationStatus.reverse);
+        expect(
+          capturedAnimation.value,
+          moreOrLessEquals(1 / 3, epsilon: 0.01),
+          reason:
+              'The transition to a should be driven by the exit transition '
+              'of c, which is at 1/3 of its way, not by the animation of '
+              'the last settled route b, which is at 1.0.',
+        );
+
+        reset(env.listener);
+        await tester.pumpAndSettle();
+        expect(find.text('Page:a'), findsOneWidget);
+        expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
+        verify(
+          env.listener.didEndTransition(argThat(isRoute(name: 'a'))),
+        );
+        verifyNoMoreInteractions(env.listener);
+      },
+    );
+
+    testWidgets(
       'When iOS swipe back gesture is performed',
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
       (tester) async {

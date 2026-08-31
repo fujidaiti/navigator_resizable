@@ -760,6 +760,52 @@ void main() {
       },
     );
 
+    testWidgets(
+      'Edge case: pop multiple pages during a push transition',
+      (tester) async {
+        final env = boilerplate(
+          initialLocation: '/a/b',
+          interpolationCurve: Curves.linear,
+        );
+        await tester.pumpWidget(env.testWidget);
+        await tester.pumpAndSettle();
+        expect(env.getBox(tester).size, const Size(200, 300));
+
+        // Start navigating to /a/b/c and stop at 1/3 of the transition.
+        env.setLocation('/a/b/c');
+        await tester.pump(); // Required to kick off the animation clock.
+        await tester.pump(const Duration(milliseconds: 100));
+        final sizeBeforeCancel = env.getBox(tester).size;
+        expect(
+          sizeBeforeCancel,
+          isNot(anyOf(const Size(200, 300), const Size(800, 600))),
+          reason: 'The size should be in the middle of the transition.',
+        );
+
+        // Go back to /a. The page c is popped with its exit transition, while
+        // the page b is removed without any transition.
+        env.setLocation('/a');
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        expect(
+          env.getBox(tester).size,
+          sizeBeforeCancel,
+          reason:
+              'The size must keep following the exit transition of c from '
+              'where it currently is, instead of jumping to the size of a.',
+        );
+
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(
+          env.getBox(tester).size,
+          const Size(100, 200),
+          reason:
+              'The size should eventually settle to the size of the page a.',
+        );
+      },
+    );
+
     testWidgets('When popping a route', (tester) async {
       final env = boilerplate(interpolationCurve: Curves.easeInOut);
       await tester.pumpWidget(env.testWidget);

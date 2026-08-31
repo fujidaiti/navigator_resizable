@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.0.4-wip
+
+- Fix: assertion error when popping multiple routes in the middle of a push transition
+
 ## 3.0.3
 
 - Add missing `@mustCallSuper`s to ObservableRouteMixin
