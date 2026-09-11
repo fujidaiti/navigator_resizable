@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:navigator_resizable/src/navigator_resizable.dart';
@@ -67,7 +65,7 @@ void main() {
     testWidgets('When pushing a new route', (tester) async {
       final env = boilerplate();
       await tester.pumpWidget(env.testWidget);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      env.navigatorKey.currentState!.pushNamed('b');
       await tester.pump();
       expect(env.getBox(tester).size, const Size(100, 200));
 
@@ -95,8 +93,8 @@ void main() {
     testWidgets('When pushing multiple routes simultaneously', (tester) async {
       final env = boilerplate();
       await tester.pumpWidget(env.testWidget);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
-      unawaited(env.navigatorKey.currentState!.pushNamed('c'));
+      env.navigatorKey.currentState!.pushNamed('b');
+      env.navigatorKey.currentState!.pushNamed('c');
       await tester.pump();
       expect(env.getBox(tester).size, const Size(100, 200));
 
@@ -124,7 +122,7 @@ void main() {
     testWidgets('When popping a route', (tester) async {
       final env = boilerplate();
       await tester.pumpWidget(env.testWidget);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      env.navigatorKey.currentState!.pushNamed('b');
       await tester.pumpAndSettle();
       env.navigatorKey.currentState!.pop();
       await tester.pump();
@@ -154,8 +152,8 @@ void main() {
     testWidgets('When popping multiple routes simultaneously', (tester) async {
       final env = boilerplate();
       await tester.pumpWidget(env.testWidget);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
-      unawaited(env.navigatorKey.currentState!.pushNamed('c'));
+      env.navigatorKey.currentState!.pushNamed('b');
+      env.navigatorKey.currentState!.pushNamed('c');
       await tester.pumpAndSettle();
       env.navigatorKey.currentState!.popUntil((r) => r.isFirst);
       await tester.pump();
@@ -188,7 +186,7 @@ void main() {
         final env = boilerplate(interpolationCurve: Curves.linear);
         await tester.pumpWidget(env.testWidget);
         // Push b and forward the transition.
-        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        env.navigatorKey.currentState!.pushNamed('b');
         await tester.pump();
         expect(env.getBox(tester).size, const Size(100, 200));
         await tester.pump(const Duration(milliseconds: 150));
@@ -214,9 +212,9 @@ void main() {
     testWidgets('When replacing the current route', (tester) async {
       final env = boilerplate();
       await tester.pumpWidget(env.testWidget);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      env.navigatorKey.currentState!.pushNamed('b');
       await tester.pumpAndSettle();
-      unawaited(env.navigatorKey.currentState!.pushReplacementNamed('c'));
+      env.navigatorKey.currentState!.pushReplacementNamed('c');
       expect(env.getBox(tester).size, const Size(200, 300));
 
       Size interpolatedSize(double progress) {
@@ -249,7 +247,7 @@ void main() {
     ) async {
       final env = boilerplate();
       await tester.pumpWidget(env.testWidget);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      env.navigatorKey.currentState!.pushNamed('b');
       await tester.pumpAndSettle();
       expect(env.getBox(tester).size, const Size(200, 300));
 
@@ -327,7 +325,7 @@ void main() {
         final env = boilerplate();
         await tester.pumpWidget(env.testWidget);
 
-        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        env.navigatorKey.currentState!.pushNamed('b');
         await tester.pumpAndSettle();
 
         final transitionProgress =
@@ -381,7 +379,7 @@ void main() {
         final env = boilerplate();
         await tester.pumpWidget(env.testWidget);
 
-        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        env.navigatorKey.currentState!.pushNamed('b');
         await tester.pumpAndSettle();
 
         final transitionProgress =
@@ -451,7 +449,7 @@ void main() {
           final env = boilerplate();
           await tester.pumpWidget(env.testWidget);
 
-          unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+          env.navigatorKey.currentState!.pushNamed('b');
           await tester.pumpAndSettle();
 
           await tester.startAndroidBackGesture(
@@ -524,7 +522,7 @@ void main() {
           final env = boilerplate();
           await tester.pumpWidget(env.testWidget);
 
-          unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+          env.navigatorKey.currentState!.pushNamed('b');
           await tester.pumpAndSettle();
 
           await tester.startAndroidBackGesture(
