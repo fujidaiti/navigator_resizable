@@ -1,4 +1,3 @@
-import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -100,7 +99,7 @@ void main() {
       final env = boilerplate();
       await tester.pumpWidget(env.testWidget);
       reset(env.listener);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      env.navigatorKey.currentState!.pushNamed('b');
       await tester.pump();
 
       expect(find.text('Page:a'), findsOneWidget);
@@ -154,7 +153,7 @@ void main() {
       final env = boilerplate(transitionDuration: Duration.zero);
       await tester.pumpWidget(env.testWidget);
       reset(env.listener);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      env.navigatorKey.currentState!.pushNamed('b');
       await tester.pump();
 
       expect(find.text('Page:a'), findsNothing);
@@ -197,8 +196,8 @@ void main() {
         final env = boilerplate();
         await tester.pumpWidget(env.testWidget);
         reset(env.listener);
-        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
-        unawaited(env.navigatorKey.currentState!.pushNamed('c'));
+        env.navigatorKey.currentState!.pushNamed('b');
+        env.navigatorKey.currentState!.pushNamed('c');
         await tester.pump();
 
         final results = verifyInOrder([
@@ -273,7 +272,7 @@ void main() {
     testWidgets('When popping a route', (tester) async {
       final env = boilerplate();
       await tester.pumpWidget(env.testWidget);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      env.navigatorKey.currentState!.pushNamed('b');
       await tester.pumpAndSettle();
 
       expect(find.text('Page:b'), findsOneWidget);
@@ -324,7 +323,7 @@ void main() {
     testWidgets('When popping a route without animation', (tester) async {
       final env = boilerplate(transitionDuration: Duration.zero);
       await tester.pumpWidget(env.testWidget);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      env.navigatorKey.currentState!.pushNamed('b');
       await tester.pumpAndSettle();
 
       expect(find.text('Page:b'), findsOneWidget);
@@ -370,8 +369,8 @@ void main() {
     testWidgets('When popping multiple routes simultaneously', (tester) async {
       final env = boilerplate();
       await tester.pumpWidget(env.testWidget);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
-      unawaited(env.navigatorKey.currentState!.pushNamed('c'));
+      env.navigatorKey.currentState!.pushNamed('b');
+      env.navigatorKey.currentState!.pushNamed('c');
       await tester.pumpAndSettle();
       expect(find.text('Page:c'), findsOneWidget);
       reset(env.listener);
@@ -443,7 +442,7 @@ void main() {
       final env = boilerplate();
       await tester.pumpWidget(env.testWidget);
       reset(env.listener);
-      unawaited(env.navigatorKey.currentState!.pushReplacementNamed('b'));
+      env.navigatorKey.currentState!.pushReplacementNamed('b');
       await tester.pump();
 
       expect(find.text('Page:a'), findsOneWidget);
@@ -498,7 +497,7 @@ void main() {
       (tester) async {
         final env = boilerplate();
         await tester.pumpWidget(env.testWidget);
-        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        env.navigatorKey.currentState!.pushNamed('b');
         await tester.pumpAndSettle();
         expect(find.text('Page:b'), findsOneWidget);
         final routeB = env.getObserver().lastSettledRoute!;
@@ -560,7 +559,7 @@ void main() {
 
         // Start navigating to b and stop at the middle of the transition.
         reset(env.listener);
-        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        env.navigatorKey.currentState!.pushNamed('b');
         await tester.pump(); // Required to kick off the animation clock.
         await tester.pump(const Duration(milliseconds: 150));
         var verificationResults = verifyInOrder([
@@ -636,7 +635,7 @@ void main() {
 
         // Start navigating to d and stop at the middle of the transition.
         reset(env.listener);
-        unawaited(env.navigatorKey.currentState!.pushReplacementNamed('d'));
+        env.navigatorKey.currentState!.pushReplacementNamed('d');
         await tester.pump(); // Required to kick off the animation clock.
         await tester.pump(const Duration(milliseconds: 150));
         var verificationResults = verifyInOrder([
@@ -672,7 +671,7 @@ void main() {
 
         // Then, revert the replacement by replacing d with a.
         reset(env.listener);
-        unawaited(env.navigatorKey.currentState!.pushReplacementNamed('a'));
+        env.navigatorKey.currentState!.pushReplacementNamed('a');
         await tester.pump();
         verificationResults = verifyInOrder([
           env.listener.didInstall(
@@ -725,7 +724,7 @@ void main() {
 
       final env = boilerplate();
       await tester.pumpWidget(env.testWidget);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      env.navigatorKey.currentState!.pushNamed('b');
       await tester.pumpAndSettle();
 
       expect(find.text('Page:a'), findsNothing);
@@ -795,7 +794,7 @@ void main() {
 
       final env = boilerplate();
       await tester.pumpWidget(env.testWidget);
-      unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+      env.navigatorKey.currentState!.pushNamed('b');
       await tester.pumpAndSettle();
       expect(find.text('Page:a'), findsNothing);
       expect(find.text('Page:b'), findsOneWidget);
@@ -845,7 +844,7 @@ void main() {
               const PredictiveBackFullscreenPageTransitionsBuilder(),
         );
         await tester.pumpWidget(env.testWidget);
-        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        env.navigatorKey.currentState!.pushNamed('b');
         await tester.pumpAndSettle();
 
         expect(find.text('Page:a'), findsNothing);
@@ -927,7 +926,7 @@ void main() {
               const PredictiveBackFullscreenPageTransitionsBuilder(),
         );
         await tester.pumpWidget(env.testWidget);
-        unawaited(env.navigatorKey.currentState!.pushNamed('b'));
+        env.navigatorKey.currentState!.pushNamed('b');
         await tester.pumpAndSettle();
         expect(find.text('Page:a'), findsNothing);
         expect(find.text('Page:b'), findsOneWidget);
