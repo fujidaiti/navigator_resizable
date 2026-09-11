@@ -57,32 +57,32 @@ final _router = GoRouter(
                           path: 'd',
                           pageBuilder: (context, state) =>
                               ResizableMaterialPage(
-                            key: state.pageKey,
-                            child: FormPage(
-                              autoFocus: true,
-                              submitButton: FilledButton(
-                                onPressed: () => context.go('/a/b/c/d/e'),
-                                child: Text('Next'),
+                                key: state.pageKey,
+                                child: FormPage(
+                                  autoFocus: true,
+                                  submitButton: FilledButton(
+                                    onPressed: () => context.go('/a/b/c/d/e'),
+                                    child: Text('Next'),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
                           routes: [
                             GoRoute(
                               path: 'e',
                               pageBuilder: (context, state) =>
                                   ResizableMaterialPage(
-                                key: state.pageKey,
-                                child: PortalPage(
-                                  destinations: [
-                                    '/a/b/c/d',
-                                    '/a/b/c',
-                                    '/a/b',
-                                    '/a',
-                                  ],
-                                  onGoToDestination: (destination) =>
-                                      context.go(destination),
-                                ),
-                              ),
+                                    key: state.pageKey,
+                                    child: PortalPage(
+                                      destinations: [
+                                        '/a/b/c/d',
+                                        '/a/b/c',
+                                        '/a/b',
+                                        '/a',
+                                      ],
+                                      onGoToDestination: (destination) =>
+                                          context.go(destination),
+                                    ),
+                                  ),
                             ),
                           ],
                         ),
@@ -142,7 +142,7 @@ class MultiPageDialogPage extends Page {
 
 class PageBasedMultiPageDialogRoute extends PageRoute<void> {
   PageBasedMultiPageDialogRoute({required MultiPageDialogPage page})
-      : super(settings: page);
+    : super(settings: page);
 
   MultiPageDialogPage get page => settings as MultiPageDialogPage;
 
