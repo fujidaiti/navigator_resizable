@@ -331,16 +331,15 @@ void main() {
         final transitionProgress =
             env.navigatorKey.currentState!.currentRoute.animation!;
 
-        // Start the swipe back gesture.
-        // The drag distance is scaled against the current route's content
-        // width (200), not the screen width (800), since NavigatorResizable
-        // shrinks the Navigator to fit the current route's content and
-        // iOS's back gesture computes progress from the Navigator's own
-        // width.
+        // Start a swipe back gesture.
         final gesture = await tester.startGesture(const Offset(300, 300));
         await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
+        // The iOS's back gesture computes progress from navigator's width,
+        // which equals the with of the current route b (200). For example,
+        // the previous drag delta is 20, so the expected transition progress
+        // is 1 - (20 / 200) = 0.9.
         expect(transitionProgress.value, moreOrLessEquals(0.9));
         expect(env.getBox(tester).size, const Size(190, 290));
 
@@ -389,12 +388,7 @@ void main() {
         final transitionProgress =
             env.navigatorKey.currentState!.currentRoute.animation!;
 
-        // Start the swipe back gesture.
-        // The drag distance is scaled against the current route's content
-        // width (200), not the screen width (800), since NavigatorResizable
-        // shrinks the Navigator to fit the current route's content and
-        // iOS's back gesture computes progress from the Navigator's own
-        // width.
+        // Start a swipe back gesture.
         final gesture = await tester.startGesture(const Offset(300, 300));
         await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
@@ -1013,16 +1007,15 @@ void main() {
         final transitionProgress =
             env.navigatorKey.currentState!.currentRoute.animation!;
 
-        // Start the swipe back gesture.
-        // The drag distance is scaled against the current route's content
-        // width (200), not the screen width (800), since NavigatorResizable
-        // shrinks the Navigator to fit the current route's content and
-        // iOS's back gesture computes progress from the Navigator's own
-        // width.
+        // Start a swipe back gesture.
         final gesture = await tester.startGesture(const Offset(300, 300));
         await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
+        // The iOS's back gesture computes progress from navigator's width,
+        // which equals the with of the current route b (200). For example,
+        // the previous drag delta is 20, so the expected transition progress
+        // is 1 - (20 / 200) = 0.9.
         expect(transitionProgress.value, moreOrLessEquals(0.9));
         expect(env.getBox(tester).size, const Size(190, 290));
 
@@ -1071,12 +1064,7 @@ void main() {
         final transitionProgress =
             env.navigatorKey.currentState!.currentRoute.animation!;
 
-        // Start the swipe back gesture.
-        // The drag distance is scaled against the current route's content
-        // width (200), not the screen width (800), since NavigatorResizable
-        // shrinks the Navigator to fit the current route's content and
-        // iOS's back gesture computes progress from the Navigator's own
-        // width.
+        // Start a swipe back gesture.
         final gesture = await tester.startGesture(const Offset(300, 300));
         await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
@@ -1346,10 +1334,6 @@ void main() {
 
         // Make it bigger.
         env.setContentSize(const Size(200, 300));
-        // The size updates within the same frame the content resizes in,
-        // since NavigatorResizable measures the Navigator's own laid-out
-        // size directly instead of going through a separate notifier that
-        // can only be updated a frame late.
         await tester.pump();
         expect(env.getBoxSize(), const Size(200, 300));
 
