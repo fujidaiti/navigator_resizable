@@ -332,35 +332,39 @@ void main() {
             env.navigatorKey.currentState!.currentRoute.animation!;
 
         // Start the swipe back gesture.
-        // We assume that the screen size is 800x600.
+        // The drag distance is scaled against the current route's content
+        // width (200), not the screen width (800), since NavigatorResizable
+        // shrinks the Navigator to fit the current route's content and
+        // iOS's back gesture computes progress from the Navigator's own
+        // width.
         final gesture = await tester.startGesture(const Offset(300, 300));
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
         expect(transitionProgress.value, moreOrLessEquals(0.9));
         expect(env.getBox(tester).size, const Size(190, 290));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.8));
         expect(env.getBox(tester).size, const Size(180, 280));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.7));
         expect(env.getBox(tester).size, const Size(170, 270));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.6));
         expect(env.getBox(tester).size, const Size(160, 260));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.5));
         expect(env.getBox(tester).size, const Size(150, 250));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.4));
         expect(env.getBox(tester).size, const Size(140, 240));
@@ -386,9 +390,13 @@ void main() {
             env.navigatorKey.currentState!.currentRoute.animation!;
 
         // Start the swipe back gesture.
-        // We assume that the screen size is 800x600.
+        // The drag distance is scaled against the current route's content
+        // width (200), not the screen width (800), since NavigatorResizable
+        // shrinks the Navigator to fit the current route's content and
+        // iOS's back gesture computes progress from the Navigator's own
+        // width.
         final gesture = await tester.startGesture(const Offset(300, 300));
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
         expect(transitionProgress.value, moreOrLessEquals(0.9));
@@ -1006,35 +1014,39 @@ void main() {
             env.navigatorKey.currentState!.currentRoute.animation!;
 
         // Start the swipe back gesture.
-        // We assume that the screen size is 800x600.
+        // The drag distance is scaled against the current route's content
+        // width (200), not the screen width (800), since NavigatorResizable
+        // shrinks the Navigator to fit the current route's content and
+        // iOS's back gesture computes progress from the Navigator's own
+        // width.
         final gesture = await tester.startGesture(const Offset(300, 300));
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
         expect(transitionProgress.value, moreOrLessEquals(0.9));
         expect(env.getBox(tester).size, const Size(190, 290));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.8));
         expect(env.getBox(tester).size, const Size(180, 280));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.7));
         expect(env.getBox(tester).size, const Size(170, 270));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.6));
         expect(env.getBox(tester).size, const Size(160, 260));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.5));
         expect(env.getBox(tester).size, const Size(150, 250));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.4));
         expect(env.getBox(tester).size, const Size(140, 240));
@@ -1060,9 +1072,13 @@ void main() {
             env.navigatorKey.currentState!.currentRoute.animation!;
 
         // Start the swipe back gesture.
-        // We assume that the screen size is 800x600.
+        // The drag distance is scaled against the current route's content
+        // width (200), not the screen width (800), since NavigatorResizable
+        // shrinks the Navigator to fit the current route's content and
+        // iOS's back gesture computes progress from the Navigator's own
+        // width.
         final gesture = await tester.startGesture(const Offset(300, 300));
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
         expect(transitionProgress.value, moreOrLessEquals(0.9));
@@ -1330,21 +1346,15 @@ void main() {
 
         // Make it bigger.
         env.setContentSize(const Size(200, 300));
-        // It *intentionally* takes two frames to update the size because:
-        // in the first frame, the route content size is updated,
-        // but we can't mark the render object of the NavigatorResizable
-        // as dirty in the layout phase of the same frame. Instead,
-        // we have to schedule the next frame to reflect the new content size
-        // to the size of the NavigatorResizable.
-        await tester.pump();
-        expect(env.getBoxSize(), const Size(100, 200));
+        // The size updates within the same frame the content resizes in,
+        // since NavigatorResizable measures the Navigator's own laid-out
+        // size directly instead of going through a separate notifier that
+        // can only be updated a frame late.
         await tester.pump();
         expect(env.getBoxSize(), const Size(200, 300));
 
         // Make it smaller.
         env.setContentSize(const Size(50, 100));
-        await tester.pump();
-        expect(env.getBoxSize(), const Size(200, 300));
         await tester.pump();
         expect(env.getBoxSize(), const Size(50, 100));
       },
