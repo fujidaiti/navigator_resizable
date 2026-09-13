@@ -103,11 +103,28 @@ class NavigatorSizeNotifier extends ChangeNotifier
     Route<dynamic> targetRoute,
     Animation<double> animation,
   ) {
+    debugPrint(
+      'startGesture: currentSize = ${(_currentRoute! as ModalRoute).subtreeContext?.size}',
+    );
+
+    Size? targetRouteSize() {
+      final ctx =
+          (targetRoute as RouteContentBoundaryOwner).boundaryKey.currentContext;
+      final renderObj =
+          (ctx as SingleChildRenderObjectElement?)?.renderObject
+              as RenderRouteContentBoundary?;
+      final size = renderObj?.lastSize;
+      debugPrint(
+        'startPush: target size=$size',
+      );
+      return _routeContentSizes[targetRoute];
+    }
+
     assert(animation.isForwardOrCompleted);
     final initialSize = value;
     _updateInterpolation(
       _LazySizeTween(
-        start: () => _routeContentSizes[targetRoute],
+        start: targetRouteSize,
         end: () => initialSize,
       ).animate(animation),
     );
@@ -117,12 +134,34 @@ class NavigatorSizeNotifier extends ChangeNotifier
     Route<dynamic> targetRoute,
     Animation<double> animation,
   ) {
+    Size? targetRouteSize() {
+      final ctx =
+          (targetRoute as RouteContentBoundaryOwner).boundaryKey.currentContext;
+      final renderObj =
+          (ctx as SingleChildRenderObjectElement?)?.renderObject
+              as RenderRouteContentBoundary?;
+      final size = renderObj?.lastSize;
+      debugPrint(
+        'startPush: target size=$size',
+      );
+      return _routeContentSizes[targetRoute];
+    }
+
+    final ctx =
+        (targetRoute as RouteContentBoundaryOwner).boundaryKey.currentContext;
+    final renderObj =
+        (ctx as SingleChildRenderObjectElement?)?.renderObject
+            as RenderRouteContentBoundary?;
+    final size = renderObj?.lastSize;
+    debugPrint(
+      'startPush: currentSize = $size',
+    );
     assert(animation.isForwardOrCompleted);
     final initialSize = value;
     _updateInterpolation(
       _LazySizeTween(
         start: () => initialSize,
-        end: () => _routeContentSizes[targetRoute],
+        end: targetRouteSize,
       ).chain(CurveTween(curve: interpolationCurve)).animate(animation),
     );
   }
@@ -131,12 +170,34 @@ class NavigatorSizeNotifier extends ChangeNotifier
     Route<dynamic> targetRoute,
     Animation<double> animation,
   ) {
+    final ctx =
+        (targetRoute as RouteContentBoundaryOwner).boundaryKey.currentContext;
+    final renderObj =
+        (ctx as SingleChildRenderObjectElement?)?.renderObject
+            as RenderRouteContentBoundary?;
+    final size = renderObj?.lastSize;
+    debugPrint(
+      'startPop: currentSize = $size',
+    );
     assert(!animation.isForwardOrCompleted);
     final initialSize = value;
+    Size? targetRouteSize() {
+      final ctx =
+          (targetRoute as RouteContentBoundaryOwner).boundaryKey.currentContext;
+      final renderObj =
+          (ctx as SingleChildRenderObjectElement?)?.renderObject
+              as RenderRouteContentBoundary?;
+      final size = renderObj?.lastSize;
+      debugPrint(
+        'startPop: target size=$size',
+      );
+      return _routeContentSizes[targetRoute];
+    }
+
     if (animation.value == 1) {
       _updateInterpolation(
         _LazySizeTween(
-          start: () => _routeContentSizes[targetRoute],
+          start: targetRouteSize,
           end: () => initialSize,
         ).chain(CurveTween(curve: interpolationCurve)).animate(animation),
       );
@@ -153,9 +214,9 @@ class NavigatorSizeNotifier extends ChangeNotifier
       final initialAnimationProgress = animation.value;
       _updateInterpolation(
         _LazySizeTween(
-          start: () => _routeContentSizes[targetRoute],
+          start: targetRouteSize,
           end: () => _lerpEndSize(
-            _routeContentSizes[targetRoute]!,
+            targetRouteSize()!,
             initialSize,
             initialAnimationProgress,
           ),
@@ -167,6 +228,8 @@ class NavigatorSizeNotifier extends ChangeNotifier
   @override
   void didEndTransition(Route<dynamic> route) {
     assert(_routeContentSizes.containsKey(route));
+    final size = (route as ModalRoute<dynamic>).subtreeContext?.size;
+    debugPrint('didEnd: route(${route.debugLabel}), size=$size');
     _updateCurrentRoute(route);
   }
 }
@@ -202,4 +265,8 @@ Size _lerpEndSize(Size ss, Size st, double t) {
     (st.width - (1 - t) * ss.width) / t,
     (st.height - (1 - t) * ss.height) / t,
   );
+}
+
+mixin RouteContentBoundaryOwner {
+  GlobalKey get boundaryKey;
 }

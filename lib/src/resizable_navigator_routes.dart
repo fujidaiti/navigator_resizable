@@ -3,9 +3,13 @@ import 'package:flutter/services.dart';
 
 import 'navigator_event_observer.dart';
 import 'navigator_resizable.dart';
+import 'navigator_size_notifier.dart';
 
 abstract class _BaseResizableMaterialPageRoute<T> extends PageRoute<T>
-    with ObservableRouteMixin<T>, MaterialRouteTransitionMixin<T> {
+    with
+        ObservableRouteMixin<T>,
+        MaterialRouteTransitionMixin<T>,
+        RouteContentBoundaryOwner {
   _BaseResizableMaterialPageRoute({
     super.settings,
     super.requestFocus,
@@ -14,11 +18,15 @@ abstract class _BaseResizableMaterialPageRoute<T> extends PageRoute<T>
     super.barrierDismissible,
   });
 
+  @override
+  final boundaryKey = GlobalKey();
+
   Widget _buildContentInternal(BuildContext context);
 
   @override
   Widget buildContent(BuildContext context) {
     final result = ResizableNavigatorRouteContentBoundary(
+      key: boundaryKey,
       child: _buildContentInternal(context),
     );
     return switch (Theme.of(context).platform) {

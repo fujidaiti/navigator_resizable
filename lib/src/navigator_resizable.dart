@@ -363,7 +363,7 @@ class ResizableNavigatorRouteContentBoundary
   RenderObject createRenderObject(BuildContext context) {
     final inherited = context
         .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>()!;
-    return _RenderRouteContentBoundary(
+    return RenderRouteContentBoundary(
       navigatorConstraints: inherited.navigatorConstraints,
       didRouteContentSizeChangeCallback: (size) {
         inherited.preferredSize.didRouteContentSizeChange(
@@ -378,7 +378,7 @@ class ResizableNavigatorRouteContentBoundary
   void updateRenderObject(BuildContext context, RenderObject renderObject) {
     final inherited = context
         .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>()!;
-    (renderObject as _RenderRouteContentBoundary)
+    (renderObject as RenderRouteContentBoundary)
       ..navigatorConstraints = inherited.navigatorConstraints
       ..didRouteContentSizeChangeCallback = (size) {
         inherited.preferredSize.didRouteContentSizeChange(
@@ -395,14 +395,16 @@ class ResizableNavigatorRouteContentBoundary
 /// unbounded because the Navigator above it is laid out unbounded so it can
 /// shrink-wrap to this content. This box in turn shrink-wraps to [child]'s
 /// resulting size, so the Navigator's own measured size reflects it.
-class _RenderRouteContentBoundary extends RenderShiftedBox {
-  _RenderRouteContentBoundary({
+class RenderRouteContentBoundary extends RenderShiftedBox {
+  RenderRouteContentBoundary({
     required this.navigatorConstraints,
     required this.didRouteContentSizeChangeCallback,
   }) : super(null);
 
   BoxConstraints navigatorConstraints;
   ValueSetter<Size> didRouteContentSizeChangeCallback;
+
+  Size? lastSize;
 
   @override
   void performLayout() {
@@ -415,6 +417,7 @@ class _RenderRouteContentBoundary extends RenderShiftedBox {
     // fill its resolved size exactly), even though the child above was laid
     // out against the real, stashed constraints instead.
     size = constraints.constrain(child.size);
+    lastSize = Size.copy(child.size);
     didRouteContentSizeChangeCallback(
       Size.copy(child.size), // Ensure the notified size object is immutable.
     );
