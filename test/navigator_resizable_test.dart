@@ -1381,7 +1381,7 @@ void main() {
                 'This is not allowed because it needs to size itself '
                 'to fit the current route content. Consider wrapping '
                 'the NavigatorResizable with a widget that provides non-tight '
-                'constraints, such as Align and Center. \n'
+                'constraints, such as Align and Center.\n'
                 'The given constraints were: BoxConstraints(w=800.0, h=600.0) '
                 'which was given by the parent: RenderConstrainedBox',
           ),
