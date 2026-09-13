@@ -66,11 +66,7 @@ class NavigatorSizeNotifier extends ChangeNotifier
   /// its child widget changes.
   void didRouteContentSizeChange(Route<dynamic> route, Size contentSize) {
     assert(_routeContentSizes.containsKey(route));
-    final oldPreferredSize = value;
     _routeContentSizes[route] = contentSize;
-    if (value != oldPreferredSize) {
-      notifyListeners();
-    }
   }
 
   @override
@@ -111,7 +107,7 @@ class NavigatorSizeNotifier extends ChangeNotifier
     Animation<double> animation,
   ) {
     assert(animation.isForwardOrCompleted);
-    final initialSize = _lastReportedValidValue!;
+    final initialSize = value;
     _updateInterpolation(
       _LazySizeTween(
         start: () => _routeContentSizes[targetRoute],
@@ -125,7 +121,7 @@ class NavigatorSizeNotifier extends ChangeNotifier
     Animation<double> animation,
   ) {
     assert(animation.isForwardOrCompleted);
-    final initialSize = _lastReportedValidValue!;
+    final initialSize = value;
     _updateInterpolation(
       _LazySizeTween(
         start: () => initialSize,
@@ -139,7 +135,7 @@ class NavigatorSizeNotifier extends ChangeNotifier
     Animation<double> animation,
   ) {
     assert(!animation.isForwardOrCompleted);
-    final initialSize = _lastReportedValidValue!;
+    final initialSize = value;
     if (animation.value == 1) {
       _updateInterpolation(
         _LazySizeTween(

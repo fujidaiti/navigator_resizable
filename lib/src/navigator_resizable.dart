@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart' as p;
 import 'package:flutter/rendering.dart';
-import 'package:flutter/scheduler.dart';
 
 import 'navigator_event_observer.dart';
 import 'navigator_size_notifier.dart';
@@ -264,7 +263,7 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
          alignment: Alignment.topLeft,
          textDirection: null,
        ) {
-    preferredSize.addListener(_onPreferredSizeChanged);
+    preferredSize.addListener(markNeedsLayout);
   }
 
   final _NavigatorResizableState _state;
@@ -283,25 +282,8 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   // ignore: avoid_setters_without_getters
   set preferredSize(NavigatorSizeNotifier value) {
     if (value != _preferredSize) {
-      _preferredSize.removeListener(_onPreferredSizeChanged);
-      _preferredSize = value..addListener(_onPreferredSizeChanged);
-    }
-  }
-
-  void _onPreferredSizeChanged() {
-    switch (SchedulerBinding.instance.schedulerPhase) {
-      // If the change is triggered during the layout phase,
-      // it's too late to apply the new size to this render box
-      // in the current frame. Instead, we schedule a new frame
-      // to ensure the new size is eventually applied in the
-      // following frame.
-      case SchedulerPhase.persistentCallbacks:
-        SchedulerBinding.instance.scheduleFrameCallback((_) {
-          if (!_disposed) markNeedsLayout();
-        });
-      // Otherwise, schedule a layout immediately.
-      case _:
-        markNeedsLayout();
+      _preferredSize.removeListener(markNeedsLayout);
+      _preferredSize = value..addListener(markNeedsLayout);
     }
   }
 
@@ -310,7 +292,7 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   @override
   void dispose() {
     assert(!_disposed);
-    _preferredSize.removeListener(_onPreferredSizeChanged);
+    _preferredSize.removeListener(markNeedsLayout);
     _disposed = true;
     super.dispose();
   }
