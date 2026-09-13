@@ -299,13 +299,7 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
 
   @override
   Size computeDryLayout(covariant BoxConstraints constraints) {
-    // Mirrors performLayout's choice of size source, using a hypothetical
-    // (non-committing) child layout in place of the real one performLayout
-    // relies on.
-    final preferredSize = _preferredSize.isTransitioning
-        ? _preferredSize.value
-        : child?.getDryLayout(const BoxConstraints()) ?? _preferredSize.value;
-    return constraints.constrain(preferredSize);
+    return constraints.constrain(_preferredSize.value);
   }
 
   @override
@@ -347,16 +341,7 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
     // NavigatorSizeNotifier, whose value can only be updated in response to
     // a route content layout that already happened.
     child!.layout(const BoxConstraints(), parentUsesSize: true);
-
-    // While a transition is in progress, the Navigator's own size merely
-    // snaps to the incoming route rather than interpolating, so the
-    // interpolated value from NavigatorSizeNotifier is still needed there.
-    // Outside of a transition, the Navigator's own measured size is both
-    // more accurate and available a frame earlier.
-    final effectiveSize = _preferredSize.isTransitioning
-        ? _preferredSize.value
-        : child!.size;
-    size = constraints.constrain(effectiveSize);
+    size = computeDryLayout(constraints);
     _visibleBounds = Offset.zero & size;
     alignChild();
   }
