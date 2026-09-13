@@ -8,7 +8,7 @@ import 'navigator_size_notifier.dart';
 import 'resizable_navigator_routes.dart';
 
 /// A thin wrapper around [Navigator] that **visually** resizes the [child]
-/// navigator to match the size of the content displayed in the current route.
+/// navigator to match the size of current route's content.
 ///
 /// This widget is functionally similar to combining [OverflowBox] and
 /// [ClipRect], but it is specifically designed for this use case.
@@ -80,17 +80,16 @@ import 'resizable_navigator_routes.dart';
 /// ```
 ///
 /// ### Caveats
-/// - Avoid wrapping the navigator in widgets that add additional space
-///   (e.g., [Padding]). Zero-size widgets, such as [GestureDetector]
-///   or [InheritedWidget], are acceptable.
-/// - Do not place [NavigatorResizable] inside a widget with a tight constraint,
-///   as this forces [NavigatorResizable] to ignore the size of the current
-///   route's content and adopt the size dictated by the constraints.
-///   In such cases, an assertion error will be thrown. Typically, [Center]
-///   and [Align] are good choices for the parent widget.
-/// - The initial route of the [child] navigator must satisfy the requirements
-///   of [NavigatorResizable]. Otherwise, [NavigatorResizable] will be unable
-///   to determine the initial size and will throw an assertion error.
+///
+/// Avoid wrapping the navigator in widgets that add extra space around it,
+/// such as [Padding]. Zero-size widgets, such as [GestureDetector] and
+/// [ColoredBox], and widgets without render objects, such as [Theme] and
+/// [AnimatedBuilder], are all acceptable.
+///
+/// Do not place [NavigatorResizable] inside a widget with a tight constraint.
+/// Otherwise it adopt the size enforced by the constraints, ignoreing the size
+/// of current route's content. Typically, [Center] and [Align] are good choices
+/// for the parent widget.
 ///
 /// ### Example
 ///
@@ -303,11 +302,11 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
       '${parent?.parent.runtimeType}.',
     );
 
-    // Giving the Navigator unbounded constraints lets it shrink-wrap to the
-    // current route's actual content size, which we can then read directly
-    // below. This avoids the one-frame lag that results from going through
-    // NavigatorSizeNotifier, whose value can only be updated in response to
-    // a route content layout that already happened.
+    // Here comes the trick: giving the Navigator unbounded constraints lets
+    // it shrink-wrap to the current route's actual content size, which we can
+    // then read directly below. This avoids the one-frame lag that results
+    // from going through NavigatorSizeNotifier, whose value can only be updated
+    // in response to a route content layout that already happened.
     child!.layout(
       const BoxConstraints(
         maxWidth: double.infinity,
