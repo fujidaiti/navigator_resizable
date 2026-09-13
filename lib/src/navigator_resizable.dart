@@ -162,16 +162,6 @@ class NavigatorResizable extends StatefulWidget {
 class _NavigatorResizableState extends State<NavigatorResizable> {
   late final NavigatorSizeNotifier _preferredSizeNotifier;
 
-  /// The real, bounded constraints given to this widget by its parent.
-  ///
-  /// Updated by [_RenderNavigatorResizable] at the very start of every
-  /// layout pass, before it lays out the child [Navigator] with unbounded
-  /// constraints. Read by [_RenderRouteContentBoundary] so route content can
-  /// be laid out against the real bounds instead of the unbounded ones
-  /// flowing down from the Navigator, keeping `double.infinity`-based
-  /// content resolving the same way it always has.
-  BoxConstraints _routeContentConstraints = const BoxConstraints();
-
   @override
   void initState() {
     super.initState();
@@ -190,56 +180,49 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
   Widget build(BuildContext context) {
     return NavigatorEventObserver(
       listeners: [_preferredSizeNotifier],
-      child: _InheritedNavigatorResizable(
-        state: this,
-        child: _RenderNavigatorResizableWidget(
-          state: this,
-          preferredSize: _preferredSizeNotifier,
-          child: widget.child,
-        ),
+      child: LayoutBuilder(
+        builder: (_, constraints) {
+          return _InheritedNavigatorResizable(
+            preferredSize: _preferredSizeNotifier,
+            bypassedConstraints: constraints,
+            child: _RenderNavigatorResizableWidget(
+              preferredSize: _preferredSizeNotifier,
+              child: widget.child,
+            ),
+          );
+        },
       ),
     );
   }
-
-  void didRouteContentSizeChange(ModalRoute<dynamic> route, Size contentSize) {
-    _preferredSizeNotifier.didRouteContentSizeChange(route, contentSize);
-  }
-
-  static _NavigatorResizableState of(BuildContext context) {
-    return context
-        .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>()!
-        .state;
-  }
 }
 
-/// Provides a direct access to the state of the ancestor [NavigatorResizable]
-/// for the descendant [ResizableNavigatorRouteContentBoundary] widgets.
 class _InheritedNavigatorResizable extends InheritedWidget {
   const _InheritedNavigatorResizable({
-    required this.state,
+    required this.preferredSize,
+    required this.bypassedConstraints,
     required super.child,
   });
 
-  final _NavigatorResizableState state;
+  final NavigatorSizeNotifier preferredSize;
+  final BoxConstraints bypassedConstraints;
 
   @override
-  bool updateShouldNotify(_InheritedNavigatorResizable oldWidget) => true;
+  bool updateShouldNotify(_InheritedNavigatorResizable oldWidget) =>
+      identical(preferredSize, oldWidget.preferredSize) ||
+      bypassedConstraints != oldWidget.bypassedConstraints;
 }
 
 class _RenderNavigatorResizableWidget extends SingleChildRenderObjectWidget {
   const _RenderNavigatorResizableWidget({
-    required this.state,
     required this.preferredSize,
     required super.child,
   });
 
-  final _NavigatorResizableState state;
   final NavigatorSizeNotifier preferredSize;
 
   @override
   RenderObject createRenderObject(BuildContext context) {
     return _RenderNavigatorResizable(
-      state: state,
       preferredSize: preferredSize,
     );
   }
@@ -255,18 +238,14 @@ class _RenderNavigatorResizableWidget extends SingleChildRenderObjectWidget {
 
 class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   _RenderNavigatorResizable({
-    required _NavigatorResizableState state,
     required NavigatorSizeNotifier preferredSize,
-  }) : _state = state,
-       _preferredSize = preferredSize,
+  }) : _preferredSize = preferredSize,
        super(
          alignment: Alignment.topLeft,
          textDirection: null,
        ) {
     preferredSize.addListener(markNeedsLayout);
   }
-
-  final _NavigatorResizableState _state;
 
   @override
   bool get sizedByParent => false;
@@ -313,7 +292,10 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
       'with a widget that provides non-tight constraints, such as Align '
       'and Center. \n'
       'The given constraints were: $constraints which was given by '
-      'the parent: ${parent.runtimeType}',
+      'the parent: ${parent?.parent.runtimeType}',
+      // We refer to parent.parent here as the parent is always the render
+      // object for the LayoutBuilder that the NavigatorResizable builds
+      // internally, which isn't what developers insert by themselves.
     );
     assert(
       constraints.hasBoundedHeight && constraints.hasBoundedWidth,
@@ -325,16 +307,9 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
       'since the parent Navigator does not provide finite bounds.\n'
       'Make sure that NavigatorResizable is not wrapped in a widget that '
       'passes unbounded constraints to its children, such as Column or Row. '
-      'The given constraints were:\n'
-      '$constraints (from parent: ${parent.runtimeType}).',
+      'The given constraints were $constraints, which was given by '
+      '${parent?.parent.runtimeType}.',
     );
-
-    // Publish the real, bounded constraints so
-    // ResizableNavigatorRouteContentBoundary can re-impose them on route
-    // content below, since the Navigator itself is about to be laid out
-    // with unbounded constraints instead.
-    _state._routeContentConstraints = constraints;
-
     // Giving the Navigator unbounded constraints lets it shrink-wrap to the
     // current route's actual content size, which we can then read directly
     // below. This avoids the one-frame lag that results from going through
@@ -388,24 +363,30 @@ class ResizableNavigatorRouteContentBoundary
 
   @override
   RenderObject createRenderObject(BuildContext context) {
-    final parentRoute = ModalRoute.of(context)!;
-    final navigatorResizable = _NavigatorResizableState.of(context);
+    final inherited = context
+        .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>()!;
     return _RenderRouteContentBoundary(
-      state: navigatorResizable,
+      bypassedConstraints: inherited.bypassedConstraints,
       didRouteContentSizeChangeCallback: (size) {
-        navigatorResizable.didRouteContentSizeChange(parentRoute, size);
+        inherited.preferredSize.didRouteContentSizeChange(
+          ModalRoute.of(context)!,
+          size,
+        );
       },
     );
   }
 
   @override
   void updateRenderObject(BuildContext context, RenderObject renderObject) {
-    final parentRoute = ModalRoute.of(context)!;
-    final navigatorResizable = _NavigatorResizableState.of(context);
+    final inherited = context
+        .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>()!;
     (renderObject as _RenderRouteContentBoundary)
-      ..state = navigatorResizable
+      ..bypassedConstraints = inherited.bypassedConstraints
       ..didRouteContentSizeChangeCallback = (size) {
-        navigatorResizable.didRouteContentSizeChange(parentRoute, size);
+        inherited.preferredSize.didRouteContentSizeChange(
+          ModalRoute.of(context)!,
+          size,
+        );
       };
   }
 }
@@ -418,30 +399,27 @@ class ResizableNavigatorRouteContentBoundary
 /// resulting size, so the Navigator's own measured size reflects it.
 class _RenderRouteContentBoundary extends RenderShiftedBox {
   _RenderRouteContentBoundary({
-    required _NavigatorResizableState state,
+    required this.bypassedConstraints,
     required this.didRouteContentSizeChangeCallback,
-  }) : _state = state,
-       super(null);
+  }) : super(null);
 
-  _NavigatorResizableState _state;
-  // ignore: avoid_setters_without_getters
-  set state(_NavigatorResizableState value) => _state = value;
-
+  BoxConstraints bypassedConstraints;
   ValueSetter<Size> didRouteContentSizeChangeCallback;
 
   @override
   void performLayout() {
     final child = this.child;
     assert(child != null);
-    child!.layout(_state._routeContentConstraints, parentUsesSize: true);
+    child!.layout(bypassedConstraints, parentUsesSize: true);
     (child.parentData! as BoxParentData).offset = Offset.zero;
     // This box's own size must still satisfy whatever ambient constraints
     // it was actually given (e.g. the Overlay forces non-topmost routes to
     // fill its resolved size exactly), even though the child above was laid
     // out against the real, stashed constraints instead.
     size = constraints.constrain(child.size);
-    // Ensure the size object is immutable.
-    didRouteContentSizeChangeCallback(Size.copy(child.size));
+    didRouteContentSizeChangeCallback(
+      Size.copy(child.size), // Ensure the notified size object is immutable.
+    );
   }
 }
 

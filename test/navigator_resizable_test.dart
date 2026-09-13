@@ -1419,9 +1419,9 @@ void main() {
                 'the parent Navigator does not provide finite bounds.\n'
                 'Make sure that NavigatorResizable is not wrapped in a widget '
                 'that passes unbounded constraints to its children, such as '
-                'Column or Row. The given constraints were:\n'
-                'BoxConstraints(0.0<=w<=800.0, 0.0<=h<=Infinity) '
-                '(from parent: RenderFlex).',
+                'Column or Row. The given constraints were '
+                'BoxConstraints(0.0<=w<=800.0, 0.0<=h<=Infinity), '
+                'which was given by RenderFlex.',
           ),
         );
       },

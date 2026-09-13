@@ -19,9 +19,6 @@ class NavigatorSizeNotifier extends ChangeNotifier
   Animation<Size?>? _interpolation;
   Route<dynamic>? _currentRoute;
 
-  /// Whether a route transition's size interpolation is currently active.
-  bool get isTransitioning => _interpolation != null;
-
   void _updateInterpolation(Animation<Size?>? newValue) {
     _interpolation?.removeListener(notifyListeners);
     _interpolation = newValue?..addListener(notifyListeners);
