@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart' as p;
+import 'package:flutter/physics.dart' as physics;
 import 'package:flutter/rendering.dart';
 
 import 'navigator_event_observer.dart';
@@ -540,41 +540,31 @@ class _RenderRouteContentBoundary extends RenderShiftedBox {
   }) : super(null);
 
   BoxConstraints bypassedConstraints;
+
+  /// A cache of the [size] determined in the previous call to [performLayout].
+  /// This allows objects other than the [parent] render object to read this
+  /// render object's size, which isn't permitted through the [size] getter.
   Size? lastMeasuredSize;
 
   @override
   Size computeDryLayout(covariant BoxConstraints constraints) {
-    return child?.getDryLayout(constraints) ?? Size.zero;
+    return switch (child) {
+      null => Size.zero,
+      final child => child.getDryLayout(constraints),
+    };
   }
 
   @override
   void performLayout() {
-    final child = this.child;
-    assert(child != null);
-    child!.layout(bypassedConstraints, parentUsesSize: true);
-    (child.parentData! as BoxParentData).offset = Offset.zero;
-    // Ensure the captured size object is immutable.
-    lastMeasuredSize = Size.copy(child.size);
-    // This box's own size must still satisfy whatever ambient constraints
-    // it was actually given (e.g. the Overlay forces non-topmost routes to
-    // fill its resolved size exactly), even though the child above was laid
-    // out against the real, stashed constraints instead.
-    size = constraints.constrain(lastMeasuredSize!);
-  }
-}
-
-extension on Size {
-  bool nearEqual(Size other) {
-    return p.nearEqual(
-          height,
-          other.height,
-          Tolerance.defaultTolerance.distance,
-        ) &&
-        p.nearEqual(
-          width,
-          other.width,
-          Tolerance.defaultTolerance.distance,
-        );
+    if (child case final child?) {
+      child.layout(bypassedConstraints, parentUsesSize: true);
+      (child.parentData! as BoxParentData).offset = Offset.zero;
+      // Ensure the captured size object is immutable.
+      lastMeasuredSize = Size.copy(child.size);
+      size = constraints.constrain(lastMeasuredSize!);
+    } else {
+      size = lastMeasuredSize = Size.zero;
+    }
   }
 }
 
@@ -629,4 +619,19 @@ Size _lerpEndSize(Size ss, Size st, double t) {
     (st.width - (1 - t) * ss.width) / t,
     (st.height - (1 - t) * ss.height) / t,
   );
+}
+
+extension on Size {
+  bool nearEqual(Size other) {
+    return physics.nearEqual(
+          height,
+          other.height,
+          Tolerance.defaultTolerance.distance,
+        ) &&
+        physics.nearEqual(
+          width,
+          other.width,
+          Tolerance.defaultTolerance.distance,
+        );
+  }
 }
