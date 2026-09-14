@@ -368,23 +368,19 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
 
   @override
   Size computeDryLayout(covariant BoxConstraints constraints) {
-    if (_sizeTransition.value case final size?) {
-      return constraints.constrain(size);
-    }
-    if (child != null) {
-      return child!.getDryLayout(
+    return switch (_sizeTransition.value) {
+      null => child!.getDryLayout(
         const BoxConstraints(
           maxHeight: double.infinity,
           maxWidth: double.infinity,
         ),
-      );
-    }
-    return Size.zero;
+      ),
+      final size => constraints.constrain(size),
+    };
   }
 
   @override
   void performLayout() {
-    assert(child != null);
     assert(
       !constraints.isTight,
       'The NavigatorResizable widget was given an tight constraint. '
@@ -425,13 +421,10 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
       parentUsesSize: true,
     );
 
-    if (_sizeTransition.value case final value?) {
-      size = constraints.constrain(value);
-    } else if (child != null) {
-      size = constraints.constrain(Size.copy(child!.size));
-    } else {
-      size = constraints.constrain(Size.zero);
-    }
+    size = switch (_sizeTransition.value) {
+      null => constraints.constrain(Size.copy(child!.size)),
+      final s => constraints.constrain(s),
+    };
 
     _visibleBounds = Offset.zero & size;
     alignChild();
@@ -547,12 +540,22 @@ class _RenderRouteContentBoundary extends RenderShiftedBox {
   /// render object's size, which isn't permitted through the [size] getter.
   Size? lastMeasuredSize;
 
-  @override
-  Size computeDryLayout(covariant BoxConstraints constraints) {
+  Size _computeLayout(
+    BoxConstraints constraints,
+    Size Function(RenderBox, BoxConstraints) layoutChild,
+  ) {
     return switch (child) {
       null => Size.zero,
-      final child => child.getDryLayout(constraints),
+      final child => layoutChild(child, constraints),
     };
+  }
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) {
+    return _computeLayout(
+      constraints,
+      (child, cons) => child.getDryLayout(cons),
+    );
   }
 
   @override
