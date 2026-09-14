@@ -218,7 +218,7 @@ class _RenderNavigatorResizableWidget extends SingleChildRenderObjectWidget {
     required super.child,
   });
 
-  final ValueListenable<Size> preferredSize;
+  final ValueListenable<Size?> preferredSize;
 
   @override
   RenderObject createRenderObject(BuildContext context) {
@@ -236,7 +236,7 @@ class _RenderNavigatorResizableWidget extends SingleChildRenderObjectWidget {
 
 class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   _RenderNavigatorResizable({
-    required ValueListenable<Size> preferredSize,
+    required ValueListenable<Size?> preferredSize,
   }) : _preferredSize = preferredSize,
        super(alignment: Alignment.topLeft, textDirection: null) {
     preferredSize.addListener(markNeedsLayout);
@@ -252,9 +252,9 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   /// [_preferredSize] and the offset should be always [Offset.zero].
   late Rect _visibleBounds;
 
-  ValueListenable<Size> _preferredSize;
+  ValueListenable<Size?> _preferredSize;
   // ignore: avoid_setters_without_getters
-  set preferredSize(ValueListenable<Size> value) {
+  set preferredSize(ValueListenable<Size?> value) {
     if (value != _preferredSize) {
       _preferredSize.removeListener(markNeedsLayout);
       _preferredSize = value..addListener(markNeedsLayout);
@@ -269,7 +269,18 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
 
   @override
   Size computeDryLayout(covariant BoxConstraints constraints) {
-    return constraints.constrain(_preferredSize.value);
+    if (_preferredSize.value case final size?) {
+      return constraints.constrain(size);
+    }
+    if (child != null) {
+      return child!.getDryLayout(
+        const BoxConstraints(
+          maxHeight: double.infinity,
+          maxWidth: double.infinity,
+        ),
+      );
+    }
+    return Size.zero;
   }
 
   @override
@@ -314,7 +325,15 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
       ),
       parentUsesSize: true,
     );
-    size = computeDryLayout(constraints);
+
+    if (_preferredSize.value case final pref?) {
+      size = constraints.constrain(pref);
+    } else if (child != null) {
+      size = constraints.constrain(Size.copy(child!.size));
+    } else {
+      size = constraints.constrain(Size.zero);
+    }
+
     _visibleBounds = Offset.zero & size;
     alignChild();
   }
@@ -365,12 +384,6 @@ class ResizableNavigatorRouteContentBoundary
         .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>()!;
     return RenderRouteContentBoundary(
       navigatorConstraints: inherited.navigatorConstraints,
-      didRouteContentSizeChangeCallback: (size) {
-        inherited.preferredSize.didRouteContentSizeChange(
-          ModalRoute.of(context)!,
-          size,
-        );
-      },
     );
   }
 
@@ -379,13 +392,7 @@ class ResizableNavigatorRouteContentBoundary
     final inherited = context
         .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>()!;
     (renderObject as RenderRouteContentBoundary)
-      ..navigatorConstraints = inherited.navigatorConstraints
-      ..didRouteContentSizeChangeCallback = (size) {
-        inherited.preferredSize.didRouteContentSizeChange(
-          ModalRoute.of(context)!,
-          size,
-        );
-      };
+      ..navigatorConstraints = inherited.navigatorConstraints;
   }
 }
 
@@ -398,13 +405,16 @@ class ResizableNavigatorRouteContentBoundary
 class RenderRouteContentBoundary extends RenderShiftedBox {
   RenderRouteContentBoundary({
     required this.navigatorConstraints,
-    required this.didRouteContentSizeChangeCallback,
   }) : super(null);
 
   BoxConstraints navigatorConstraints;
-  ValueSetter<Size> didRouteContentSizeChangeCallback;
 
   Size? lastSize;
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) {
+    return child?.getDryLayout(constraints) ?? Size.zero;
+  }
 
   @override
   void performLayout() {
@@ -417,10 +427,8 @@ class RenderRouteContentBoundary extends RenderShiftedBox {
     // fill its resolved size exactly), even though the child above was laid
     // out against the real, stashed constraints instead.
     size = constraints.constrain(child.size);
+    // Ensure the notified size object is immutable.
     lastSize = Size.copy(child.size);
-    didRouteContentSizeChangeCallback(
-      Size.copy(child.size), // Ensure the notified size object is immutable.
-    );
   }
 }
 

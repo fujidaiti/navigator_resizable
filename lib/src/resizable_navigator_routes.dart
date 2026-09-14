@@ -232,7 +232,7 @@ class _AnimationLessAndroidBackGestureHandlerState
 /// with [NavigatorResizable].
 @optionalTypeArgs
 class ResizablePageRouteBuilder<T> extends PageRoute<T>
-    with ObservableRouteMixin<T> {
+    with ObservableRouteMixin<T>, RouteContentBoundaryOwner {
   /// Creates a route that delegates to builder callbacks.
   ResizablePageRouteBuilder({
     super.settings,
@@ -249,6 +249,8 @@ class ResizablePageRouteBuilder<T> extends PageRoute<T>
     super.fullscreenDialog,
     super.allowSnapshotting = true,
   });
+  @override
+  GlobalKey<State<StatefulWidget>> boundaryKey = GlobalKey();
 
   /// Used build the route's primary contents.
   ///
@@ -289,6 +291,7 @@ class ResizablePageRouteBuilder<T> extends PageRoute<T>
     Animation<double> secondaryAnimation,
   ) {
     return ResizableNavigatorRouteContentBoundary(
+      key: boundaryKey,
       child: pageBuilder(context, animation, secondaryAnimation),
     );
   }
@@ -379,7 +382,7 @@ class ResizablePageRoutePageBuilder<T> extends Page<T> {
 }
 
 class _PageBasedResizablePageRoutePageBuilder<T> extends PageRoute<T>
-    with ObservableRouteMixin<T> {
+    with ObservableRouteMixin<T>, RouteContentBoundaryOwner {
   _PageBasedResizablePageRoutePageBuilder({
     required ResizablePageRoutePageBuilder<T> page,
     super.requestFocus,
@@ -387,6 +390,9 @@ class _PageBasedResizablePageRoutePageBuilder<T> extends PageRoute<T>
     super.fullscreenDialog,
     super.barrierDismissible,
   }) : super(settings: page);
+
+  @override
+  GlobalKey<State<StatefulWidget>> boundaryKey = GlobalKey();
 
   ResizablePageRoutePageBuilder<T> get _page =>
       settings as ResizablePageRoutePageBuilder<T>;
@@ -422,6 +428,7 @@ class _PageBasedResizablePageRoutePageBuilder<T> extends PageRoute<T>
     Animation<double> secondaryAnimation,
   ) {
     return ResizableNavigatorRouteContentBoundary(
+      key: boundaryKey,
       child: _page.child,
     );
   }
