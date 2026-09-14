@@ -175,22 +175,11 @@ class _NavigatorResizableState extends State<NavigatorResizable>
     super.dispose();
   }
 
-  void _updateInterpolation(Animation<Size?>? newValue) {
-    _navigatorSizeTransition.parent = newValue;
-  }
-
-  void _updateCurrentRoute(Route<dynamic>? newRoute) {
-    _lastSettledRoute = newRoute;
-    if (newRoute != null) {
-      _updateInterpolation(null);
-    }
-  }
-
   @override
   VoidCallback? didInstall(Route<dynamic> route) {
     void onDispose() {
       if (route == _lastSettledRoute) {
-        _updateCurrentRoute(null);
+        _lastSettledRoute = null;
       }
     }
 
@@ -238,12 +227,10 @@ class _NavigatorResizableState extends State<NavigatorResizable>
         ResizableNavigatorRouteContentBoundary._sizeFor(
           _lastSettledRoute,
         );
-    _updateInterpolation(
-      _LazySizeTween(
-        start: targetRouteSize,
-        end: () => initialSize,
-      ).animate(animation),
-    );
+    _navigatorSizeTransition.parent = _LazySizeTween(
+      start: targetRouteSize,
+      end: () => initialSize,
+    ).animate(animation);
   }
 
   void _startPushTransition(
@@ -266,12 +253,10 @@ class _NavigatorResizableState extends State<NavigatorResizable>
         ResizableNavigatorRouteContentBoundary._sizeFor(
           _lastSettledRoute,
         );
-    _updateInterpolation(
-      _LazySizeTween(
-        start: () => initialSize,
-        end: targetRouteSize,
-      ).chain(CurveTween(curve: widget.interpolationCurve)).animate(animation),
-    );
+    _navigatorSizeTransition.parent = _LazySizeTween(
+      start: () => initialSize,
+      end: targetRouteSize,
+    ).chain(CurveTween(curve: widget.interpolationCurve)).animate(animation);
   }
 
   void _startPopTransition(
@@ -296,14 +281,10 @@ class _NavigatorResizableState extends State<NavigatorResizable>
     }
 
     if (animation.value == 1) {
-      _updateInterpolation(
-        _LazySizeTween(
-              start: targetRouteSize,
-              end: () => initialSize,
-            )
-            .chain(CurveTween(curve: widget.interpolationCurve))
-            .animate(animation),
-      );
+      _navigatorSizeTransition.parent = _LazySizeTween(
+        start: targetRouteSize,
+        end: () => initialSize,
+      ).chain(CurveTween(curve: widget.interpolationCurve)).animate(animation);
     } else {
       // In this case, a pop transition has started in the middle of
       // another transition. This can happen, for example, when a route
@@ -315,22 +296,21 @@ class _NavigatorResizableState extends State<NavigatorResizable>
       // at `animation.value == initialAnimationProgress`, and it eventually
       // reaches the `targetRoute`'s size at `animation.value == 1`.
       final initialAnimationProgress = animation.value;
-      _updateInterpolation(
-        _LazySizeTween(
-          start: targetRouteSize,
-          end: () => _lerpEndSize(
-            targetRouteSize()!,
-            initialSize!,
-            initialAnimationProgress,
-          ),
-        ).animate(animation),
-      );
+      _navigatorSizeTransition.parent = _LazySizeTween(
+        start: targetRouteSize,
+        end: () => _lerpEndSize(
+          targetRouteSize()!,
+          initialSize!,
+          initialAnimationProgress,
+        ),
+      ).animate(animation);
     }
   }
 
   @override
   void didEndTransition(Route<dynamic> route) {
-    _updateCurrentRoute(route);
+    _lastSettledRoute = route;
+    _navigatorSizeTransition.parent = null;
   }
 
   @override
