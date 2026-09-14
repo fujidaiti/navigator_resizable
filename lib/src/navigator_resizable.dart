@@ -6,28 +6,35 @@ import 'package:flutter/rendering.dart';
 import 'navigator_event_observer.dart';
 import 'resizable_navigator_routes.dart';
 
-/// A thin wrapper around [Navigator] that **visually** resizes the [child]
-/// navigator to match the size of current route's content.
+/// A widget that resizes the child [Navigator] to match the intrinsic size of
+/// the current [Route]'s content.
 ///
-/// This widget is functionally similar to combining [OverflowBox] and
-/// [ClipRect], but it is specifically designed for this use case.
-/// It adjusts its size, hit test area, and painting area to align
-/// with the size of the widget displayed by the [child] navigator's
-/// current route. The navigator itself can overflow this widget,
-/// maintaining its size as determined by the parent constraints
-/// unless those constraints change. This helps minimize unnecessary
-/// layout operations for the navigator and its routes.
+/// Think of this like a resizable box with nested pages, whose size changes as
+/// the current page goes from one to another. If the first page wants to be
+/// 200x200, this widget has that size. If the second page wants to be 400x400
+/// and the users go to the second page, this widget then becomes a 400x400 box.
+///
+/// Technically, this widget lets the top-level widget hosted by the navigator's
+/// current route freely determine its width and height, and sizes the navigator
+/// and itself to match that dimensions.
+///
+/// During route transitions, this widget gradually grows or shrinks toward the
+/// next route's size along with the transition animation, instead of changing
+/// abruptly. Note that, however, the navigator keeps its previous size during
+/// the transition and jumps to the target size when it completes. That is, the
+/// navigator may be bigger or smaller than this widget's boundoary box while
+/// transitioning, and the overflowed portions, if any, are visually clipped.
 ///
 /// ### Routes and Pages
 ///
 /// The [NavigatorResizable] can respect the content size of a route
 /// only if the route mix-ins the [ObservableRouteMixin] and its content
-/// is wrapped in a [_RenderRouteContentBoundaryWidget].
+/// is wrapped in a [ResizableNavigatorRouteContentBoundary].
 /// This is especially important during route transitions, as the
 /// [NavigatorResizable] can animate its size in sync with the transition
 /// animation only when both the current route and the next route satisfy
-/// these requirements. Otherwise, the size remains unchanged before
-/// and after the transition.
+/// those requirements. Otherwise, the navigator's size changes abruplty
+/// without any animation.
 ///
 /// For convenience, the following built-in route and page classes are provided,
 /// all of which satisfy the requirements of [NavigatorResizable]:
@@ -128,30 +135,32 @@ import 'resizable_navigator_routes.dart';
 /// );
 /// ```
 ///
-/// For more practical examples, refer to the [/example][3] directory.
+/// See [/example][3] directory for more practical examples.
 ///
 /// [1]: https://api.flutter.dev/flutter/widgets/Navigator-class.html#:~:text=Using%20named%20navigator%20routes
 /// [2]: https://api.flutter.dev/flutter/widgets/Navigator-class.html#:~:text=the%20current%20page.-,Using%20the%20Pages%20API,-The%20Navigator%20will
 /// [3]: https://github.com/fujidaiti/navigator_resizable/tree/main/example/lib
 class NavigatorResizable extends StatefulWidget {
-  /// Creates a thin wrapper around [Navigator] that **visually** resizes
-  /// the [child] navigator to match the size of the content displayed
-  /// in the current route.
+  /// Creates a widget that resizes the child [Navigator] to match the intrinsic
+  /// size of the current [Route]'s content.
   const NavigatorResizable({
     super.key,
     this.interpolationCurve = Curves.easeInOutCubic,
     required this.child,
   });
 
-  /// The [Curve] used for interpolating the size of this widget
-  /// during a route transition animation.
+  /// The [Curve] used to interpolate the size of this widget during
+  /// route transitions.
   ///
-  /// This widget gradually changes its size during a route transition,
-  /// interpolating between the sizes of the previous and the next route
-  /// with this curve. The default value is [Curves.easeInOutCubic].
+  /// Defaults to [Curves.easeInOutCubic].
   final Curve interpolationCurve;
 
-  /// The [Navigator] for which the visual resizing should be applied.
+  /// The [Navigator] to be resized.
+  ///
+  /// This is not necessary to be a raw [Navigator]. A navigator wrapped with
+  /// zero-sized widgets, such as [GestureDetector] and [ColoredBox], or widgets
+  /// without render objects, such as [Theme] and [AnimatedBuilder], are all
+  /// acceptable.
   final Widget child;
 
   @override
@@ -160,18 +169,22 @@ class NavigatorResizable extends StatefulWidget {
 
 class _NavigatorResizableState extends State<NavigatorResizable>
     with NavigatorEventListener {
-  late final _SizeProxyAnimation _navigatorSizeTransition;
+  /// Represents an interpolated size of the navigator during a transition.
+  /// The value is available only when the transition is running, otherwise
+  /// reports null.
+  late final _SizeProxyAnimation _sizeInterpolation;
+
   Route<dynamic>? _lastSettledRoute;
 
   @override
   void initState() {
     super.initState();
-    _navigatorSizeTransition = _SizeProxyAnimation();
+    _sizeInterpolation = _SizeProxyAnimation();
   }
 
   @override
   void dispose() {
-    _navigatorSizeTransition.dispose();
+    _sizeInterpolation.dispose();
     super.dispose();
   }
 
@@ -208,9 +221,9 @@ class _NavigatorResizableState extends State<NavigatorResizable>
   ) {
     assert(animation.isForwardOrCompleted);
     final initialSize =
-        _navigatorSizeTransition.value ??
+        _sizeInterpolation.value ??
         ResizableNavigatorRouteContentBoundary._sizeFor(_lastSettledRoute);
-    _navigatorSizeTransition.parent = _LazySizeTween(
+    _sizeInterpolation.parent = _LazySizeTween(
       start: () => ResizableNavigatorRouteContentBoundary._sizeFor(targetRoute),
       end: () => initialSize,
     ).animate(animation);
@@ -222,9 +235,9 @@ class _NavigatorResizableState extends State<NavigatorResizable>
   ) {
     assert(animation.isForwardOrCompleted);
     final initialSize =
-        _navigatorSizeTransition.value ??
+        _sizeInterpolation.value ??
         ResizableNavigatorRouteContentBoundary._sizeFor(_lastSettledRoute);
-    _navigatorSizeTransition.parent = _LazySizeTween(
+    _sizeInterpolation.parent = _LazySizeTween(
       start: () => initialSize,
       end: () => ResizableNavigatorRouteContentBoundary._sizeFor(targetRoute),
     ).chain(CurveTween(curve: widget.interpolationCurve)).animate(animation);
@@ -236,7 +249,7 @@ class _NavigatorResizableState extends State<NavigatorResizable>
   ) {
     assert(!animation.isForwardOrCompleted);
     final initialSize =
-        _navigatorSizeTransition.value ??
+        _sizeInterpolation.value ??
         ResizableNavigatorRouteContentBoundary._sizeFor(_lastSettledRoute);
 
     Size? targetRouteSize() {
@@ -244,7 +257,7 @@ class _NavigatorResizableState extends State<NavigatorResizable>
     }
 
     if (animation.value == 1) {
-      _navigatorSizeTransition.parent = _LazySizeTween(
+      _sizeInterpolation.parent = _LazySizeTween(
         start: targetRouteSize,
         end: () => initialSize,
       ).chain(CurveTween(curve: widget.interpolationCurve)).animate(animation);
@@ -260,7 +273,7 @@ class _NavigatorResizableState extends State<NavigatorResizable>
       // initialAnimationProgress, and it eventually reaches the target size
       // when animation.value is 1.
       final initialAnimationProgress = animation.value;
-      _navigatorSizeTransition.parent = _LazySizeTween(
+      _sizeInterpolation.parent = _LazySizeTween(
         start: targetRouteSize,
         end: () => _lerpEndSize(
           targetRouteSize()!,
@@ -274,7 +287,7 @@ class _NavigatorResizableState extends State<NavigatorResizable>
   @override
   void didEndTransition(Route<dynamic> route) {
     _lastSettledRoute = route;
-    _navigatorSizeTransition.parent = null;
+    _sizeInterpolation.parent = null;
   }
 
   @override
@@ -286,7 +299,7 @@ class _NavigatorResizableState extends State<NavigatorResizable>
           return _BypassedNavigatorConstraints(
             value: constraints,
             child: _RenderNavigatorResizableWidget(
-              sizeTransition: _navigatorSizeTransition,
+              sizeTransition: _sizeInterpolation,
               child: widget.child,
             ),
           );
@@ -296,8 +309,6 @@ class _NavigatorResizableState extends State<NavigatorResizable>
   }
 }
 
-/// Bypasses the layout constraints for the [NavigatorResizable] to descendant
-/// [ResizableNavigatorRouteContentBoundary]s.
 class _BypassedNavigatorConstraints extends InheritedWidget {
   const _BypassedNavigatorConstraints({
     required this.value,
@@ -323,52 +334,35 @@ class _RenderNavigatorResizableWidget extends SingleChildRenderObjectWidget {
   RenderObject createRenderObject(BuildContext context) {
     return _RenderNavigatorResizable(sizeTransition: sizeTransition);
   }
-
-  @override
-  void updateRenderObject(
-    BuildContext context,
-    _RenderNavigatorResizable renderObject,
-  ) {
-    renderObject.sizeTransition = sizeTransition;
-  }
 }
 
 class _RenderNavigatorResizable extends RenderAligningShiftedBox {
-  _RenderNavigatorResizable({
-    required ValueListenable<Size?> sizeTransition,
-  }) : _sizeTransition = sizeTransition,
-       super(alignment: Alignment.topLeft, textDirection: null) {
+  _RenderNavigatorResizable({required this.sizeTransition})
+    : super(alignment: Alignment.topLeft, textDirection: null) {
     sizeTransition.addListener(markNeedsLayout);
   }
 
-  @override
-  bool get sizedByParent => false;
+  final ValueListenable<Size?> sizeTransition;
 
   /// The visible area of the descendant Navigator.
   ///
   /// Used in [paint] and [hitTest].
   /// The size of this rect should be kept in sync with the value of
-  /// [_sizeTransition] and the offset should be always [Offset.zero].
+  /// [sizeTransition] and the offset should be always [Offset.zero].
   late Rect _visibleBounds;
 
-  ValueListenable<Size?> _sizeTransition;
-  // ignore: avoid_setters_without_getters
-  set sizeTransition(ValueListenable<Size?> value) {
-    if (value != _sizeTransition) {
-      _sizeTransition.removeListener(markNeedsLayout);
-      _sizeTransition = value..addListener(markNeedsLayout);
-    }
-  }
+  @override
+  bool get sizedByParent => false;
 
   @override
   void dispose() {
-    _sizeTransition.removeListener(markNeedsLayout);
+    sizeTransition.removeListener(markNeedsLayout);
     super.dispose();
   }
 
   @override
   Size computeDryLayout(covariant BoxConstraints constraints) {
-    return switch (_sizeTransition.value) {
+    return switch (sizeTransition.value) {
       null => child!.getDryLayout(
         const BoxConstraints(
           maxHeight: double.infinity,
@@ -408,11 +402,6 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
       '${parent?.parent.runtimeType}.',
     );
 
-    // Here comes the trick: giving the Navigator unbounded constraints lets
-    // it shrink-wrap to the current route's actual content size, which we can
-    // then read directly below. This avoids the one-frame lag that results
-    // from going through NavigatorSizeNotifier, whose value can only be updated
-    // in response to a route content layout that already happened.
     child!.layout(
       const BoxConstraints(
         maxWidth: double.infinity,
@@ -421,7 +410,7 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
       parentUsesSize: true,
     );
 
-    size = switch (_sizeTransition.value) {
+    size = switch (sizeTransition.value) {
       null => constraints.constrain(Size.copy(child!.size)),
       final s => constraints.constrain(s),
     };
@@ -450,20 +439,13 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   }
 }
 
-/// Observes the layout of the [child] widget and notifies the ancestor
-/// [NavigatorResizable] when the child's size changes.
+/// This widget is supposed to be the outermost parent of the [Route]'s content
+/// hosted by the [Navigator] under a [NavigatorResizable].
 ///
-/// A route is compatible with [NavigatorResizable] only if it mixes-in
-/// the [ObservableRouteMixin] and wraps its content in
-/// a [_RenderRouteContentBoundaryWidget]. For example, a subclass
-/// of [ModalRoute] should return a [_RenderRouteContentBoundaryWidget]
-/// in [ModalRoute.buildPage].
-///
-/// It is rarely used directly. Instead, use the built-in route classes
-/// that satisfy the requirements of [NavigatorResizable],
-/// such as [ResizableMaterialPageRoute] and [ResizablePageRouteBuilder].
+/// This is rarely used directly. Instead, use built-in route classes that
+/// satisfy the above requirements, such as [ResizableMaterialPageRoute]
+/// and [ResizablePageRouteBuilder].
 class ResizableNavigatorRouteContentBoundary extends StatelessWidget {
-  /// Creates a widget that observes the layout of the [child].
   const ResizableNavigatorRouteContentBoundary({
     super.key,
     required this.child,
