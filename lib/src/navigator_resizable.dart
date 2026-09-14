@@ -249,15 +249,16 @@ class _NavigatorResizableState extends State<NavigatorResizable>
         end: () => initialSize,
       ).chain(CurveTween(curve: widget.interpolationCurve)).animate(animation);
     } else {
-      // In this case, a pop transition has started in the middle of
-      // another transition. This can happen, for example, when a route
-      // is popped immediately after being pushed.
-      // To avoid layout shifts, we start a linear size transition
-      // from a synthetic start size to the `targetRoute`'s size,
-      // where the synthetic start size is calculated by _lerpEndSize.
-      // This transition is such that the size equals the `initialSize`
-      // at `animation.value == initialAnimationProgress`, and it eventually
-      // reaches the `targetRoute`'s size at `animation.value == 1`.
+      // In this case, a pop transition has started in the middle of another
+      // transition. This can happen, for example, when a route is popped
+      // immediately after being pushed.
+      //
+      // To avoid layout shifts, we start a linear size transition from
+      // a synthetic start size to the target size, where the synthetic start
+      // size is calculated by _lerpEndSize. This transition is such that the
+      // size equals the initialSize when animation.value is
+      // initialAnimationProgress, and it eventually reaches the target size
+      // when animation.value is 1.
       final initialAnimationProgress = animation.value;
       _navigatorSizeTransition.parent = _LazySizeTween(
         start: targetRouteSize,
