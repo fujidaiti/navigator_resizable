@@ -22,7 +22,7 @@ import 'resizable_navigator_routes.dart';
 ///
 /// The [NavigatorResizable] can respect the content size of a route
 /// only if the route mix-ins the [ObservableRouteMixin] and its content
-/// is wrapped in a [ResizableNavigatorRouteContentBoundary].
+/// is wrapped in a [_RenderRouteContentBoundaryWidget].
 /// This is especially important during route transitions, as the
 /// [NavigatorResizable] can animate its size in sync with the transition
 /// animation only when both the current route and the next route satisfy
@@ -59,7 +59,7 @@ import 'resizable_navigator_routes.dart';
 /// For more advanced use cases, you can create a custom route
 /// compatible with [NavigatorResizable] by mixing in
 /// the [ObservableRouteMixin] and returning a
-/// [ResizableNavigatorRouteContentBoundary] in [ModalRoute.buildPage].
+/// [_RenderRouteContentBoundaryWidget] in [ModalRoute.buildPage].
 ///
 /// ```dart
 /// class CustomResizableRoute<T> extends ModalRoute<T>
@@ -362,17 +362,49 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
 ///
 /// A route is compatible with [NavigatorResizable] only if it mixes-in
 /// the [ObservableRouteMixin] and wraps its content in
-/// a [ResizableNavigatorRouteContentBoundary]. For example, a subclass
-/// of [ModalRoute] should return a [ResizableNavigatorRouteContentBoundary]
+/// a [_RenderRouteContentBoundaryWidget]. For example, a subclass
+/// of [ModalRoute] should return a [_RenderRouteContentBoundaryWidget]
 /// in [ModalRoute.buildPage].
 ///
 /// It is rarely used directly. Instead, use the built-in route classes
 /// that satisfy the requirements of [NavigatorResizable],
 /// such as [ResizableMaterialPageRoute] and [ResizablePageRouteBuilder].
-class ResizableNavigatorRouteContentBoundary
-    extends SingleChildRenderObjectWidget {
+class ResizableNavigatorRouteContentBoundary extends StatelessWidget {
   /// Creates a widget that observes the layout of the [child].
   const ResizableNavigatorRouteContentBoundary({
+    super.key,
+    required this.child,
+  });
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return _RenderRouteContentBoundaryWidget(
+      key: _boundaryKeyFor(ModalRoute.of(context)),
+      child: child,
+    );
+  }
+
+  static final _boundaryKeyRegistry = Expando<GlobalKey>('boundaryKetRegistry');
+
+  static GlobalKey? _boundaryKeyFor(Route<dynamic>? route) {
+    if (route == null) {
+      return null;
+    }
+    return _boundaryKeyRegistry[route] ??= GlobalKey();
+  }
+
+  static Size? _findBoundaryBoxSizeFor(Route<dynamic>? route) {
+    final key = _boundaryKeyFor(route);
+    final element = (key?.currentContext as SingleChildRenderObjectElement?);
+    final renderObj = (element?.renderObject as _RenderRouteContentBoundary?);
+    return renderObj?.lastSize;
+  }
+}
+
+class _RenderRouteContentBoundaryWidget extends SingleChildRenderObjectWidget {
+  const _RenderRouteContentBoundaryWidget({
     super.key,
     required super.child,
   });
@@ -381,7 +413,7 @@ class ResizableNavigatorRouteContentBoundary
   RenderObject createRenderObject(BuildContext context) {
     final inherited = context
         .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>()!;
-    return RenderRouteContentBoundary(
+    return _RenderRouteContentBoundary(
       navigatorConstraints: inherited.navigatorConstraints,
     );
   }
@@ -390,7 +422,7 @@ class ResizableNavigatorRouteContentBoundary
   void updateRenderObject(BuildContext context, RenderObject renderObject) {
     final inherited = context
         .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>()!;
-    (renderObject as RenderRouteContentBoundary)
+    (renderObject as _RenderRouteContentBoundary)
       ..navigatorConstraints = inherited.navigatorConstraints;
   }
 }
@@ -401,8 +433,8 @@ class ResizableNavigatorRouteContentBoundary
 /// unbounded because the Navigator above it is laid out unbounded so it can
 /// shrink-wrap to this content. This box in turn shrink-wraps to [child]'s
 /// resulting size, so the Navigator's own measured size reflects it.
-class RenderRouteContentBoundary extends RenderShiftedBox {
-  RenderRouteContentBoundary({
+class _RenderRouteContentBoundary extends RenderShiftedBox {
+  _RenderRouteContentBoundary({
     required this.navigatorConstraints,
   }) : super(null);
 
@@ -514,12 +546,10 @@ class NavigatorSizeNotifier extends ChangeNotifier
     );
 
     Size? targetRouteSize() {
-      final ctx =
-          (targetRoute as RouteContentBoundaryOwner).boundaryKey.currentContext;
-      final renderObj =
-          (ctx as SingleChildRenderObjectElement?)?.renderObject
-              as RenderRouteContentBoundary?;
-      final size = renderObj?.lastSize;
+      final size =
+          ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+            targetRoute,
+          );
       debugPrint(
         'startPush: target size=$size',
       );
@@ -528,14 +558,11 @@ class NavigatorSizeNotifier extends ChangeNotifier
 
     assert(animation.isForwardOrCompleted);
 
-    final ctx = (_lastSettledRoute as RouteContentBoundaryOwner?)
-        ?.boundaryKey
-        .currentContext;
-    final renderObj =
-        (ctx as SingleChildRenderObjectElement?)?.renderObject
-            as RenderRouteContentBoundary?;
-    final size = renderObj?.lastSize;
-    final initialSize = _interpolation?.value ?? size;
+    final initialSize =
+        _interpolation?.value ??
+        ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+          _lastSettledRoute,
+        );
     _updateInterpolation(
       _LazySizeTween(
         start: targetRouteSize,
@@ -549,30 +576,22 @@ class NavigatorSizeNotifier extends ChangeNotifier
     Animation<double> animation,
   ) {
     Size? targetRouteSize() {
-      final ctx =
-          (targetRoute as RouteContentBoundaryOwner).boundaryKey.currentContext;
-      final renderObj =
-          (ctx as SingleChildRenderObjectElement?)?.renderObject
-              as RenderRouteContentBoundary?;
-      final size = renderObj?.lastSize;
+      final size =
+          ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+            targetRoute,
+          );
       debugPrint(
         'startPush: target size=$size',
       );
       return size;
     }
 
-    final ctx = (_lastSettledRoute as RouteContentBoundaryOwner?)
-        ?.boundaryKey
-        .currentContext;
-    final renderObj =
-        (ctx as SingleChildRenderObjectElement?)?.renderObject
-            as RenderRouteContentBoundary?;
-    final size = renderObj?.lastSize;
-    debugPrint(
-      'startPush: currentSize = $size, interp = ${_interpolation?.value}',
-    );
     assert(animation.isForwardOrCompleted);
-    final initialSize = _interpolation?.value ?? size;
+    final initialSize =
+        _interpolation?.value ??
+        ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+          _lastSettledRoute,
+        );
     _updateInterpolation(
       _LazySizeTween(
         start: () => initialSize,
@@ -585,25 +604,18 @@ class NavigatorSizeNotifier extends ChangeNotifier
     Route<dynamic> targetRoute,
     Animation<double> animation,
   ) {
-    final ctx = (_lastSettledRoute as RouteContentBoundaryOwner?)
-        ?.boundaryKey
-        .currentContext;
-    final renderObj =
-        (ctx as SingleChildRenderObjectElement?)?.renderObject
-            as RenderRouteContentBoundary?;
-    final size = renderObj?.lastSize;
-    debugPrint(
-      'startPop: currentSize = $size',
-    );
     assert(!animation.isForwardOrCompleted);
-    final initialSize = _interpolation?.value ?? size;
+    final initialSize =
+        _interpolation?.value ??
+        ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+          _lastSettledRoute,
+        );
+
     Size? targetRouteSize() {
-      final ctx =
-          (targetRoute as RouteContentBoundaryOwner).boundaryKey.currentContext;
-      final renderObj =
-          (ctx as SingleChildRenderObjectElement?)?.renderObject
-              as RenderRouteContentBoundary?;
-      final size = renderObj?.lastSize;
+      final size =
+          ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+            targetRoute,
+          );
       debugPrint(
         'startPop: target size=$size',
       );
@@ -643,8 +655,6 @@ class NavigatorSizeNotifier extends ChangeNotifier
 
   @override
   void didEndTransition(Route<dynamic> route) {
-    final size = (route as ModalRoute<dynamic>).subtreeContext?.size;
-    debugPrint('didEnd: route(${route.debugLabel}), size=$size');
     _updateCurrentRoute(route);
   }
 }
@@ -680,8 +690,4 @@ Size _lerpEndSize(Size ss, Size st, double t) {
     (st.width - (1 - t) * ss.width) / t,
     (st.height - (1 - t) * ss.height) / t,
   );
-}
-
-mixin RouteContentBoundaryOwner {
-  GlobalKey get boundaryKey;
 }
