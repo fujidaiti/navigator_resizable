@@ -222,10 +222,9 @@ class _NavigatorResizableState extends State<NavigatorResizable>
     );
 
     Size? targetRouteSize() {
-      final size =
-          ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
-            targetRoute,
-          );
+      final size = ResizableNavigatorRouteContentBoundary._sizeFor(
+        targetRoute,
+      );
       debugPrint(
         'startPush: target size=$size',
       );
@@ -236,7 +235,7 @@ class _NavigatorResizableState extends State<NavigatorResizable>
 
     final initialSize =
         _navigatorSizeTransition.value ??
-        ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+        ResizableNavigatorRouteContentBoundary._sizeFor(
           _lastSettledRoute,
         );
     _updateInterpolation(
@@ -252,10 +251,9 @@ class _NavigatorResizableState extends State<NavigatorResizable>
     Animation<double> animation,
   ) {
     Size? targetRouteSize() {
-      final size =
-          ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
-            targetRoute,
-          );
+      final size = ResizableNavigatorRouteContentBoundary._sizeFor(
+        targetRoute,
+      );
       debugPrint(
         'startPush: target size=$size',
       );
@@ -265,7 +263,7 @@ class _NavigatorResizableState extends State<NavigatorResizable>
     assert(animation.isForwardOrCompleted);
     final initialSize =
         _navigatorSizeTransition.value ??
-        ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+        ResizableNavigatorRouteContentBoundary._sizeFor(
           _lastSettledRoute,
         );
     _updateInterpolation(
@@ -283,15 +281,14 @@ class _NavigatorResizableState extends State<NavigatorResizable>
     assert(!animation.isForwardOrCompleted);
     final initialSize =
         _navigatorSizeTransition.value ??
-        ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+        ResizableNavigatorRouteContentBoundary._sizeFor(
           _lastSettledRoute,
         );
 
     Size? targetRouteSize() {
-      final size =
-          ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
-            targetRoute,
-          );
+      final size = ResizableNavigatorRouteContentBoundary._sizeFor(
+        targetRoute,
+      );
       debugPrint(
         'startPop: target size=$size',
       );
@@ -342,8 +339,8 @@ class _NavigatorResizableState extends State<NavigatorResizable>
       listeners: [this],
       child: LayoutBuilder(
         builder: (_, constraints) {
-          return _InheritedNavigatorResizable(
-            navigatorConstraints: constraints,
+          return _BypassedNavigatorConstraints(
+            value: constraints,
             child: _RenderNavigatorResizableWidget(
               sizeTransition: _navigatorSizeTransition,
               child: widget.child,
@@ -355,17 +352,19 @@ class _NavigatorResizableState extends State<NavigatorResizable>
   }
 }
 
-class _InheritedNavigatorResizable extends InheritedWidget {
-  const _InheritedNavigatorResizable({
-    required this.navigatorConstraints,
+/// Bypasses the layout constraints for the [NavigatorResizable] to descendant
+/// [ResizableNavigatorRouteContentBoundary]s.
+class _BypassedNavigatorConstraints extends InheritedWidget {
+  const _BypassedNavigatorConstraints({
+    required this.value,
     required super.child,
   });
 
-  final BoxConstraints navigatorConstraints;
+  final BoxConstraints value;
 
   @override
-  bool updateShouldNotify(_InheritedNavigatorResizable oldWidget) =>
-      navigatorConstraints != oldWidget.navigatorConstraints;
+  bool updateShouldNotify(_BypassedNavigatorConstraints oldWidget) =>
+      value != oldWidget.value;
 }
 
 class _RenderNavigatorResizableWidget extends SingleChildRenderObjectWidget {
@@ -538,49 +537,51 @@ class ResizableNavigatorRouteContentBoundary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _RenderRouteContentBoundaryWidget(
-      key: _boundaryKeyFor(ModalRoute.of(context)),
+      key: _globalKeyFor(ModalRoute.of(context)),
+      bypassedConstraints: context
+          .dependOnInheritedWidgetOfExactType<_BypassedNavigatorConstraints>()!
+          .value,
       child: child,
     );
   }
 
-  static final _boundaryKeyRegistry = Expando<GlobalKey>('boundaryKetRegistry');
+  static final _globalKeyRegistry = Expando<GlobalKey>('boundaryKetRegistry');
 
-  static GlobalKey? _boundaryKeyFor(Route<dynamic>? route) {
+  static GlobalKey? _globalKeyFor(Route<dynamic>? route) {
     if (route == null) {
       return null;
     }
-    return _boundaryKeyRegistry[route] ??= GlobalKey();
+    return _globalKeyRegistry[route] ??= GlobalKey();
   }
 
-  static Size? _findBoundaryBoxSizeFor(Route<dynamic>? route) {
-    final key = _boundaryKeyFor(route);
+  static Size? _sizeFor(Route<dynamic>? route) {
+    final key = _globalKeyFor(route);
     final element = (key?.currentContext as SingleChildRenderObjectElement?);
     final renderObj = (element?.renderObject as _RenderRouteContentBoundary?);
-    return renderObj?.lastSize;
+    return renderObj?.lastMeasuredSize;
   }
 }
 
 class _RenderRouteContentBoundaryWidget extends SingleChildRenderObjectWidget {
   const _RenderRouteContentBoundaryWidget({
     super.key,
+    required this.bypassedConstraints,
     required super.child,
   });
 
+  final BoxConstraints bypassedConstraints;
+
   @override
   RenderObject createRenderObject(BuildContext context) {
-    final inherited = context
-        .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>()!;
     return _RenderRouteContentBoundary(
-      navigatorConstraints: inherited.navigatorConstraints,
+      bypassedConstraints: bypassedConstraints,
     );
   }
 
   @override
   void updateRenderObject(BuildContext context, RenderObject renderObject) {
-    final inherited = context
-        .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>()!;
-    (renderObject as _RenderRouteContentBoundary)
-      ..navigatorConstraints = inherited.navigatorConstraints;
+    (renderObject as _RenderRouteContentBoundary).bypassedConstraints =
+        bypassedConstraints;
   }
 }
 
@@ -592,12 +593,11 @@ class _RenderRouteContentBoundaryWidget extends SingleChildRenderObjectWidget {
 /// resulting size, so the Navigator's own measured size reflects it.
 class _RenderRouteContentBoundary extends RenderShiftedBox {
   _RenderRouteContentBoundary({
-    required this.navigatorConstraints,
+    required this.bypassedConstraints,
   }) : super(null);
 
-  BoxConstraints navigatorConstraints;
-
-  Size? lastSize;
+  BoxConstraints bypassedConstraints;
+  Size? lastMeasuredSize;
 
   @override
   Size computeDryLayout(covariant BoxConstraints constraints) {
@@ -608,15 +608,15 @@ class _RenderRouteContentBoundary extends RenderShiftedBox {
   void performLayout() {
     final child = this.child;
     assert(child != null);
-    child!.layout(navigatorConstraints, parentUsesSize: true);
+    child!.layout(bypassedConstraints, parentUsesSize: true);
     (child.parentData! as BoxParentData).offset = Offset.zero;
+    // Ensure the captured size object is immutable.
+    lastMeasuredSize = Size.copy(child.size);
     // This box's own size must still satisfy whatever ambient constraints
     // it was actually given (e.g. the Overlay forces non-topmost routes to
     // fill its resolved size exactly), even though the child above was laid
     // out against the real, stashed constraints instead.
-    size = constraints.constrain(child.size);
-    // Ensure the notified size object is immutable.
-    lastSize = Size.copy(child.size);
+    size = constraints.constrain(lastMeasuredSize!);
   }
 }
 
