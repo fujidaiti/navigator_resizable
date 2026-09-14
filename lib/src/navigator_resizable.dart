@@ -206,29 +206,12 @@ class _NavigatorResizableState extends State<NavigatorResizable>
     Route<dynamic> targetRoute,
     Animation<double> animation,
   ) {
-    debugPrint(
-      'startGesture: currentSize = ${(_lastSettledRoute! as ModalRoute).subtreeContext?.size}',
-    );
-
-    Size? targetRouteSize() {
-      final size = ResizableNavigatorRouteContentBoundary._sizeFor(
-        targetRoute,
-      );
-      debugPrint(
-        'startPush: target size=$size',
-      );
-      return size;
-    }
-
     assert(animation.isForwardOrCompleted);
-
     final initialSize =
         _navigatorSizeTransition.value ??
-        ResizableNavigatorRouteContentBoundary._sizeFor(
-          _lastSettledRoute,
-        );
+        ResizableNavigatorRouteContentBoundary._sizeFor(_lastSettledRoute);
     _navigatorSizeTransition.parent = _LazySizeTween(
-      start: targetRouteSize,
+      start: () => ResizableNavigatorRouteContentBoundary._sizeFor(targetRoute),
       end: () => initialSize,
     ).animate(animation);
   }
@@ -237,25 +220,13 @@ class _NavigatorResizableState extends State<NavigatorResizable>
     Route<dynamic> targetRoute,
     Animation<double> animation,
   ) {
-    Size? targetRouteSize() {
-      final size = ResizableNavigatorRouteContentBoundary._sizeFor(
-        targetRoute,
-      );
-      debugPrint(
-        'startPush: target size=$size',
-      );
-      return size;
-    }
-
     assert(animation.isForwardOrCompleted);
     final initialSize =
         _navigatorSizeTransition.value ??
-        ResizableNavigatorRouteContentBoundary._sizeFor(
-          _lastSettledRoute,
-        );
+        ResizableNavigatorRouteContentBoundary._sizeFor(_lastSettledRoute);
     _navigatorSizeTransition.parent = _LazySizeTween(
       start: () => initialSize,
-      end: targetRouteSize,
+      end: () => ResizableNavigatorRouteContentBoundary._sizeFor(targetRoute),
     ).chain(CurveTween(curve: widget.interpolationCurve)).animate(animation);
   }
 
@@ -266,18 +237,10 @@ class _NavigatorResizableState extends State<NavigatorResizable>
     assert(!animation.isForwardOrCompleted);
     final initialSize =
         _navigatorSizeTransition.value ??
-        ResizableNavigatorRouteContentBoundary._sizeFor(
-          _lastSettledRoute,
-        );
+        ResizableNavigatorRouteContentBoundary._sizeFor(_lastSettledRoute);
 
     Size? targetRouteSize() {
-      final size = ResizableNavigatorRouteContentBoundary._sizeFor(
-        targetRoute,
-      );
-      debugPrint(
-        'startPop: target size=$size',
-      );
-      return size;
+      return ResizableNavigatorRouteContentBoundary._sizeFor(targetRoute);
     }
 
     if (animation.value == 1) {
