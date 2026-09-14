@@ -158,34 +158,194 @@ class NavigatorResizable extends StatefulWidget {
   State<NavigatorResizable> createState() => _NavigatorResizableState();
 }
 
-class _NavigatorResizableState extends State<NavigatorResizable> {
-  late final NavigatorSizeNotifier _preferredSizeNotifier;
+class _NavigatorResizableState extends State<NavigatorResizable>
+    with NavigatorEventListener {
+  late final _SizeProxyAnimation _navigatorSizeTransition;
+  Route<dynamic>? _lastSettledRoute;
 
   @override
   void initState() {
     super.initState();
-    _preferredSizeNotifier = NavigatorSizeNotifier(
-      interpolationCurve: widget.interpolationCurve,
-    );
+    _navigatorSizeTransition = _SizeProxyAnimation();
   }
 
   @override
   void dispose() {
-    _preferredSizeNotifier.dispose();
+    _navigatorSizeTransition.dispose();
     super.dispose();
+  }
+
+  void _updateInterpolation(Animation<Size?>? newValue) {
+    _navigatorSizeTransition.parent = newValue;
+  }
+
+  void _updateCurrentRoute(Route<dynamic>? newRoute) {
+    _lastSettledRoute = newRoute;
+    if (newRoute != null) {
+      _updateInterpolation(null);
+    }
+  }
+
+  @override
+  VoidCallback? didInstall(Route<dynamic> route) {
+    void onDispose() {
+      if (route == _lastSettledRoute) {
+        _updateCurrentRoute(null);
+      }
+    }
+
+    return onDispose;
+  }
+
+  @override
+  void didStartTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation, {
+    bool isUserGestureInProgress = false,
+  }) {
+    if (isUserGestureInProgress) {
+      _startUserGestureTransition(targetRoute, animation);
+    } else if (animation.status == AnimationStatus.forward) {
+      _startPushTransition(targetRoute, animation);
+    } else {
+      assert(animation.status == AnimationStatus.reverse);
+      _startPopTransition(targetRoute, animation);
+    }
+  }
+
+  void _startUserGestureTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation,
+  ) {
+    debugPrint(
+      'startGesture: currentSize = ${(_lastSettledRoute! as ModalRoute).subtreeContext?.size}',
+    );
+
+    Size? targetRouteSize() {
+      final size =
+          ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+            targetRoute,
+          );
+      debugPrint(
+        'startPush: target size=$size',
+      );
+      return size;
+    }
+
+    assert(animation.isForwardOrCompleted);
+
+    final initialSize =
+        _navigatorSizeTransition.value ??
+        ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+          _lastSettledRoute,
+        );
+    _updateInterpolation(
+      _LazySizeTween(
+        start: targetRouteSize,
+        end: () => initialSize,
+      ).animate(animation),
+    );
+  }
+
+  void _startPushTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation,
+  ) {
+    Size? targetRouteSize() {
+      final size =
+          ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+            targetRoute,
+          );
+      debugPrint(
+        'startPush: target size=$size',
+      );
+      return size;
+    }
+
+    assert(animation.isForwardOrCompleted);
+    final initialSize =
+        _navigatorSizeTransition.value ??
+        ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+          _lastSettledRoute,
+        );
+    _updateInterpolation(
+      _LazySizeTween(
+        start: () => initialSize,
+        end: targetRouteSize,
+      ).chain(CurveTween(curve: widget.interpolationCurve)).animate(animation),
+    );
+  }
+
+  void _startPopTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation,
+  ) {
+    assert(!animation.isForwardOrCompleted);
+    final initialSize =
+        _navigatorSizeTransition.value ??
+        ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+          _lastSettledRoute,
+        );
+
+    Size? targetRouteSize() {
+      final size =
+          ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
+            targetRoute,
+          );
+      debugPrint(
+        'startPop: target size=$size',
+      );
+      return size;
+    }
+
+    if (animation.value == 1) {
+      _updateInterpolation(
+        _LazySizeTween(
+              start: targetRouteSize,
+              end: () => initialSize,
+            )
+            .chain(CurveTween(curve: widget.interpolationCurve))
+            .animate(animation),
+      );
+    } else {
+      // In this case, a pop transition has started in the middle of
+      // another transition. This can happen, for example, when a route
+      // is popped immediately after being pushed.
+      // To avoid layout shifts, we start a linear size transition
+      // from a synthetic start size to the `targetRoute`'s size,
+      // where the synthetic start size is calculated by _lerpEndSize.
+      // This transition is such that the size equals the `initialSize`
+      // at `animation.value == initialAnimationProgress`, and it eventually
+      // reaches the `targetRoute`'s size at `animation.value == 1`.
+      final initialAnimationProgress = animation.value;
+      _updateInterpolation(
+        _LazySizeTween(
+          start: targetRouteSize,
+          end: () => _lerpEndSize(
+            targetRouteSize()!,
+            initialSize!,
+            initialAnimationProgress,
+          ),
+        ).animate(animation),
+      );
+    }
+  }
+
+  @override
+  void didEndTransition(Route<dynamic> route) {
+    _updateCurrentRoute(route);
   }
 
   @override
   Widget build(BuildContext context) {
     return NavigatorEventObserver(
-      listeners: [_preferredSizeNotifier],
+      listeners: [this],
       child: LayoutBuilder(
         builder: (_, constraints) {
           return _InheritedNavigatorResizable(
-            preferredSize: _preferredSizeNotifier,
             navigatorConstraints: constraints,
             child: _RenderNavigatorResizableWidget(
-              preferredSize: _preferredSizeNotifier,
+              sizeTransition: _navigatorSizeTransition,
               child: widget.child,
             ),
           );
@@ -197,31 +357,28 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
 
 class _InheritedNavigatorResizable extends InheritedWidget {
   const _InheritedNavigatorResizable({
-    required this.preferredSize,
     required this.navigatorConstraints,
     required super.child,
   });
 
-  final NavigatorSizeNotifier preferredSize;
   final BoxConstraints navigatorConstraints;
 
   @override
   bool updateShouldNotify(_InheritedNavigatorResizable oldWidget) =>
-      identical(preferredSize, oldWidget.preferredSize) ||
       navigatorConstraints != oldWidget.navigatorConstraints;
 }
 
 class _RenderNavigatorResizableWidget extends SingleChildRenderObjectWidget {
   const _RenderNavigatorResizableWidget({
-    required this.preferredSize,
+    required this.sizeTransition,
     required super.child,
   });
 
-  final ValueListenable<Size?> preferredSize;
+  final ValueListenable<Size?> sizeTransition;
 
   @override
   RenderObject createRenderObject(BuildContext context) {
-    return _RenderNavigatorResizable(preferredSize: preferredSize);
+    return _RenderNavigatorResizable(sizeTransition: sizeTransition);
   }
 
   @override
@@ -229,16 +386,16 @@ class _RenderNavigatorResizableWidget extends SingleChildRenderObjectWidget {
     BuildContext context,
     _RenderNavigatorResizable renderObject,
   ) {
-    renderObject.preferredSize = preferredSize;
+    renderObject.sizeTransition = sizeTransition;
   }
 }
 
 class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   _RenderNavigatorResizable({
-    required ValueListenable<Size?> preferredSize,
-  }) : _preferredSize = preferredSize,
+    required ValueListenable<Size?> sizeTransition,
+  }) : _sizeTransition = sizeTransition,
        super(alignment: Alignment.topLeft, textDirection: null) {
-    preferredSize.addListener(markNeedsLayout);
+    sizeTransition.addListener(markNeedsLayout);
   }
 
   @override
@@ -248,27 +405,27 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   ///
   /// Used in [paint] and [hitTest].
   /// The size of this rect should be kept in sync with the value of
-  /// [_preferredSize] and the offset should be always [Offset.zero].
+  /// [_sizeTransition] and the offset should be always [Offset.zero].
   late Rect _visibleBounds;
 
-  ValueListenable<Size?> _preferredSize;
+  ValueListenable<Size?> _sizeTransition;
   // ignore: avoid_setters_without_getters
-  set preferredSize(ValueListenable<Size?> value) {
-    if (value != _preferredSize) {
-      _preferredSize.removeListener(markNeedsLayout);
-      _preferredSize = value..addListener(markNeedsLayout);
+  set sizeTransition(ValueListenable<Size?> value) {
+    if (value != _sizeTransition) {
+      _sizeTransition.removeListener(markNeedsLayout);
+      _sizeTransition = value..addListener(markNeedsLayout);
     }
   }
 
   @override
   void dispose() {
-    _preferredSize.removeListener(markNeedsLayout);
+    _sizeTransition.removeListener(markNeedsLayout);
     super.dispose();
   }
 
   @override
   Size computeDryLayout(covariant BoxConstraints constraints) {
-    if (_preferredSize.value case final size?) {
+    if (_sizeTransition.value case final size?) {
       return constraints.constrain(size);
     }
     if (child != null) {
@@ -325,8 +482,8 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
       parentUsesSize: true,
     );
 
-    if (_preferredSize.value case final pref?) {
-      size = constraints.constrain(pref);
+    if (_sizeTransition.value case final value?) {
+      size = constraints.constrain(value);
     } else if (child != null) {
       size = constraints.constrain(Size.copy(child!.size));
     } else {
@@ -478,184 +635,23 @@ extension on Size {
   }
 }
 
-@internal
-class NavigatorSizeNotifier extends ChangeNotifier
-    with NavigatorEventListener
+class _SizeProxyAnimation extends ChangeNotifier
     implements ValueListenable<Size?> {
-  NavigatorSizeNotifier({required this.interpolationCurve});
-
-  final Curve interpolationCurve;
-  Animation<Size?>? _interpolation;
-  Route<dynamic>? _lastSettledRoute;
-
-  void _updateInterpolation(Animation<Size?>? newValue) {
-    _interpolation?.removeListener(notifyListeners);
-    _interpolation = newValue?..addListener(notifyListeners);
-  }
-
-  void _updateCurrentRoute(Route<dynamic>? newRoute) {
-    _lastSettledRoute = newRoute;
-    if (newRoute != null) {
-      _updateInterpolation(null);
-    }
+  Animation<Size?>? get parent => _parent;
+  Animation<Size?>? _parent;
+  set parent(Animation<Size?>? animation) {
+    _parent?.removeListener(notifyListeners);
+    _parent = animation?..addListener(notifyListeners);
   }
 
   @override
-  Size? get value => _interpolation?.value;
+  Size? get value => parent?.value;
 
   @override
   void dispose() {
-    _updateInterpolation(null);
-    _updateCurrentRoute(null);
+    _parent?.removeListener(notifyListeners);
+    _parent = null;
     super.dispose();
-  }
-
-  @override
-  VoidCallback? didInstall(Route<dynamic> route) {
-    void onDispose() {
-      if (route == _lastSettledRoute) {
-        _updateCurrentRoute(null);
-      }
-    }
-
-    return onDispose;
-  }
-
-  @override
-  void didStartTransition(
-    Route<dynamic> targetRoute,
-    Animation<double> animation, {
-    bool isUserGestureInProgress = false,
-  }) {
-    if (isUserGestureInProgress) {
-      _startUserGestureTransition(targetRoute, animation);
-    } else if (animation.status == AnimationStatus.forward) {
-      _startPushTransition(targetRoute, animation);
-    } else {
-      assert(animation.status == AnimationStatus.reverse);
-      _startPopTransition(targetRoute, animation);
-    }
-  }
-
-  void _startUserGestureTransition(
-    Route<dynamic> targetRoute,
-    Animation<double> animation,
-  ) {
-    debugPrint(
-      'startGesture: currentSize = ${(_lastSettledRoute! as ModalRoute).subtreeContext?.size}',
-    );
-
-    Size? targetRouteSize() {
-      final size =
-          ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
-            targetRoute,
-          );
-      debugPrint(
-        'startPush: target size=$size',
-      );
-      return size;
-    }
-
-    assert(animation.isForwardOrCompleted);
-
-    final initialSize =
-        _interpolation?.value ??
-        ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
-          _lastSettledRoute,
-        );
-    _updateInterpolation(
-      _LazySizeTween(
-        start: targetRouteSize,
-        end: () => initialSize,
-      ).animate(animation),
-    );
-  }
-
-  void _startPushTransition(
-    Route<dynamic> targetRoute,
-    Animation<double> animation,
-  ) {
-    Size? targetRouteSize() {
-      final size =
-          ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
-            targetRoute,
-          );
-      debugPrint(
-        'startPush: target size=$size',
-      );
-      return size;
-    }
-
-    assert(animation.isForwardOrCompleted);
-    final initialSize =
-        _interpolation?.value ??
-        ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
-          _lastSettledRoute,
-        );
-    _updateInterpolation(
-      _LazySizeTween(
-        start: () => initialSize,
-        end: targetRouteSize,
-      ).chain(CurveTween(curve: interpolationCurve)).animate(animation),
-    );
-  }
-
-  void _startPopTransition(
-    Route<dynamic> targetRoute,
-    Animation<double> animation,
-  ) {
-    assert(!animation.isForwardOrCompleted);
-    final initialSize =
-        _interpolation?.value ??
-        ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
-          _lastSettledRoute,
-        );
-
-    Size? targetRouteSize() {
-      final size =
-          ResizableNavigatorRouteContentBoundary._findBoundaryBoxSizeFor(
-            targetRoute,
-          );
-      debugPrint(
-        'startPop: target size=$size',
-      );
-      return size;
-    }
-
-    if (animation.value == 1) {
-      _updateInterpolation(
-        _LazySizeTween(
-          start: targetRouteSize,
-          end: () => initialSize,
-        ).chain(CurveTween(curve: interpolationCurve)).animate(animation),
-      );
-    } else {
-      // In this case, a pop transition has started in the middle of
-      // another transition. This can happen, for example, when a route
-      // is popped immediately after being pushed.
-      // To avoid layout shifts, we start a linear size transition
-      // from a synthetic start size to the `targetRoute`'s size,
-      // where the synthetic start size is calculated by _lerpEndSize.
-      // This transition is such that the size equals the `initialSize`
-      // at `animation.value == initialAnimationProgress`, and it eventually
-      // reaches the `targetRoute`'s size at `animation.value == 1`.
-      final initialAnimationProgress = animation.value;
-      _updateInterpolation(
-        _LazySizeTween(
-          start: targetRouteSize,
-          end: () => _lerpEndSize(
-            targetRouteSize()!,
-            initialSize!,
-            initialAnimationProgress,
-          ),
-        ).animate(animation),
-      );
-    }
-  }
-
-  @override
-  void didEndTransition(Route<dynamic> route) {
-    _updateCurrentRoute(route);
   }
 }
 
