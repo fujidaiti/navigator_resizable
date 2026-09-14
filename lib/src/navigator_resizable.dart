@@ -495,7 +495,7 @@ class ResizableNavigatorRouteContentBoundary extends StatelessWidget {
     final key = _globalKeyFor(route);
     final element = (key?.currentContext as SingleChildRenderObjectElement?);
     final renderObj = (element?.renderObject as _RenderRouteContentBoundary?);
-    return renderObj?.lastMeasuredSize;
+    return renderObj?.lastMeasuredChildSize;
   }
 }
 
@@ -522,12 +522,6 @@ class _RenderRouteContentBoundaryWidget extends SingleChildRenderObjectWidget {
   }
 }
 
-/// Lays out [child] against the real, bounded constraints published by the
-/// ancestor [_RenderNavigatorResizable] (via [_NavigatorResizableState]),
-/// rather than the ambient constraints it's actually given here, which are
-/// unbounded because the Navigator above it is laid out unbounded so it can
-/// shrink-wrap to this content. This box in turn shrink-wraps to [child]'s
-/// resulting size, so the Navigator's own measured size reflects it.
 class _RenderRouteContentBoundary extends RenderShiftedBox {
   _RenderRouteContentBoundary({
     required this.bypassedConstraints,
@@ -535,10 +529,10 @@ class _RenderRouteContentBoundary extends RenderShiftedBox {
 
   BoxConstraints bypassedConstraints;
 
-  /// A cache of the [size] determined in the previous call to [performLayout].
-  /// This allows objects other than the [parent] render object to read this
-  /// render object's size, which isn't permitted through the [size] getter.
-  Size? lastMeasuredSize;
+  /// A cache of the [child]'s [size] determined in the previous call
+  /// to [performLayout]. This allows objects to read that value outside
+  /// of the layout phase, which isn't permitted through the [size] getter.
+  Size? lastMeasuredChildSize;
 
   Size _computeLayout(
     BoxConstraints constraints,
@@ -560,15 +554,16 @@ class _RenderRouteContentBoundary extends RenderShiftedBox {
 
   @override
   void performLayout() {
-    if (child case final child?) {
-      child.layout(bypassedConstraints, parentUsesSize: true);
-      (child.parentData! as BoxParentData).offset = Offset.zero;
-      // Ensure the captured size object is immutable.
-      lastMeasuredSize = Size.copy(child.size);
-      size = constraints.constrain(lastMeasuredSize!);
-    } else {
-      size = lastMeasuredSize = Size.zero;
+    final child = this.child;
+    if (child == null) {
+      size = lastMeasuredChildSize = Size.zero;
+      return;
     }
+    child.layout(bypassedConstraints, parentUsesSize: true);
+    (child.parentData! as BoxParentData).offset = Offset.zero;
+    // Make a copy to ensure the cached value is immutable.
+    lastMeasuredChildSize = Size.copy(child.size);
+    size = constraints.constrain(child.size);
   }
 }
 
