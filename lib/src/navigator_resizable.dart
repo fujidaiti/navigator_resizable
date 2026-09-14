@@ -4,7 +4,6 @@ import 'package:flutter/physics.dart' as p;
 import 'package:flutter/rendering.dart';
 
 import 'navigator_event_observer.dart';
-import 'navigator_size_notifier.dart';
 import 'resizable_navigator_routes.dart';
 
 /// A thin wrapper around [Navigator] that **visually** resizes the [child]
@@ -445,4 +444,244 @@ extension on Size {
           Tolerance.defaultTolerance.distance,
         );
   }
+}
+
+@internal
+class NavigatorSizeNotifier extends ChangeNotifier
+    with NavigatorEventListener
+    implements ValueListenable<Size?> {
+  NavigatorSizeNotifier({required this.interpolationCurve});
+
+  final Curve interpolationCurve;
+  Animation<Size?>? _interpolation;
+  Route<dynamic>? _lastSettledRoute;
+
+  void _updateInterpolation(Animation<Size?>? newValue) {
+    _interpolation?.removeListener(notifyListeners);
+    _interpolation = newValue?..addListener(notifyListeners);
+  }
+
+  void _updateCurrentRoute(Route<dynamic>? newRoute) {
+    _lastSettledRoute = newRoute;
+    if (newRoute != null) {
+      _updateInterpolation(null);
+    }
+  }
+
+  @override
+  Size? get value => _interpolation?.value;
+
+  @override
+  void dispose() {
+    _updateInterpolation(null);
+    _updateCurrentRoute(null);
+    super.dispose();
+  }
+
+  @override
+  VoidCallback? didInstall(Route<dynamic> route) {
+    void onDispose() {
+      if (route == _lastSettledRoute) {
+        _updateCurrentRoute(null);
+      }
+    }
+
+    return onDispose;
+  }
+
+  @override
+  void didStartTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation, {
+    bool isUserGestureInProgress = false,
+  }) {
+    if (isUserGestureInProgress) {
+      _startUserGestureTransition(targetRoute, animation);
+    } else if (animation.status == AnimationStatus.forward) {
+      _startPushTransition(targetRoute, animation);
+    } else {
+      assert(animation.status == AnimationStatus.reverse);
+      _startPopTransition(targetRoute, animation);
+    }
+  }
+
+  void _startUserGestureTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation,
+  ) {
+    debugPrint(
+      'startGesture: currentSize = ${(_lastSettledRoute! as ModalRoute).subtreeContext?.size}',
+    );
+
+    Size? targetRouteSize() {
+      final ctx =
+          (targetRoute as RouteContentBoundaryOwner).boundaryKey.currentContext;
+      final renderObj =
+          (ctx as SingleChildRenderObjectElement?)?.renderObject
+              as RenderRouteContentBoundary?;
+      final size = renderObj?.lastSize;
+      debugPrint(
+        'startPush: target size=$size',
+      );
+      return size;
+    }
+
+    assert(animation.isForwardOrCompleted);
+
+    final ctx = (_lastSettledRoute as RouteContentBoundaryOwner?)
+        ?.boundaryKey
+        .currentContext;
+    final renderObj =
+        (ctx as SingleChildRenderObjectElement?)?.renderObject
+            as RenderRouteContentBoundary?;
+    final size = renderObj?.lastSize;
+    final initialSize = _interpolation?.value ?? size;
+    _updateInterpolation(
+      _LazySizeTween(
+        start: targetRouteSize,
+        end: () => initialSize,
+      ).animate(animation),
+    );
+  }
+
+  void _startPushTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation,
+  ) {
+    Size? targetRouteSize() {
+      final ctx =
+          (targetRoute as RouteContentBoundaryOwner).boundaryKey.currentContext;
+      final renderObj =
+          (ctx as SingleChildRenderObjectElement?)?.renderObject
+              as RenderRouteContentBoundary?;
+      final size = renderObj?.lastSize;
+      debugPrint(
+        'startPush: target size=$size',
+      );
+      return size;
+    }
+
+    final ctx = (_lastSettledRoute as RouteContentBoundaryOwner?)
+        ?.boundaryKey
+        .currentContext;
+    final renderObj =
+        (ctx as SingleChildRenderObjectElement?)?.renderObject
+            as RenderRouteContentBoundary?;
+    final size = renderObj?.lastSize;
+    debugPrint(
+      'startPush: currentSize = $size, interp = ${_interpolation?.value}',
+    );
+    assert(animation.isForwardOrCompleted);
+    final initialSize = _interpolation?.value ?? size;
+    _updateInterpolation(
+      _LazySizeTween(
+        start: () => initialSize,
+        end: targetRouteSize,
+      ).chain(CurveTween(curve: interpolationCurve)).animate(animation),
+    );
+  }
+
+  void _startPopTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation,
+  ) {
+    final ctx = (_lastSettledRoute as RouteContentBoundaryOwner?)
+        ?.boundaryKey
+        .currentContext;
+    final renderObj =
+        (ctx as SingleChildRenderObjectElement?)?.renderObject
+            as RenderRouteContentBoundary?;
+    final size = renderObj?.lastSize;
+    debugPrint(
+      'startPop: currentSize = $size',
+    );
+    assert(!animation.isForwardOrCompleted);
+    final initialSize = _interpolation?.value ?? size;
+    Size? targetRouteSize() {
+      final ctx =
+          (targetRoute as RouteContentBoundaryOwner).boundaryKey.currentContext;
+      final renderObj =
+          (ctx as SingleChildRenderObjectElement?)?.renderObject
+              as RenderRouteContentBoundary?;
+      final size = renderObj?.lastSize;
+      debugPrint(
+        'startPop: target size=$size',
+      );
+      return size;
+    }
+
+    if (animation.value == 1) {
+      _updateInterpolation(
+        _LazySizeTween(
+          start: targetRouteSize,
+          end: () => initialSize,
+        ).chain(CurveTween(curve: interpolationCurve)).animate(animation),
+      );
+    } else {
+      // In this case, a pop transition has started in the middle of
+      // another transition. This can happen, for example, when a route
+      // is popped immediately after being pushed.
+      // To avoid layout shifts, we start a linear size transition
+      // from a synthetic start size to the `targetRoute`'s size,
+      // where the synthetic start size is calculated by _lerpEndSize.
+      // This transition is such that the size equals the `initialSize`
+      // at `animation.value == initialAnimationProgress`, and it eventually
+      // reaches the `targetRoute`'s size at `animation.value == 1`.
+      final initialAnimationProgress = animation.value;
+      _updateInterpolation(
+        _LazySizeTween(
+          start: targetRouteSize,
+          end: () => _lerpEndSize(
+            targetRouteSize()!,
+            initialSize!,
+            initialAnimationProgress,
+          ),
+        ).animate(animation),
+      );
+    }
+  }
+
+  @override
+  void didEndTransition(Route<dynamic> route) {
+    final size = (route as ModalRoute<dynamic>).subtreeContext?.size;
+    debugPrint('didEnd: route(${route.debugLabel}), size=$size');
+    _updateCurrentRoute(route);
+  }
+}
+
+class _LazySizeTween extends Animatable<Size?> {
+  _LazySizeTween({
+    required this.start,
+    required this.end,
+  });
+
+  final ValueGetter<Size?> start;
+  final ValueGetter<Size?> end;
+
+  @override
+  Size? transform(double t) {
+    final start = this.start();
+    if (start?.isFinite != true) {
+      return null;
+    }
+    final end = this.end();
+    if (end?.isFinite != true) {
+      return null;
+    }
+    return Size.lerp(start, end, t);
+  }
+}
+
+/// Returns `se` that satisfies the equation `st = (1 - t) * se + t * ss`,
+/// where [ss] is the start size and [st] is the interpolated size at time [t].
+Size _lerpEndSize(Size ss, Size st, double t) {
+  assert(0 < t && t <= 1);
+  return Size(
+    (st.width - (1 - t) * ss.width) / t,
+    (st.height - (1 - t) * ss.height) / t,
+  );
+}
+
+mixin RouteContentBoundaryOwner {
+  GlobalKey get boundaryKey;
 }

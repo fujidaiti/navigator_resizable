@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import 'navigator_event_observer.dart';
 import 'navigator_resizable.dart';
-import 'navigator_size_notifier.dart';
 
 abstract class _BaseResizableMaterialPageRoute<T> extends PageRoute<T>
     with
