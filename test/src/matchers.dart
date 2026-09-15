@@ -1,17 +1,4 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-TypeMatcher<Route<dynamic>> isRoute({String? name}) {
-  var result = isA<Route<dynamic>>();
-  if (name != null) {
-    result = result.having(
-      (it) => it.settings.name,
-      'settings.name',
-      name,
-    );
-  }
-  return result;
-}
 
 /// Returns a matcher that matches if an object is a sequence
 /// of [double] values that are monotonically increasing.

@@ -3,7 +3,6 @@ import 'package:example/src/multi_page_dialog.dart';
 import 'package:example/src/variable_height_page.dart';
 import 'package:example/src/welcome_page.dart';
 import 'package:flutter/material.dart';
-import 'package:navigator_resizable/navigator_resizable.dart';
 
 void main() {
   runApp(const MaterialApp(home: Home()));
@@ -33,7 +32,7 @@ void showMultiPageDialog(BuildContext context) {
         navigator: Navigator(
           onGenerateInitialRoutes: (_, __) {
             return [
-              ResizableMaterialPageRoute(
+              MaterialPageRoute<void>(
                 builder: (context) => WelcomePage(
                   onNext: () => pushVariableHeightPage(context),
                   onJumpToLast: () {},
@@ -50,7 +49,7 @@ void showMultiPageDialog(BuildContext context) {
 void pushVariableHeightPage(BuildContext context) {
   Navigator.push(
     context,
-    ResizableMaterialPageRoute(
+    MaterialPageRoute<void>(
       builder: (context) =>
           VariableHeightPage(onNext: () => pushFormPage(context)),
     ),
@@ -60,7 +59,7 @@ void pushVariableHeightPage(BuildContext context) {
 void pushFormPage(BuildContext context) {
   Navigator.push(
     context,
-    ResizableMaterialPageRoute(
+    MaterialPageRoute<void>(
       builder: (context) => FormPage(
         autoFocus: false,
         submitButton: FilledButton(
@@ -75,7 +74,7 @@ void pushFormPage(BuildContext context) {
 void pushFormPageWithAutoFocus(BuildContext context) {
   Navigator.push(
     context,
-    ResizableMaterialPageRoute(
+    MaterialPageRoute<void>(
       builder: (_) => FormPage(
         autoFocus: true,
         submitButton: FilledButton(

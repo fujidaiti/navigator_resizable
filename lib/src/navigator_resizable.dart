@@ -1,12 +1,11 @@
-import 'package:flutter/foundation.dart';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart' as p;
 import 'package:flutter/rendering.dart';
-import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
-import 'navigator_event_observer.dart';
 import 'navigator_size_notifier.dart';
-import 'resizable_navigator_routes.dart';
 
 /// A thin wrapper around [Navigator] that **visually** resizes the [child]
 /// navigator to match the size of the content displayed in the current route.
@@ -22,23 +21,25 @@ import 'resizable_navigator_routes.dart';
 ///
 /// ### Routes and Pages
 ///
-/// The [NavigatorResizable] can respect the content size of a route
-/// only if the route mix-ins the [ObservableRouteMixin] and its content
-/// is wrapped in a [ResizableNavigatorRouteContentBoundary].
-/// This is especially important during route transitions, as the
-/// [NavigatorResizable] can animate its size in sync with the transition
-/// animation only when both the current route and the next route satisfy
-/// these requirements. Otherwise, the size remains unchanged before
-/// and after the transition.
+/// Any kind of route can be used with the [child] navigator, such as
+/// [MaterialPageRoute] and [PageRouteBuilder]. The only requirement is that
+/// the content of each route is wrapped in
+/// a [ResizableNavigatorRouteContentBoundary], which tells this widget
+/// the size that the route content wants to be.
 ///
-/// For convenience, the following built-in route and page classes are provided,
-/// all of which satisfy the requirements of [NavigatorResizable]:
+/// ```dart
+/// MaterialPageRoute(
+///   builder: (context) {
+///     return const ResizableNavigatorRouteContentBoundary(
+///       child: MyRouteContent(),
+///     );
+///   },
+/// );
+/// ```
 ///
-/// - [ResizableMaterialPageRoute]: A replacement for [MaterialPageRoute].
-/// - [ResizableMaterialPage]: A replacement for [MaterialPage].
-/// - [ResizablePageRouteBuilder]: A replacement for [PageRouteBuilder].
-/// - [ResizablePageRoutePageBuilder]: Similar to [ResizablePageRouteBuilder],
-///   but creates a [Page].
+/// A route without a [ResizableNavigatorRouteContentBoundary] is simply
+/// ignored, in which case the size of this widget remains unchanged
+/// while that route is on top of the navigation stack.
 ///
 /// Note that the [child] navigator and its routes are constrained by the
 /// constraints imposed by the parent widget of the [NavigatorResizable].
@@ -47,37 +48,16 @@ import 'resizable_navigator_routes.dart';
 /// to [double.infinity].
 ///
 /// ```dart
-/// ResizableMaterialPageRoute(
+/// MaterialPageRoute(
 ///   builder: (context) {
-///     return Container(
-///       color: Colors.while,
-///       width: double.infinity,
-///       height: double.infinity,
+///     return const ResizableNavigatorRouteContentBoundary(
+///       child: SizedBox(
+///         width: double.infinity,
+///         height: double.infinity,
+///       ),
 ///     );
 ///   },
 /// );
-/// ```
-///
-/// For more advanced use cases, you can create a custom route
-/// compatible with [NavigatorResizable] by mixing in
-/// the [ObservableRouteMixin] and returning a
-/// [ResizableNavigatorRouteContentBoundary] in [ModalRoute.buildPage].
-///
-/// ```dart
-/// class CustomResizableRoute<T> extends ModalRoute<T>
-///   with ObservableRouteMixin<T>{
-///   CustomResizableRoute({
-///     required super.builder,
-///     ...
-///   });
-///
-///   @override
-///   Widget buildContent(BuildContext context) {
-///     return ResizableNavigatorRouteContentBoundary(
-///       child: builder(context),
-///     );
-///   }
-/// }
 /// ```
 ///
 /// ### Caveats
@@ -89,9 +69,10 @@ import 'resizable_navigator_routes.dart';
 ///   route's content and adopt the size dictated by the constraints.
 ///   In such cases, an assertion error will be thrown. Typically, [Center]
 ///   and [Align] are good choices for the parent widget.
-/// - The initial route of the [child] navigator must satisfy the requirements
-///   of [NavigatorResizable]. Otherwise, [NavigatorResizable] will be unable
-///   to determine the initial size and will throw an assertion error.
+/// - The initial route of the [child] navigator should have
+///   a [ResizableNavigatorRouteContentBoundary]. Otherwise,
+///   [NavigatorResizable] will be unable to determine the initial size
+///   and will expand to the maximum size allowed by the parent constraints.
 ///
 /// ### Example
 ///
@@ -119,12 +100,10 @@ import 'resizable_navigator_routes.dart';
 /// ```dart
 /// Navigator.push(
 ///   context,
-///   ResizableMaterialPageRoute(
+///   MaterialPageRoute(
 ///     builder: (context) {
-///       return Container(
-///         color: Colors.red,
-///         width: 300,
-///         height: 300,
+///       return const ResizableNavigatorRouteContentBoundary(
+///         child: SizedBox(width: 300, height: 300),
 ///       );
 ///     },
 ///   ),
@@ -180,26 +159,25 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
 
   @override
   Widget build(BuildContext context) {
-    return NavigatorEventObserver(
-      listeners: [_preferredSizeNotifier],
-      child: _InheritedNavigatorResizable(
-        state: this,
-        child: _RenderNavigatorResizableWidget(
-          preferredSize: _preferredSizeNotifier,
-          child: widget.child,
-        ),
+    return _InheritedNavigatorResizable(
+      state: this,
+      child: _RenderNavigatorResizableWidget(
+        preferredSize: _preferredSizeNotifier,
+        child: widget.child,
       ),
     );
   }
 
-  void didRouteContentSizeChange(ModalRoute<dynamic> route, Size contentSize) {
-    _preferredSizeNotifier.didRouteContentSizeChange(route, contentSize);
-  }
-
   static _NavigatorResizableState of(BuildContext context) {
-    return context
-        .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>()!
-        .state;
+    final result = context
+        .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>();
+    assert(
+      result != null,
+      'No NavigatorResizable found in the widget tree. '
+      'ResizableNavigatorRouteContentBoundary can only be used in a route '
+      'of a Navigator that is wrapped in a NavigatorResizable.',
+    );
+    return result!.state;
   }
 }
 
@@ -223,7 +201,7 @@ class _RenderNavigatorResizableWidget extends SingleChildRenderObjectWidget {
     required super.child,
   });
 
-  final ValueListenable<Size> preferredSize;
+  final NavigatorSizeNotifier preferredSize;
 
   @override
   RenderObject createRenderObject(BuildContext context) {
@@ -241,7 +219,7 @@ class _RenderNavigatorResizableWidget extends SingleChildRenderObjectWidget {
 
 class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   _RenderNavigatorResizable({
-    required ValueListenable<Size> preferredSize,
+    required NavigatorSizeNotifier preferredSize,
   }) : _preferredSize = preferredSize,
        super(
          alignment: Alignment.topLeft,
@@ -260,30 +238,18 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   /// [_preferredSize] and the offset should be always [Offset.zero].
   late Rect _visibleBounds;
 
-  ValueListenable<Size> _preferredSize;
+  NavigatorSizeNotifier _preferredSize;
   // ignore: avoid_setters_without_getters
-  set preferredSize(ValueListenable<Size> value) {
+  set preferredSize(NavigatorSizeNotifier value) {
     if (value != _preferredSize) {
       _preferredSize.removeListener(_onPreferredSizeChanged);
       _preferredSize = value..addListener(_onPreferredSizeChanged);
+      markNeedsLayout();
     }
   }
 
   void _onPreferredSizeChanged() {
-    switch (SchedulerBinding.instance.schedulerPhase) {
-      // If the change is triggered during the layout phase,
-      // it's too late to apply the new size to this render box
-      // in the current frame. Instead, we schedule a new frame
-      // to ensure the new size is eventually applied in the
-      // following frame.
-      case SchedulerPhase.persistentCallbacks:
-        SchedulerBinding.instance.scheduleFrameCallback((_) {
-          if (!_disposed) markNeedsLayout();
-        });
-      // Otherwise, schedule a layout immediately.
-      case _:
-        markNeedsLayout();
-    }
+    markNeedsLayout();
   }
 
   bool _disposed = false;
@@ -330,10 +296,38 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
 
     // Pass the parent constraints directly to the child Navigator,
     // allowing it to overflow this render box if necessary.
+    // This also ensures that the route contents are laid out before
+    // their geometries are collected below.
     child!.layout(constraints, parentUsesSize: true);
+    _preferredSize.update(_collectRouteContentGeometries());
     size = computeDryLayout(constraints);
     _visibleBounds = Offset.zero & size;
     alignChild();
+  }
+
+  /// Collects the geometries of the route contents in the descendant
+  /// Navigator, ordered from the bottom-most route to the top-most one.
+  ///
+  /// The route contents are discovered by walking down the render tree, since
+  /// the paint order of the routes in the navigator's [Overlay] is always
+  /// the same as their order in the navigation stack.
+  List<RouteContentGeometry> _collectRouteContentGeometries() {
+    final result = <RouteContentGeometry>[];
+    void visit(RenderObject node) {
+      switch (node) {
+        case final _RenderRouteContentBoundary boundary:
+          result.add(boundary.geometry);
+        // Do not descend into a nested NavigatorResizable, as the route
+        // contents below it belong to another navigator.
+        case _RenderNavigatorResizable():
+          break;
+        case _:
+          node.visitChildren(visit);
+      }
+    }
+
+    visitChildren(visit);
+    return result;
   }
 
   @override
@@ -356,63 +350,277 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   }
 }
 
-/// Observes the layout of the [child] widget and notifies the ancestor
-/// [NavigatorResizable] when the child's size changes.
+/// Marks the content of a route as the region that the ancestor
+/// [NavigatorResizable] should size itself to.
 ///
-/// A route is compatible with [NavigatorResizable] only if it mixes-in
-/// the [ObservableRouteMixin] and wraps its content in
-/// a [ResizableNavigatorRouteContentBoundary]. For example, a subclass
-/// of [ModalRoute] should return a [ResizableNavigatorRouteContentBoundary]
-/// in [ModalRoute.buildPage].
+/// Wrap the content of every route in the navigator with this widget:
 ///
-/// It is rarely used directly. Instead, use the built-in route classes
-/// that satisfy the requirements of [NavigatorResizable],
-/// such as [ResizableMaterialPageRoute] and [ResizablePageRouteBuilder].
-class ResizableNavigatorRouteContentBoundary
-    extends SingleChildRenderObjectWidget {
-  /// Creates a widget that observes the layout of the [child].
+/// ```dart
+/// MaterialPageRoute(
+///   builder: (context) {
+///     return const ResizableNavigatorRouteContentBoundary(
+///       child: MyRouteContent(),
+///     );
+///   },
+/// );
+/// ```
+///
+/// This widget observes the layout of the [child] and the transition
+/// animation of the enclosing route, and notifies the ancestor
+/// [NavigatorResizable] when either of them changes.
+///
+/// A route without this widget is invisible to the [NavigatorResizable];
+/// the size of the navigator remains unchanged while such a route is
+/// the top-most route in the navigation stack.
+class ResizableNavigatorRouteContentBoundary extends StatefulWidget {
+  /// Creates a widget that marks the [child] as the content of a route.
   const ResizableNavigatorRouteContentBoundary({
     super.key,
+    required this.child,
+  });
+
+  /// The content of the enclosing route.
+  final Widget child;
+
+  @override
+  State<ResizableNavigatorRouteContentBoundary> createState() =>
+      _ResizableNavigatorRouteContentBoundaryState();
+}
+
+class _ResizableNavigatorRouteContentBoundaryState
+    extends State<ResizableNavigatorRouteContentBoundary>
+    with WidgetsBindingObserver {
+  late ModalRoute<dynamic> _route;
+  late NavigatorSizeNotifier _preferredSizeNotifier;
+  Animation<double>? _transitionProgress;
+
+  @override
+  void initState() {
+    super.initState();
+    // Registered to handle Android's predictive back gesture.
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    assert(
+      route != null,
+      'ResizableNavigatorRouteContentBoundary must be placed '
+      'in the content of a ModalRoute.',
+    );
+
+    _route = route!;
+    _preferredSizeNotifier = _NavigatorResizableState.of(
+      context,
+    )._preferredSizeNotifier;
+
+    if (_route.animation != _transitionProgress) {
+      _transitionProgress?.removeListener(_onTransitionProgressChanged);
+      _transitionProgress = _route.animation
+        ?..addListener(_onTransitionProgressChanged);
+    }
+
+    // The set of the route contents in the navigator has changed,
+    // so the preferred size of the navigator may also have changed.
+    _preferredSizeNotifier.invalidate();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _transitionProgress?.removeListener(_onTransitionProgressChanged);
+    _transitionProgress = null;
+    // This widget is being removed from the tree along with the route content,
+    // which changes the preferred size of the navigator.
+    _preferredSizeNotifier.invalidate();
+    super.dispose();
+  }
+
+  void _onTransitionProgressChanged() {
+    if (_backGestureProgressFloor case final floor?
+        when !_isBackGestureInProgress &&
+            (_route.animation?.value ?? 1.0) >= floor) {
+      // The transition progress has caught up with the value suppressed
+      // during the back gesture, so the suppression is no longer needed.
+      _backGestureProgressFloor = null;
+    }
+    _preferredSizeNotifier.invalidate();
+  }
+
+  /// How much the route covers the routes below it, where 0 means the route
+  /// is completely invisible and 1 means it is fully presented.
+  double get transitionProgress {
+    // During the first frame of a route's entrance transition, the route is
+    // built with `offstage=true` and an animation progress value of 1.0.
+    // This causes a discontinuity in the animation progress, as the route
+    // visually appears inactive but is technically at the end of the
+    // animation. To address this, the progress is treated as 0.0 while
+    // the route is offstage.
+    if (_route.offstage) {
+      return 0;
+    }
+    final progress = _route.animation?.value ?? 1.0;
+    return switch (_backGestureProgressFloor) {
+      null => progress,
+      final floor => max(progress, floor),
+    };
+  }
+
+  /// Whether the transition of the route is driven by a user gesture,
+  /// typically a swipe back gesture.
+  bool get isUserGestureInProgress =>
+      _route.navigator?.userGestureInProgress ?? false;
+
+  // Begin the Android predictive back gesture handling.
+  //
+  // While a predictive back gesture is in progress,
+  // TransitionRoute.handleUpdateBackGestureProgress decreases the transition
+  // progress of the route as the gesture proceeds, but
+  // TransitionRoute.handleCommitBackGesture restarts the pop transition from
+  // 1.0 regardless of the progress made during the gesture. Following the
+  // progress would therefore cause an abrupt size change when the gesture is
+  // committed. To avoid this, the transition progress reported to the
+  // NavigatorResizable is not allowed to go below the value at which
+  // the gesture started.
+
+  /// The lower bound of the reported [transitionProgress], or `null` if
+  /// no predictive back gesture has to be compensated for.
+  double? _backGestureProgressFloor;
+
+  var _isBackGestureInProgress = false;
+
+  /// Whether the route itself, rather than this widget, is responsible for
+  /// popping the route when the gesture is committed.
+  ///
+  /// This is the case when the route is built with a page transitions builder
+  /// that supports the predictive back gesture, such as
+  /// [PredictiveBackPageTransitionsBuilder].
+  var _isBackGestureHandledByRoute = false;
+
+  @override
+  bool handleStartBackGesture(PredictiveBackEvent backEvent) {
+    if (backEvent.isButtonEvent || !_route.isCurrent || _route.isFirst) {
+      return false;
+    }
+
+    // The route's own handler, if any, is notified before this one, since it
+    // is registered earlier as an ancestor of this widget. Therefore, if the
+    // navigator is already in a user gesture, the route has claimed
+    // the gesture and drives its transition animation by itself.
+    _isBackGestureHandledByRoute = isUserGestureInProgress;
+    _isBackGestureInProgress = true;
+    _backGestureProgressFloor = _route.animation?.value ?? 1.0;
+    _preferredSizeNotifier.invalidate();
+    return true;
+  }
+
+  @override
+  void handleCommitBackGesture() {
+    _isBackGestureInProgress = false;
+    // The pop transition restarts from the progress at which the gesture
+    // started, so there is nothing to compensate for anymore.
+    _backGestureProgressFloor = null;
+    if (!_isBackGestureHandledByRoute && _route.isCurrent) {
+      _route.navigator?.pop();
+    }
+    _preferredSizeNotifier.invalidate();
+  }
+
+  @override
+  void handleCancelBackGesture() {
+    // The suppression is kept until the transition progress animates back to
+    // the value at which the gesture started; see _onTransitionProgressChanged.
+    _isBackGestureInProgress = false;
+    _onTransitionProgressChanged();
+  }
+
+  // End the Android predictive back gesture handling.
+
+  @override
+  Widget build(BuildContext context) {
+    return _RouteContentBoundary(
+      state: this,
+      preferredSizeNotifier: _preferredSizeNotifier,
+      child: widget.child,
+    );
+  }
+}
+
+class _RouteContentBoundary extends SingleChildRenderObjectWidget {
+  const _RouteContentBoundary({
+    required this.state,
+    required this.preferredSizeNotifier,
     required super.child,
   });
 
+  final _ResizableNavigatorRouteContentBoundaryState state;
+  final NavigatorSizeNotifier preferredSizeNotifier;
+
   @override
   RenderObject createRenderObject(BuildContext context) {
-    final parentRoute = ModalRoute.of(context)!;
-    final navigatorResizable = _NavigatorResizableState.of(context);
     return _RenderRouteContentBoundary(
-      didRouteContentSizeChangeCallback: (size) {
-        navigatorResizable.didRouteContentSizeChange(parentRoute, size);
-      },
+      state: state,
+      preferredSizeNotifier: preferredSizeNotifier,
     );
   }
 
   @override
-  void updateRenderObject(BuildContext context, RenderObject renderObject) {
-    final parentRoute = ModalRoute.of(context)!;
-    final navigatorResizable = _NavigatorResizableState.of(context);
-    (renderObject as _RenderRouteContentBoundary)
-        .didRouteContentSizeChangeCallback = (size) {
-      navigatorResizable.didRouteContentSizeChange(parentRoute, size);
-    };
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderRouteContentBoundary renderObject,
+  ) {
+    renderObject
+      ..state = state
+      ..preferredSizeNotifier = preferredSizeNotifier;
   }
 }
 
 class _RenderRouteContentBoundary extends RenderPositionedBox {
   _RenderRouteContentBoundary({
-    required this.didRouteContentSizeChangeCallback,
-  }) : super(alignment: Alignment.topLeft);
+    required _ResizableNavigatorRouteContentBoundaryState state,
+    required NavigatorSizeNotifier preferredSizeNotifier,
+  }) : _state = state,
+       _preferredSizeNotifier = preferredSizeNotifier,
+       super(alignment: Alignment.topLeft);
 
-  ValueSetter<Size> didRouteContentSizeChangeCallback;
+  _ResizableNavigatorRouteContentBoundaryState _state;
+  // ignore: avoid_setters_without_getters
+  set state(_ResizableNavigatorRouteContentBoundaryState value) {
+    if (value != _state) {
+      _state = value;
+      _preferredSizeNotifier.invalidate();
+    }
+  }
+
+  NavigatorSizeNotifier _preferredSizeNotifier;
+  // ignore: avoid_setters_without_getters
+  set preferredSizeNotifier(NavigatorSizeNotifier value) {
+    if (value != _preferredSizeNotifier) {
+      _preferredSizeNotifier = value..invalidate();
+    }
+  }
+
+  Size? _contentSize;
+
+  /// The geometry of the route content, read by the ancestor
+  /// [_RenderNavigatorResizable] during its layout.
+  RouteContentGeometry get geometry => (
+    size: _contentSize,
+    transitionProgress: _state.transitionProgress,
+    isUserGestureInProgress: _state.isUserGestureInProgress,
+  );
 
   @override
   void performLayout() {
     super.performLayout();
-    if (child?.size case final childSize?) {
-      didRouteContentSizeChangeCallback(
-        // Ensure the size object is immutable.
-        Size.copy(childSize),
-      );
+    if (child?.size case final childSize? when childSize != _contentSize) {
+      // Ensure the size object is immutable.
+      _contentSize = Size.copy(childSize);
+      // It is too late to change the size of the ancestor NavigatorResizable
+      // in this frame, as it may have already been laid out.
+      _preferredSizeNotifier.invalidateAfterLayout();
     }
   }
 }
