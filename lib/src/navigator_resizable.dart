@@ -357,8 +357,15 @@ class _NavigatorResizableState extends State<NavigatorResizable>
 
   @override
   void didEndTransition(Route<dynamic> route) {
-    _lastSettledRoute = route;
-    _sizeInterpolation.parent = null;
+    if (_lastSettledRoute == null ||
+        // Ignore routes that are added but not displayed.
+        // For example, when jumping from /a to /a/b/c, this callback is called
+        // with route b before the transition animation starts, but it has no
+        // geometry information since it's not laid out.
+        ResizableNavigatorRouteContentBoundary._sizeFor(route) != null) {
+      _lastSettledRoute = route;
+      _sizeInterpolation.parent = null;
+    }
   }
 
   @override
