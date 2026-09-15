@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.2.0
+
+- Fix a one-frame delay issue
+
+Note that `BuildContext.size` for widgets below the `NavigatorResizable` now returns the intrinsic size of the navigator's current route. Previously, it returned the size of the parent render object for the `NavigatorResizable`, which was typically the screen size.
+
 ## 3.1.0
 
 - Bump minimum Flutter SDK version to 3.41.0 to avoid a mid-transition crash
