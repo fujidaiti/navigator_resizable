@@ -157,7 +157,7 @@ class NavigatorResizable extends StatefulWidget {
 
   /// The [Navigator] to be resized.
   ///
-  /// This is not necessary to be a raw [Navigator]. A navigator wrapped with
+  /// This is not necessary to be a raw [Navigator]. A navigator wrapped in
   /// zero-sized widgets, such as [GestureDetector] and [ColoredBox], or widgets
   /// without render objects, such as [Theme] and [AnimatedBuilder], are all
   /// acceptable.
@@ -167,6 +167,75 @@ class NavigatorResizable extends StatefulWidget {
   State<NavigatorResizable> createState() => _NavigatorResizableState();
 }
 
+/// Architecture Overview
+///
+/// The [Navigator] has a less well-known nature: when it is given an unbounded
+/// constraints, it shrink-wraps to the top-level widget hosted by the current
+/// route. The [NavigatorResizable] utilizes this fact to achive the desired
+/// behaviors, involving two custom render objects:
+///
+///   - [_RenderNavigatorResizable], which lays out the navigator with a
+///     [BoxConstraints] whose maxWidth and maxHeight are [double.infinity].
+///     The navigator and this render object shrink-wrap to the route content.
+///
+///   - [_RenderRouteContentBoundary], which lays out the content of the
+///     navigator's routes with constraints imposed by the parent render object
+///     for the [NavigatorResizable], to let the content freely determine its
+///     size ignoreing the constraints provided by the navigator.
+///
+/// The former is important to avoid an one-frame delay issue, where changes in
+/// the content's size (due to adding/removing list items, for example) is
+/// reflected to the [NavigatorResizable]'s size with an one-frame lag after the
+/// frame in which the content size was actually changed. While it looks like a
+/// trivial problem, it can be a cause of some visual glitches in consumer apps
+/// as reported [here][1].
+///
+/// [1]: https://github.com/fujidaiti/smooth_sheets/issues/307
+///
+/// This issue occurs when the navigator is given a finite constraints. In this
+/// case, the navigator always expands to fill the available space and enforce
+/// the route content to match that size. Even this way, we can still possible
+/// to _visually_ shrink-wrap the navigator to the route content, by laying out
+/// the route content in a [OverflowBox] with an unbounded constraints,
+/// observing its size, and bubbling it up to the [NavigatorResizable] to clip
+/// the navigator's painting area to match the content's boundaries.
+///
+/// While the idea seems to work, it causes the one-frame delay issue. This is
+/// because, with a finite constraints, the navigator sizes itself to fill the
+/// available space **before** laying out the route content, meaning that the
+/// [NavigatorResizable] can not read the route content's size when determing
+/// its size. It is notified of the new content size after the route's layout,
+/// but the layout phase for the [NavigatorResizable] is already done, there is
+/// no timing to reflect that value to the resizable's size in the same frame.
+///
+/// Not only avoiding the issue, shrink-wrapping the navigator to the route's
+/// content also allows it to correctly render [OverlayEntry]s such as popup
+/// menus. This is not possible with the clip-based architecture mentioned
+/// above, where the size of the navigator and its [Overlay] never change
+/// reagardless of the route content's size, so overlay entries rendered at
+/// the bottom of the navigator may be clipped out if the route content's size
+/// is much smaller than the navigator (see [this issue][2] for more details).
+/// With the shrink-wrapping, the overlay also shrnk-wraps so the entries never
+/// go outside the route's boundaries.
+///
+/// [2]: https://github.com/fujidaiti/smooth_sheets/issues/167
+///
+/// The later render object, which lais out a route content with the bypassed
+/// ancestor constraints, is technically optional, but designed intentionally.
+/// Since the bypassed constraints are finite, route content widgets can claim
+/// that they want to be large as much as possible by specifying
+/// [double.infinity] to their width and height, without knowing the actual
+/// available space during the build phase. If content was laid out with the
+/// navigator's constraints, using [double.infinity] would cause an Flutter
+/// assertion error since the constraints is unbounded.
+///
+/// During route transitions, the [NavigatorResizable] gradually grows or
+/// shrinks toward the next route's size along with the transition animation,
+/// instead of changing abruptly. Note that, however, the navigator keeps its
+/// previous size during the transition and jumps to the target size when it
+/// completes. That is, the navigator may be bigger or smaller than the
+/// [NavigatorResizable]'s boundoary box while transitioning, and the overflowed
+/// portions, if any, are visually clipped out.
 class _NavigatorResizableState extends State<NavigatorResizable>
     with NavigatorEventListener {
   /// Represents an interpolated size of the navigator during a transition.
@@ -440,17 +509,20 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
 }
 
 /// This widget is supposed to be the outermost parent of the [Route]'s content
-/// hosted by the [Navigator] under a [NavigatorResizable].
+/// managed by the [Navigator] under a [NavigatorResizable].
 ///
 /// This is rarely used directly. Instead, use built-in route classes that
 /// satisfy the above requirements, such as [ResizableMaterialPageRoute]
 /// and [ResizablePageRouteBuilder].
 class ResizableNavigatorRouteContentBoundary extends StatelessWidget {
+  /// Creates a container for the [Route]'s content managed by the [Navigator]
+  /// under a [NavigatorResizable].
   const ResizableNavigatorRouteContentBoundary({
     super.key,
     required this.child,
   });
 
+  /// The [Route]'s content.
   final Widget child;
 
   @override
@@ -516,22 +588,12 @@ class _RenderRouteContentBoundary extends RenderShiftedBox {
   /// of the layout phase, which isn't permitted through the [size] getter.
   Size? lastMeasuredChildSize;
 
-  Size _computeLayout(
-    BoxConstraints constraints,
-    Size Function(RenderBox, BoxConstraints) layoutChild,
-  ) {
-    return switch (child) {
-      null => Size.zero,
-      final child => layoutChild(child, constraints),
-    };
-  }
-
   @override
   Size computeDryLayout(covariant BoxConstraints constraints) {
-    return _computeLayout(
-      constraints,
-      (child, cons) => child.getDryLayout(cons),
-    );
+    return switch (child) {
+      null => Size.zero,
+      final c => c.getDryLayout(constraints),
+    };
   }
 
   @override
@@ -545,6 +607,10 @@ class _RenderRouteContentBoundary extends RenderShiftedBox {
     (child.parentData! as BoxParentData).offset = Offset.zero;
     // Make a copy to ensure the cached value is immutable.
     lastMeasuredChildSize = Size.copy(child.size);
+    // The size of this object does not always equal the child's: with an
+    // unbounded constraint, the navigator enforces a tight constraint on
+    // routes other than the current one, requiring them to match the current
+    // route's size, which may differ from the child's size laid out above.
     size = constraints.constrain(child.size);
   }
 }
