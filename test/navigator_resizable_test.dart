@@ -1377,13 +1377,13 @@ void main() {
           isAssertionError.having(
             (it) => it.message,
             'message',
-            'The NavigatorResizable widget was given an tight constraint. '
+            'The NavigatorResizable widget was given a tight constraint. '
                 'This is not allowed because it needs to size itself '
                 'to fit the current route content. Consider wrapping '
-                'the NavigatorResizable with a widget that provides non-tight '
-                'constraints, such as Align and Center.\n'
-                'The given constraints were: BoxConstraints(w=800.0, h=600.0) '
-                'which was given by the parent: RenderConstrainedBox',
+                'the NavigatorResizable with a widget that provides '
+                'a non-tight constraint, such as Align or Center.\n'
+                'The given constraint was: BoxConstraints(w=800.0, h=600.0), '
+                'which was given by the parent: RenderConstrainedBox.',
           ),
         );
       },
@@ -1410,7 +1410,8 @@ void main() {
           isAssertionError.having(
             (it) => it.message,
             'message',
-            'The NavigatorResizable widget was given unbounded constraints. '
+            'The NavigatorResizable widget was given an unbounded '
+                'constraint. '
                 'This is not allowed because otherwise the routes within the '
                 'underlying Navigator would not know their valid maximum size. '
                 'This becomes especially problematic when a route specifies '
@@ -1418,8 +1419,8 @@ void main() {
                 'the available space, which causes a layout error since '
                 'the parent Navigator does not provide finite bounds.\n'
                 'Make sure that NavigatorResizable is not wrapped in a widget '
-                'that passes unbounded constraints to its children, such as '
-                'Column or Row. The given constraints were '
+                'that passes an unbounded constraint to its children, such as '
+                'Column or Row. The given constraint was '
                 'BoxConstraints(0.0<=w<=800.0, 0.0<=h<=Infinity), '
                 'which was given by RenderFlex.',
           ),
