@@ -413,9 +413,7 @@ class _PageBasedResizablePageRoutePageBuilder<T> extends PageRoute<T>
     Animation<double> animation,
     Animation<double> secondaryAnimation,
   ) {
-    return ResizableNavigatorRouteContentBoundary(
-      child: _page.child,
-    );
+    return ResizableNavigatorRouteContentBoundary(child: _page.child);
   }
 
   @override

@@ -1,35 +1,41 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart' as p;
+import 'package:flutter/physics.dart' as physics;
 import 'package:flutter/rendering.dart';
-import 'package:flutter/scheduler.dart';
 
 import 'navigator_event_observer.dart';
-import 'navigator_size_notifier.dart';
 import 'resizable_navigator_routes.dart';
 
-/// A thin wrapper around [Navigator] that **visually** resizes the [child]
-/// navigator to match the size of the content displayed in the current route.
+/// A widget that resizes the child [Navigator] to match the intrinsic size of
+/// the current [Route]'s content.
 ///
-/// This widget is functionally similar to combining [OverflowBox] and
-/// [ClipRect], but it is specifically designed for this use case.
-/// It adjusts its size, hit test area, and painting area to align
-/// with the size of the widget displayed by the [child] navigator's
-/// current route. The navigator itself can overflow this widget,
-/// maintaining its size as determined by the parent constraints
-/// unless those constraints change. This helps minimize unnecessary
-/// layout operations for the navigator and its routes.
+/// Think of this like a resizable box with nested pages, whose size changes as
+/// the current page goes from one to another. If the first page wants to be
+/// 200x200, this widget has that size. If the second page wants to be 400x400
+/// and the user goes to the second page, this widget then becomes a 400x400
+/// box.
+///
+/// Technically, this widget lets the top-level widget hosted by the navigator's
+/// current route freely determine its width and height, and sizes the navigator
+/// and itself to match those dimensions.
+///
+/// During route transitions, this widget gradually grows or shrinks toward the
+/// next route's size along with the transition animation, instead of changing
+/// abruptly. Note that, however, the navigator keeps its previous size during
+/// the transition and jumps to the target size when it completes. That is, the
+/// navigator may be bigger or smaller than this widget's boundary box while
+/// transitioning, and the overflowing portions, if any, are visually clipped.
 ///
 /// ### Routes and Pages
 ///
 /// The [NavigatorResizable] can respect the content size of a route
-/// only if the route mix-ins the [ObservableRouteMixin] and its content
+/// only if the route mixes in the [ObservableRouteMixin] and its content
 /// is wrapped in a [ResizableNavigatorRouteContentBoundary].
 /// This is especially important during route transitions, as the
 /// [NavigatorResizable] can animate its size in sync with the transition
 /// animation only when both the current route and the next route satisfy
-/// these requirements. Otherwise, the size remains unchanged before
-/// and after the transition.
+/// those requirements. Otherwise, the navigator's size changes abruptly
+/// without any animation.
 ///
 /// For convenience, the following built-in route and page classes are provided,
 /// all of which satisfy the requirements of [NavigatorResizable]:
@@ -50,7 +56,7 @@ import 'resizable_navigator_routes.dart';
 /// ResizableMaterialPageRoute(
 ///   builder: (context) {
 ///     return Container(
-///       color: Colors.while,
+///       color: Colors.white,
 ///       width: double.infinity,
 ///       height: double.infinity,
 ///     );
@@ -61,7 +67,7 @@ import 'resizable_navigator_routes.dart';
 /// For more advanced use cases, you can create a custom route
 /// compatible with [NavigatorResizable] by mixing in
 /// the [ObservableRouteMixin] and returning a
-/// [ResizableNavigatorRouteContentBoundary] in [ModalRoute.buildPage].
+/// [_RenderRouteContentBoundaryWidget] in [ModalRoute.buildPage].
 ///
 /// ```dart
 /// class CustomResizableRoute<T> extends ModalRoute<T>
@@ -81,17 +87,16 @@ import 'resizable_navigator_routes.dart';
 /// ```
 ///
 /// ### Caveats
-/// - Avoid wrapping the navigator in widgets that add additional space
-///   (e.g., [Padding]). Zero-size widgets, such as [GestureDetector]
-///   or [InheritedWidget], are acceptable.
-/// - Do not place [NavigatorResizable] inside a widget with a tight constraint,
-///   as this forces [NavigatorResizable] to ignore the size of the current
-///   route's content and adopt the size dictated by the constraints.
-///   In such cases, an assertion error will be thrown. Typically, [Center]
-///   and [Align] are good choices for the parent widget.
-/// - The initial route of the [child] navigator must satisfy the requirements
-///   of [NavigatorResizable]. Otherwise, [NavigatorResizable] will be unable
-///   to determine the initial size and will throw an assertion error.
+///
+/// Avoid wrapping the navigator in widgets that add extra space around it,
+/// such as [Padding]. Zero-size widgets, such as [GestureDetector] and
+/// [ColoredBox], and widgets without render objects, such as [Theme] and
+/// [AnimatedBuilder], are all acceptable.
+///
+/// Do not place [NavigatorResizable] inside a widget with a tight constraint.
+/// Otherwise it adopts the size enforced by the constraints, ignoring the size
+/// of the current route's content. Typically, [Center] and [Align] are good
+/// choices for the parent widget.
 ///
 /// ### Example
 ///
@@ -131,207 +136,363 @@ import 'resizable_navigator_routes.dart';
 /// );
 /// ```
 ///
-/// For more practical examples, refer to the [/example][3] directory.
+/// See the [/example][3] directory for more practical examples.
 ///
 /// [1]: https://api.flutter.dev/flutter/widgets/Navigator-class.html#:~:text=Using%20named%20navigator%20routes
 /// [2]: https://api.flutter.dev/flutter/widgets/Navigator-class.html#:~:text=the%20current%20page.-,Using%20the%20Pages%20API,-The%20Navigator%20will
 /// [3]: https://github.com/fujidaiti/navigator_resizable/tree/main/example/lib
 class NavigatorResizable extends StatefulWidget {
-  /// Creates a thin wrapper around [Navigator] that **visually** resizes
-  /// the [child] navigator to match the size of the content displayed
-  /// in the current route.
+  /// Creates a widget that resizes the child [Navigator] to match the intrinsic
+  /// size of the current [Route]'s content.
   const NavigatorResizable({
     super.key,
     this.interpolationCurve = Curves.easeInOutCubic,
     required this.child,
   });
 
-  /// The [Curve] used for interpolating the size of this widget
-  /// during a route transition animation.
+  /// The [Curve] used to interpolate the size of this widget during
+  /// route transitions.
   ///
-  /// This widget gradually changes its size during a route transition,
-  /// interpolating between the sizes of the previous and the next route
-  /// with this curve. The default value is [Curves.easeInOutCubic].
+  /// Defaults to [Curves.easeInOutCubic].
   final Curve interpolationCurve;
 
-  /// The [Navigator] for which the visual resizing should be applied.
+  /// The [Navigator] to be resized.
+  ///
+  /// This is not necessary to be a raw [Navigator]. A navigator wrapped in
+  /// zero-sized widgets, such as [GestureDetector] and [ColoredBox], or widgets
+  /// without render objects, such as [Theme] and [AnimatedBuilder], are all
+  /// acceptable.
   final Widget child;
 
   @override
   State<NavigatorResizable> createState() => _NavigatorResizableState();
 }
 
-class _NavigatorResizableState extends State<NavigatorResizable> {
-  late final NavigatorSizeNotifier _preferredSizeNotifier;
+/// Architecture Overview
+///
+/// The [Navigator] has a less well-known nature: when it is given an unbounded
+/// constraint, it shrink-wraps to the top-level widget hosted by the current
+/// route. The [NavigatorResizable] utilizes this fact to achieve the desired
+/// behavior, involving two custom render objects:
+///
+///   - [_RenderNavigatorResizable], which lays out the navigator with a
+///     [BoxConstraints] whose maxWidth and maxHeight are [double.infinity].
+///     The navigator and this render object shrink-wrap to the route content.
+///
+///   - [_RenderRouteContentBoundary], which lays out the content of the
+///     navigator's routes with constraints imposed by the parent render object
+///     for the [NavigatorResizable], to let the content freely determine its
+///     size, ignoring the constraints provided by the navigator.
+///
+/// The former is important to avoid a one-frame delay issue, where changes in
+/// the content's size (due to adding/removing list items, for example) are
+/// reflected in the [NavigatorResizable]'s size with a one-frame lag after the
+/// frame in which the content size was actually changed. While it looks like a
+/// trivial problem, it can be a cause of some visual glitches in consumer apps,
+/// as reported [here][1].
+///
+/// [1]: https://github.com/fujidaiti/smooth_sheets/issues/307
+///
+/// This issue occurs when the navigator is given a finite constraint. In this
+/// case, the navigator always expands to fill the available space and forces
+/// the route content to match that size. Even in this way, it is still possible
+/// to _visually_ shrink-wrap the navigator to the route content, by laying out
+/// the route content in an [OverflowBox] with an unbounded constraint,
+/// observing its size, and bubbling it up to the [NavigatorResizable] to clip
+/// the navigator's painting area to match the content's boundaries.
+///
+/// While the idea seems to work, it causes the one-frame delay issue. This is
+/// because, with a finite constraint, the navigator sizes itself to fill the
+/// available space **before** laying out the route content, meaning that the
+/// [NavigatorResizable] cannot read the route content's size when determining
+/// its size. It is notified of the new content size after the route's layout,
+/// but since the layout phase for the [NavigatorResizable] is already done,
+/// there is no chance to reflect that value in the resizable's size in the
+/// same frame.
+///
+/// In addition to avoiding the issue, shrink-wrapping the navigator to the
+/// route's content also allows it to correctly render [OverlayEntry]s such as
+/// popup menus. This is not possible with the clip-based architecture mentioned
+/// above, where the size of the navigator and its [Overlay] never change
+/// regardless of the route content's size, so overlay entries rendered at
+/// the bottom of the navigator may be clipped out if the route content's size
+/// is much smaller than the navigator (see [this issue][2] for more details).
+/// With the shrink-wrapping, the overlay also shrink-wraps, so the entries
+/// never go outside the route's boundaries.
+///
+/// [2]: https://github.com/fujidaiti/smooth_sheets/issues/167
+///
+/// The latter render object, which lays out a route content with the bypassed
+/// ancestor constraint, is technically optional, but designed intentionally.
+/// Since the bypassed constraint is finite, route content widgets can claim
+/// that they want to be as large as possible by specifying
+/// [double.infinity] to their width and height, without knowing the actual
+/// available space during the build phase. If content was laid out with the
+/// navigator's constraint, using [double.infinity] would cause a Flutter
+/// assertion error since that constraint is unbounded.
+///
+/// During route transitions, the [NavigatorResizable] gradually grows or
+/// shrinks toward the next route's size along with the transition animation,
+/// instead of changing abruptly. Note that, however, the navigator keeps its
+/// previous size during the transition and jumps to the target size when it
+/// completes. That is, the navigator may be bigger or smaller than the
+/// [NavigatorResizable]'s boundary box while transitioning, and the overflowing
+/// portions, if any, are visually clipped out.
+class _NavigatorResizableState extends State<NavigatorResizable>
+    with NavigatorEventListener {
+  /// Represents an interpolated size of the navigator during a transition.
+  /// The value is available only when the transition is running; otherwise
+  /// it reports null.
+  late final _SizeProxyAnimation _sizeInterpolation;
+
+  Route<dynamic>? _lastSettledRoute;
 
   @override
   void initState() {
     super.initState();
-    _preferredSizeNotifier = NavigatorSizeNotifier(
-      interpolationCurve: widget.interpolationCurve,
-    );
+    _sizeInterpolation = _SizeProxyAnimation();
   }
 
   @override
   void dispose() {
-    _preferredSizeNotifier.dispose();
+    _sizeInterpolation.dispose();
     super.dispose();
+  }
+
+  @override
+  VoidCallback? didInstall(Route<dynamic> route) {
+    void onDispose() {
+      if (route == _lastSettledRoute) {
+        _lastSettledRoute = null;
+      }
+    }
+
+    return onDispose;
+  }
+
+  @override
+  void didStartTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation, {
+    bool isUserGestureInProgress = false,
+  }) {
+    if (isUserGestureInProgress) {
+      _startUserGestureTransition(targetRoute, animation);
+    } else if (animation.status == AnimationStatus.forward) {
+      _startPushTransition(targetRoute, animation);
+    } else {
+      assert(animation.status == AnimationStatus.reverse);
+      _startPopTransition(targetRoute, animation);
+    }
+  }
+
+  void _startUserGestureTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation,
+  ) {
+    assert(animation.isForwardOrCompleted);
+    final initialSize =
+        _sizeInterpolation.value ??
+        ResizableNavigatorRouteContentBoundary._sizeFor(_lastSettledRoute);
+    _sizeInterpolation.parent = _LazySizeTween(
+      start: () => ResizableNavigatorRouteContentBoundary._sizeFor(targetRoute),
+      end: () => initialSize,
+    ).animate(animation);
+  }
+
+  void _startPushTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation,
+  ) {
+    assert(animation.isForwardOrCompleted);
+    final initialSize =
+        _sizeInterpolation.value ??
+        ResizableNavigatorRouteContentBoundary._sizeFor(_lastSettledRoute);
+    _sizeInterpolation.parent = _LazySizeTween(
+      start: () => initialSize,
+      end: () => ResizableNavigatorRouteContentBoundary._sizeFor(targetRoute),
+    ).chain(CurveTween(curve: widget.interpolationCurve)).animate(animation);
+  }
+
+  void _startPopTransition(
+    Route<dynamic> targetRoute,
+    Animation<double> animation,
+  ) {
+    assert(!animation.isForwardOrCompleted);
+    final initialSize =
+        _sizeInterpolation.value ??
+        ResizableNavigatorRouteContentBoundary._sizeFor(_lastSettledRoute);
+
+    Size? targetRouteSize() {
+      return ResizableNavigatorRouteContentBoundary._sizeFor(targetRoute);
+    }
+
+    if (animation.value == 1) {
+      _sizeInterpolation.parent = _LazySizeTween(
+        start: targetRouteSize,
+        end: () => initialSize,
+      ).chain(CurveTween(curve: widget.interpolationCurve)).animate(animation);
+    } else {
+      // In this case, a pop transition has started in the middle of another
+      // transition. This can happen, for example, when a route is popped
+      // immediately after being pushed.
+      //
+      // To avoid layout shifts, we start a linear size transition from
+      // a synthetic start size to the target size, where the synthetic start
+      // size is calculated by _lerpEndSize. This transition is such that the
+      // size equals the initialSize when animation.value is
+      // initialAnimationProgress, and it eventually reaches the target size
+      // when animation.value is 1.
+      final initialAnimationProgress = animation.value;
+      _sizeInterpolation.parent = _LazySizeTween(
+        start: targetRouteSize,
+        end: () => _lerpEndSize(
+          targetRouteSize()!,
+          initialSize!,
+          initialAnimationProgress,
+        ),
+      ).animate(animation);
+    }
+  }
+
+  @override
+  void didEndTransition(Route<dynamic> route) {
+    if (_lastSettledRoute == null ||
+        // Ignore routes that are added but not displayed.
+        // For example, when jumping from /a to /a/b/c, this callback is called
+        // with route b before the transition animation starts, but it has no
+        // geometry information since it's not laid out.
+        ResizableNavigatorRouteContentBoundary._sizeFor(route) != null) {
+      _lastSettledRoute = route;
+      _sizeInterpolation.parent = null;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return NavigatorEventObserver(
-      listeners: [_preferredSizeNotifier],
-      child: _InheritedNavigatorResizable(
-        state: this,
-        child: _RenderNavigatorResizableWidget(
-          preferredSize: _preferredSizeNotifier,
-          child: widget.child,
-        ),
+      listeners: [this],
+      child: LayoutBuilder(
+        builder: (_, constraints) {
+          return _BypassedNavigatorConstraints(
+            value: constraints,
+            child: _RenderNavigatorResizableWidget(
+              sizeTransition: _sizeInterpolation,
+              child: widget.child,
+            ),
+          );
+        },
       ),
     );
   }
-
-  void didRouteContentSizeChange(ModalRoute<dynamic> route, Size contentSize) {
-    _preferredSizeNotifier.didRouteContentSizeChange(route, contentSize);
-  }
-
-  static _NavigatorResizableState of(BuildContext context) {
-    return context
-        .dependOnInheritedWidgetOfExactType<_InheritedNavigatorResizable>()!
-        .state;
-  }
 }
 
-/// Provides a direct access to the state of the ancestor [NavigatorResizable]
-/// for the descendant [ResizableNavigatorRouteContentBoundary] widgets.
-class _InheritedNavigatorResizable extends InheritedWidget {
-  const _InheritedNavigatorResizable({
-    required this.state,
+class _BypassedNavigatorConstraints extends InheritedWidget {
+  const _BypassedNavigatorConstraints({
+    required this.value,
     required super.child,
   });
 
-  final _NavigatorResizableState state;
+  final BoxConstraints value;
 
   @override
-  bool updateShouldNotify(_InheritedNavigatorResizable oldWidget) => true;
+  bool updateShouldNotify(_BypassedNavigatorConstraints oldWidget) =>
+      value != oldWidget.value;
 }
 
 class _RenderNavigatorResizableWidget extends SingleChildRenderObjectWidget {
   const _RenderNavigatorResizableWidget({
-    required this.preferredSize,
+    required this.sizeTransition,
     required super.child,
   });
 
-  final ValueListenable<Size> preferredSize;
+  final ValueListenable<Size?> sizeTransition;
 
   @override
   RenderObject createRenderObject(BuildContext context) {
-    return _RenderNavigatorResizable(preferredSize: preferredSize);
-  }
-
-  @override
-  void updateRenderObject(
-    BuildContext context,
-    _RenderNavigatorResizable renderObject,
-  ) {
-    renderObject.preferredSize = preferredSize;
+    return _RenderNavigatorResizable(sizeTransition: sizeTransition);
   }
 }
 
 class _RenderNavigatorResizable extends RenderAligningShiftedBox {
-  _RenderNavigatorResizable({
-    required ValueListenable<Size> preferredSize,
-  }) : _preferredSize = preferredSize,
-       super(
-         alignment: Alignment.topLeft,
-         textDirection: null,
-       ) {
-    preferredSize.addListener(_onPreferredSizeChanged);
+  _RenderNavigatorResizable({required this.sizeTransition})
+    : super(alignment: Alignment.topLeft, textDirection: null) {
+    sizeTransition.addListener(markNeedsLayout);
   }
 
-  @override
-  bool get sizedByParent => false;
+  final ValueListenable<Size?> sizeTransition;
 
   /// The visible area of the descendant Navigator.
   ///
   /// Used in [paint] and [hitTest].
   /// The size of this rect should be kept in sync with the value of
-  /// [_preferredSize] and the offset should be always [Offset.zero].
+  /// [sizeTransition] and the offset should be always [Offset.zero].
   late Rect _visibleBounds;
 
-  ValueListenable<Size> _preferredSize;
-  // ignore: avoid_setters_without_getters
-  set preferredSize(ValueListenable<Size> value) {
-    if (value != _preferredSize) {
-      _preferredSize.removeListener(_onPreferredSizeChanged);
-      _preferredSize = value..addListener(_onPreferredSizeChanged);
-    }
-  }
-
-  void _onPreferredSizeChanged() {
-    switch (SchedulerBinding.instance.schedulerPhase) {
-      // If the change is triggered during the layout phase,
-      // it's too late to apply the new size to this render box
-      // in the current frame. Instead, we schedule a new frame
-      // to ensure the new size is eventually applied in the
-      // following frame.
-      case SchedulerPhase.persistentCallbacks:
-        SchedulerBinding.instance.scheduleFrameCallback((_) {
-          if (!_disposed) markNeedsLayout();
-        });
-      // Otherwise, schedule a layout immediately.
-      case _:
-        markNeedsLayout();
-    }
-  }
-
-  bool _disposed = false;
+  @override
+  bool get sizedByParent => false;
 
   @override
   void dispose() {
-    assert(!_disposed);
-    _preferredSize.removeListener(_onPreferredSizeChanged);
-    _disposed = true;
+    sizeTransition.removeListener(markNeedsLayout);
     super.dispose();
   }
 
   @override
   Size computeDryLayout(covariant BoxConstraints constraints) {
-    return constraints.constrain(_preferredSize.value);
+    return switch (sizeTransition.value) {
+      null => child!.getDryLayout(
+        const BoxConstraints(
+          maxHeight: double.infinity,
+          maxWidth: double.infinity,
+        ),
+      ),
+      final size => constraints.constrain(size),
+    };
   }
 
   @override
   void performLayout() {
-    assert(child != null);
     assert(
       !constraints.isTight,
-      'The NavigatorResizable widget was given an tight constraint. '
+      'The NavigatorResizable widget was given a tight constraint. '
       'This is not allowed because it needs to size itself to fit '
       'the current route content. Consider wrapping the NavigatorResizable '
-      'with a widget that provides non-tight constraints, such as Align '
-      'and Center. \n'
-      'The given constraints were: $constraints which was given by '
-      'the parent: ${parent.runtimeType}',
+      'with a widget that provides a non-tight constraint, such as Align '
+      'or Center.\n'
+      'The given constraint was: $constraints, which was given by '
+      'the parent: ${parent?.parent.runtimeType}.',
+      // We refer to parent.parent here as the parent is always the render
+      // object for the LayoutBuilder that the NavigatorResizable builds
+      // internally, which isn't what developers insert by themselves.
     );
     assert(
       constraints.hasBoundedHeight && constraints.hasBoundedWidth,
-      'The NavigatorResizable widget was given unbounded constraints. '
+      'The NavigatorResizable widget was given an unbounded constraint. '
       'This is not allowed because otherwise the routes within the underlying '
       'Navigator would not know their valid maximum size. This becomes '
       'especially problematic when a route specifies double.infinity for width '
       'or height to expand to the available space, which causes a layout error '
       'since the parent Navigator does not provide finite bounds.\n'
       'Make sure that NavigatorResizable is not wrapped in a widget that '
-      'passes unbounded constraints to its children, such as Column or Row. '
-      'The given constraints were:\n'
-      '$constraints (from parent: ${parent.runtimeType}).',
+      'passes an unbounded constraint to its children, such as Column or Row. '
+      'The given constraint was $constraints, which was given by '
+      '${parent?.parent.runtimeType}.',
     );
 
-    // Pass the parent constraints directly to the child Navigator,
-    // allowing it to overflow this render box if necessary.
-    child!.layout(constraints, parentUsesSize: true);
-    size = computeDryLayout(constraints);
+    child!.layout(
+      const BoxConstraints(
+        maxWidth: double.infinity,
+        maxHeight: double.infinity,
+      ),
+      parentUsesSize: true,
+    );
+
+    size = switch (sizeTransition.value) {
+      null => constraints.constrain(Size.copy(child!.size)),
+      final s => constraints.constrain(s),
+    };
+
     _visibleBounds = Offset.zero & size;
     alignChild();
   }
@@ -356,75 +517,174 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   }
 }
 
-/// Observes the layout of the [child] widget and notifies the ancestor
-/// [NavigatorResizable] when the child's size changes.
+/// This widget is supposed to be the outermost parent of the [Route]'s content
+/// managed by the [Navigator] under a [NavigatorResizable].
 ///
-/// A route is compatible with [NavigatorResizable] only if it mixes-in
-/// the [ObservableRouteMixin] and wraps its content in
-/// a [ResizableNavigatorRouteContentBoundary]. For example, a subclass
-/// of [ModalRoute] should return a [ResizableNavigatorRouteContentBoundary]
-/// in [ModalRoute.buildPage].
-///
-/// It is rarely used directly. Instead, use the built-in route classes
-/// that satisfy the requirements of [NavigatorResizable],
-/// such as [ResizableMaterialPageRoute] and [ResizablePageRouteBuilder].
-class ResizableNavigatorRouteContentBoundary
-    extends SingleChildRenderObjectWidget {
-  /// Creates a widget that observes the layout of the [child].
+/// This is rarely used directly. Instead, use built-in route classes that
+/// satisfy the above requirements, such as [ResizableMaterialPageRoute]
+/// and [ResizablePageRouteBuilder].
+class ResizableNavigatorRouteContentBoundary extends StatelessWidget {
+  /// Creates a container for the [Route]'s content managed by the [Navigator]
+  /// under a [NavigatorResizable].
   const ResizableNavigatorRouteContentBoundary({
     super.key,
+    required this.child,
+  });
+
+  /// The [Route]'s content.
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return _RenderRouteContentBoundaryWidget(
+      key: _globalKeyFor(ModalRoute.of(context)),
+      bypassedConstraints: context
+          .dependOnInheritedWidgetOfExactType<_BypassedNavigatorConstraints>()!
+          .value,
+      child: child,
+    );
+  }
+
+  static final _globalKeyRegistry = Expando<GlobalKey>('boundaryKeyRegistry');
+
+  static GlobalKey? _globalKeyFor(Route<dynamic>? route) {
+    if (route == null) {
+      return null;
+    }
+    return _globalKeyRegistry[route] ??= GlobalKey();
+  }
+
+  static Size? _sizeFor(Route<dynamic>? route) {
+    final key = _globalKeyFor(route);
+    final element = (key?.currentContext as SingleChildRenderObjectElement?);
+    final renderObj = (element?.renderObject as _RenderRouteContentBoundary?);
+    return renderObj?.lastMeasuredChildSize;
+  }
+}
+
+class _RenderRouteContentBoundaryWidget extends SingleChildRenderObjectWidget {
+  const _RenderRouteContentBoundaryWidget({
+    super.key,
+    required this.bypassedConstraints,
     required super.child,
   });
 
+  final BoxConstraints bypassedConstraints;
+
   @override
   RenderObject createRenderObject(BuildContext context) {
-    final parentRoute = ModalRoute.of(context)!;
-    final navigatorResizable = _NavigatorResizableState.of(context);
     return _RenderRouteContentBoundary(
-      didRouteContentSizeChangeCallback: (size) {
-        navigatorResizable.didRouteContentSizeChange(parentRoute, size);
-      },
+      bypassedConstraints: bypassedConstraints,
     );
   }
 
   @override
   void updateRenderObject(BuildContext context, RenderObject renderObject) {
-    final parentRoute = ModalRoute.of(context)!;
-    final navigatorResizable = _NavigatorResizableState.of(context);
-    (renderObject as _RenderRouteContentBoundary)
-        .didRouteContentSizeChangeCallback = (size) {
-      navigatorResizable.didRouteContentSizeChange(parentRoute, size);
-    };
+    (renderObject as _RenderRouteContentBoundary).bypassedConstraints =
+        bypassedConstraints;
   }
 }
 
-class _RenderRouteContentBoundary extends RenderPositionedBox {
+class _RenderRouteContentBoundary extends RenderShiftedBox {
   _RenderRouteContentBoundary({
-    required this.didRouteContentSizeChangeCallback,
-  }) : super(alignment: Alignment.topLeft);
+    required this.bypassedConstraints,
+  }) : super(null);
 
-  ValueSetter<Size> didRouteContentSizeChangeCallback;
+  BoxConstraints bypassedConstraints;
+
+  /// A cache of the [child]'s [size] determined in the previous call
+  /// to [performLayout]. This allows objects to read that value outside
+  /// of the layout phase, which isn't permitted through the [size] getter.
+  Size? lastMeasuredChildSize;
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) {
+    return switch (child) {
+      null => Size.zero,
+      final c => c.getDryLayout(constraints),
+    };
+  }
 
   @override
   void performLayout() {
-    super.performLayout();
-    if (child?.size case final childSize?) {
-      didRouteContentSizeChangeCallback(
-        // Ensure the size object is immutable.
-        Size.copy(childSize),
-      );
+    final child = this.child;
+    if (child == null) {
+      size = lastMeasuredChildSize = Size.zero;
+      return;
     }
+    child.layout(bypassedConstraints, parentUsesSize: true);
+    (child.parentData! as BoxParentData).offset = Offset.zero;
+    // Make a copy to ensure the cached value is immutable.
+    lastMeasuredChildSize = Size.copy(child.size);
+    // The size of this object does not always equal the child's: with an
+    // unbounded constraint, the navigator imposes a tight constraint on
+    // routes other than the current one, requiring them to match the current
+    // route's size, which may differ from the child's size laid out above.
+    size = constraints.constrain(child.size);
   }
 }
 
-extension _SizeEquality on Size {
+class _SizeProxyAnimation extends ChangeNotifier
+    implements ValueListenable<Size?> {
+  Animation<Size?>? get parent => _parent;
+  Animation<Size?>? _parent;
+  set parent(Animation<Size?>? animation) {
+    _parent?.removeListener(notifyListeners);
+    _parent = animation?..addListener(notifyListeners);
+  }
+
+  @override
+  Size? get value => parent?.value;
+
+  @override
+  void dispose() {
+    _parent?.removeListener(notifyListeners);
+    _parent = null;
+    super.dispose();
+  }
+}
+
+class _LazySizeTween extends Animatable<Size?> {
+  _LazySizeTween({
+    required this.start,
+    required this.end,
+  });
+
+  final ValueGetter<Size?> start;
+  final ValueGetter<Size?> end;
+
+  @override
+  Size? transform(double t) {
+    final start = this.start();
+    if (start?.isFinite != true) {
+      return null;
+    }
+    final end = this.end();
+    if (end?.isFinite != true) {
+      return null;
+    }
+    return Size.lerp(start, end, t);
+  }
+}
+
+/// Returns `se` that satisfies the equation `st = (1 - t) * se + t * ss`,
+/// where [ss] is the start size and [st] is the interpolated size at time [t].
+Size _lerpEndSize(Size ss, Size st, double t) {
+  assert(0 < t && t <= 1);
+  return Size(
+    (st.width - (1 - t) * ss.width) / t,
+    (st.height - (1 - t) * ss.height) / t,
+  );
+}
+
+extension on Size {
   bool nearEqual(Size other) {
-    return p.nearEqual(
+    return physics.nearEqual(
           height,
           other.height,
           Tolerance.defaultTolerance.distance,
         ) &&
-        p.nearEqual(
+        physics.nearEqual(
           width,
           other.width,
           Tolerance.defaultTolerance.distance,

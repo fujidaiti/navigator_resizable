@@ -331,36 +331,39 @@ void main() {
         final transitionProgress =
             env.navigatorKey.currentState!.currentRoute.animation!;
 
-        // Start the swipe back gesture.
-        // We assume that the screen size is 800x600.
+        // Start a swipe back gesture.
         final gesture = await tester.startGesture(const Offset(300, 300));
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
+        // The iOS's back gesture computes progress from navigator's width,
+        // which equals the with of the current route b (200). For example,
+        // the previous drag delta is 20, so the expected transition progress
+        // is 1 - (20 / 200) = 0.9.
         expect(transitionProgress.value, moreOrLessEquals(0.9));
         expect(env.getBox(tester).size, const Size(190, 290));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.8));
         expect(env.getBox(tester).size, const Size(180, 280));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.7));
         expect(env.getBox(tester).size, const Size(170, 270));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.6));
         expect(env.getBox(tester).size, const Size(160, 260));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.5));
         expect(env.getBox(tester).size, const Size(150, 250));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.4));
         expect(env.getBox(tester).size, const Size(140, 240));
@@ -385,10 +388,9 @@ void main() {
         final transitionProgress =
             env.navigatorKey.currentState!.currentRoute.animation!;
 
-        // Start the swipe back gesture.
-        // We assume that the screen size is 800x600.
+        // Start a swipe back gesture.
         final gesture = await tester.startGesture(const Offset(300, 300));
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
         expect(transitionProgress.value, moreOrLessEquals(0.9));
@@ -804,6 +806,47 @@ void main() {
       },
     );
 
+    testWidgets(
+      'Edge case: pop a page during a multi-page push transition',
+      (tester) async {
+        final env = boilerplate(interpolationCurve: Curves.linear);
+        await tester.pumpWidget(env.testWidget);
+        expect(env.getBox(tester).size, const Size(100, 200));
+
+        // Start navigating to /a/b/c and stop in the middle of the transition.
+        env.setLocation('/a/b/c');
+        await tester.pump(); // Required to kick off the animation clock.
+        await tester.pump(const Duration(milliseconds: 100));
+        final sizeBeforeCancel = env.getBox(tester).size;
+        expect(
+          sizeBeforeCancel,
+          isNot(anyOf(const Size(100, 200), const Size(800, 600))),
+          reason: 'The size should be in the middle of the transition.',
+        );
+
+        // In the middle of the transition, go back to /a/b.
+        env.setLocation('/a/b');
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        expect(
+          env.getBox(tester).size,
+          sizeBeforeCancel,
+          reason:
+              'The size must keep following the exit transition of c from '
+              'where it currently is, instead of jumping to the size of b.',
+        );
+
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(
+          env.getBox(tester).size,
+          const Size(200, 300),
+          reason:
+              'The size should eventually settle to the size of the page b.',
+        );
+      },
+    );
+
     testWidgets('When popping a route', (tester) async {
       final env = boilerplate(interpolationCurve: Curves.easeInOut);
       await tester.pumpWidget(env.testWidget);
@@ -1005,36 +1048,39 @@ void main() {
         final transitionProgress =
             env.navigatorKey.currentState!.currentRoute.animation!;
 
-        // Start the swipe back gesture.
-        // We assume that the screen size is 800x600.
+        // Start a swipe back gesture.
         final gesture = await tester.startGesture(const Offset(300, 300));
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
+        // The iOS's back gesture computes progress from navigator's width,
+        // which equals the with of the current route b (200). For example,
+        // the previous drag delta is 20, so the expected transition progress
+        // is 1 - (20 / 200) = 0.9.
         expect(transitionProgress.value, moreOrLessEquals(0.9));
         expect(env.getBox(tester).size, const Size(190, 290));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.8));
         expect(env.getBox(tester).size, const Size(180, 280));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.7));
         expect(env.getBox(tester).size, const Size(170, 270));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.6));
         expect(env.getBox(tester).size, const Size(160, 260));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.5));
         expect(env.getBox(tester).size, const Size(150, 250));
 
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.4));
         expect(env.getBox(tester).size, const Size(140, 240));
@@ -1059,10 +1105,9 @@ void main() {
         final transitionProgress =
             env.navigatorKey.currentState!.currentRoute.animation!;
 
-        // Start the swipe back gesture.
-        // We assume that the screen size is 800x600.
+        // Start a swipe back gesture.
         final gesture = await tester.startGesture(const Offset(300, 300));
-        await gesture.moveBy(const Offset(80, 0));
+        await gesture.moveBy(const Offset(20, 0));
         await tester.pump();
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
         expect(transitionProgress.value, moreOrLessEquals(0.9));
@@ -1330,21 +1375,11 @@ void main() {
 
         // Make it bigger.
         env.setContentSize(const Size(200, 300));
-        // It *intentionally* takes two frames to update the size because:
-        // in the first frame, the route content size is updated,
-        // but we can't mark the render object of the NavigatorResizable
-        // as dirty in the layout phase of the same frame. Instead,
-        // we have to schedule the next frame to reflect the new content size
-        // to the size of the NavigatorResizable.
-        await tester.pump();
-        expect(env.getBoxSize(), const Size(100, 200));
         await tester.pump();
         expect(env.getBoxSize(), const Size(200, 300));
 
         // Make it smaller.
         env.setContentSize(const Size(50, 100));
-        await tester.pump();
-        expect(env.getBoxSize(), const Size(200, 300));
         await tester.pump();
         expect(env.getBoxSize(), const Size(50, 100));
       },
@@ -1383,13 +1418,13 @@ void main() {
           isAssertionError.having(
             (it) => it.message,
             'message',
-            'The NavigatorResizable widget was given an tight constraint. '
+            'The NavigatorResizable widget was given a tight constraint. '
                 'This is not allowed because it needs to size itself '
                 'to fit the current route content. Consider wrapping '
-                'the NavigatorResizable with a widget that provides non-tight '
-                'constraints, such as Align and Center. \n'
-                'The given constraints were: BoxConstraints(w=800.0, h=600.0) '
-                'which was given by the parent: RenderConstrainedBox',
+                'the NavigatorResizable with a widget that provides '
+                'a non-tight constraint, such as Align or Center.\n'
+                'The given constraint was: BoxConstraints(w=800.0, h=600.0), '
+                'which was given by the parent: RenderConstrainedBox.',
           ),
         );
       },
@@ -1416,7 +1451,8 @@ void main() {
           isAssertionError.having(
             (it) => it.message,
             'message',
-            'The NavigatorResizable widget was given unbounded constraints. '
+            'The NavigatorResizable widget was given an unbounded '
+                'constraint. '
                 'This is not allowed because otherwise the routes within the '
                 'underlying Navigator would not know their valid maximum size. '
                 'This becomes especially problematic when a route specifies '
@@ -1424,10 +1460,10 @@ void main() {
                 'the available space, which causes a layout error since '
                 'the parent Navigator does not provide finite bounds.\n'
                 'Make sure that NavigatorResizable is not wrapped in a widget '
-                'that passes unbounded constraints to its children, such as '
-                'Column or Row. The given constraints were:\n'
-                'BoxConstraints(0.0<=w<=800.0, 0.0<=h<=Infinity) '
-                '(from parent: RenderFlex).',
+                'that passes an unbounded constraint to its children, such as '
+                'Column or Row. The given constraint was '
+                'BoxConstraints(0.0<=w<=800.0, 0.0<=h<=Infinity), '
+                'which was given by RenderFlex.',
           ),
         );
       },
