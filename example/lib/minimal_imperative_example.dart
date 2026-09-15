@@ -21,11 +21,16 @@ class ExampleApp extends StatelessWidget {
             child: NavigatorResizable(
               child: Navigator(
                 onGenerateInitialRoutes: (_, __) => [
-                  // STEP2: Use ResizableMaterialPageRoute instead of MaterialPageRoute.
+                  // STEP2: Wrap the content of each route in
+                  // a ResizableNavigatorRouteContentBoundary.
                   //
-                  // That's it!
-                  ResizableMaterialPageRoute(
-                    builder: (context) => const SmallPage(),
+                  // That's it! Any kind of route can be used,
+                  // including MaterialPageRoute.
+                  MaterialPageRoute<void>(
+                    builder: (context) =>
+                        const ResizableNavigatorRouteContentBoundary(
+                          child: SmallPage(),
+                        ),
                   ),
                 ],
               ),
@@ -51,8 +56,11 @@ class SmallPage extends StatelessWidget {
             onPressed: () {
               Navigator.push(
                 context,
-                ResizableMaterialPageRoute(
-                  builder: (context) => const MediumPage(),
+                MaterialPageRoute<void>(
+                  builder: (context) =>
+                      const ResizableNavigatorRouteContentBoundary(
+                        child: MediumPage(),
+                      ),
                 ),
               );
             },
@@ -80,8 +88,11 @@ class MediumPage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  ResizableMaterialPageRoute(
-                    builder: (context) => const LargePage(),
+                  MaterialPageRoute<void>(
+                    builder: (context) =>
+                        const ResizableNavigatorRouteContentBoundary(
+                          child: LargePage(),
+                        ),
                   ),
                 );
               },

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:navigator_resizable/src/navigator_resizable.dart';
-import 'package:navigator_resizable/src/resizable_navigator_routes.dart';
 
 import 'src/matchers.dart';
 import 'src/widget_tester_x.dart';
@@ -33,10 +32,13 @@ void main() {
               key: navigatorKey,
               initialRoute: 'a',
               onGenerateRoute: (settings) {
-                return ResizablePageRouteBuilder(
+                return PageRouteBuilder(
                   settings: settings,
                   transitionDuration: const Duration(milliseconds: 300),
-                  pageBuilder: (_, _, _) => routes[settings.name]!(),
+                  pageBuilder: (_, _, _) =>
+                      ResizableNavigatorRouteContentBoundary(
+                        child: routes[settings.name]!(),
+                      ),
                   transitionsBuilder: _testTransitionsBuilder,
                 );
               },
@@ -98,11 +100,15 @@ void main() {
       await tester.pump();
       expect(env.getBox(tester).size, const Size(100, 200));
 
+      // The routes 'b' and 'c' run their entrance transitions at the same
+      // time, so the size is interpolated from 'a' to 'b', and then from
+      // that intermediate size to 'c'.
       Size interpolatedSize(double progress) {
+        final t = Curves.easeInOut.transform(progress);
         return Size.lerp(
-          const Size(100, 200),
+          Size.lerp(const Size(100, 200), const Size(200, 300), t),
           const Size(150, 250),
-          Curves.easeInOut.transform(progress),
+          t,
         )!;
       }
 
@@ -159,11 +165,15 @@ void main() {
       await tester.pump();
       expect(env.getBox(tester).size, const Size(150, 250));
 
+      // The routes 'b' and 'c' run their exit transitions at the same time,
+      // so the size is interpolated from 'a' to 'b', and then from that
+      // intermediate size to 'c'.
       Size interpolatedSize(double progress) {
+        final t = Curves.easeInOut.transform(1 - progress);
         return Size.lerp(
+          Size.lerp(const Size(100, 200), const Size(200, 300), t),
           const Size(150, 250),
-          const Size(100, 200),
-          Curves.easeInOut.transform(progress),
+          t,
         )!;
       }
 
@@ -253,11 +263,12 @@ void main() {
 
       final routeB = env.navigatorKey.currentState!.currentRoute;
       final navigator = env.navigatorKey.currentState!;
-      final newRoute = ResizablePageRouteBuilder(
+      final newRoute = PageRouteBuilder<void>(
         settings: const RouteSettings(name: 'c'),
         transitionDuration: const Duration(milliseconds: 300),
-        pageBuilder: (_, _, _) =>
-            const _TestRouteWidget(initialSize: Size(150, 250)),
+        pageBuilder: (_, _, _) => const ResizableNavigatorRouteContentBoundary(
+          child: _TestRouteWidget(initialSize: Size(150, 250)),
+        ),
         transitionsBuilder: _testTransitionsBuilder,
       );
       navigator.replace(oldRoute: routeB, newRoute: newRoute);
@@ -297,9 +308,11 @@ void main() {
               key: navigatorKey,
               initialRoute: 'a',
               onGenerateRoute: (settings) {
-                return ResizableMaterialPageRoute(
+                return MaterialPageRoute(
                   settings: settings,
-                  builder: (_) => routes[settings.name]!(),
+                  builder: (_) => ResizableNavigatorRouteContentBoundary(
+                    child: routes[settings.name]!(),
+                  ),
                 );
               },
             ),
@@ -404,7 +417,7 @@ void main() {
 
   group(
     'Android predictive back gesture test with '
-    'imperative navigator API and ResizableMaterialPageRoute',
+    'imperative navigator API and MaterialPageRoute',
     () {
       ({
         GlobalKey<NavigatorState> navigatorKey,
@@ -426,9 +439,11 @@ void main() {
                 key: navigatorKey,
                 initialRoute: 'a',
                 onGenerateRoute: (settings) {
-                  return ResizableMaterialPageRoute(
+                  return MaterialPageRoute(
                     settings: settings,
-                    builder: (_) => routes[settings.name]!(),
+                    builder: (_) => ResizableNavigatorRouteContentBoundary(
+                      child: routes[settings.name]!(),
+                    ),
                   );
                 },
               ),
@@ -582,33 +597,41 @@ void main() {
       String initialLocation = '/a',
       Curve interpolationCurve = Curves.easeInOut,
     }) {
-      const pageA = ResizablePageRoutePageBuilder(
+      const pageA = _TestPage(
         name: 'a',
         key: ValueKey('a'),
         transitionDuration: Duration(milliseconds: 300),
         transitionsBuilder: _testTransitionsBuilder,
-        child: _TestRouteWidget(initialSize: Size(100, 200)),
+        child: ResizableNavigatorRouteContentBoundary(
+          child: _TestRouteWidget(initialSize: Size(100, 200)),
+        ),
       );
-      const pageB = ResizablePageRoutePageBuilder(
+      const pageB = _TestPage(
         name: 'b',
         key: ValueKey('b'),
         transitionDuration: Duration(milliseconds: 300),
         transitionsBuilder: _testTransitionsBuilder,
-        child: _TestRouteWidget(initialSize: Size(200, 300)),
+        child: ResizableNavigatorRouteContentBoundary(
+          child: _TestRouteWidget(initialSize: Size(200, 300)),
+        ),
       );
-      const pageC = ResizablePageRoutePageBuilder(
+      const pageC = _TestPage(
         name: 'c',
         key: ValueKey('c'),
         transitionDuration: Duration(milliseconds: 300),
         transitionsBuilder: _testTransitionsBuilder,
-        child: _TestRouteWidget(initialSize: Size.infinite),
+        child: ResizableNavigatorRouteContentBoundary(
+          child: _TestRouteWidget(initialSize: Size.infinite),
+        ),
       );
-      const pageD = ResizablePageRoutePageBuilder(
+      const pageD = _TestPage(
         name: 'd',
         key: ValueKey('d'),
         transitionDuration: Duration(milliseconds: 300),
         transitionsBuilder: _testTransitionsBuilder,
-        child: _TestRouteWidget(initialSize: Size(300, 400)),
+        child: ResizableNavigatorRouteContentBoundary(
+          child: _TestRouteWidget(initialSize: Size(300, 400)),
+        ),
       );
 
       final navigatorKey = GlobalKey<NavigatorState>();
@@ -785,12 +808,22 @@ void main() {
         env.setLocation('/a');
         await tester.pump();
         expect(tester.takeException(), isNull);
+        final expectedSize = Size.lerp(
+          const Size(100, 200),
+          const Size(800, 600),
+          1 / 3,
+        )!;
         expect(
-          env.getBox(tester).size,
-          sizeBeforeCancel,
+          env.getBox(tester).size.width,
+          moreOrLessEquals(expectedSize.width),
           reason:
-              'The size must keep following the exit transition of c from '
-              'where it currently is, instead of jumping to the size of a.',
+              'Removing the page b changes the size that the exit transition '
+              'of c interpolates from, which is observed as a discontinuous '
+              'size change.',
+        );
+        expect(
+          env.getBox(tester).size.height,
+          moreOrLessEquals(expectedSize.height),
         );
 
         await tester.pumpAndSettle();
@@ -916,14 +949,17 @@ void main() {
         env.setLocation('/a/b');
         await tester.pump();
         expect(env.getBox(tester).size, const Size(250, 350));
+        // The page d keeps running its entrance transition while the page b
+        // enters on top of it, so the size slightly grows toward the size of
+        // d before it shrinks to the size of b.
+        await tester.pump(const Duration(milliseconds: 60));
+        expect(env.getBox(tester).size, const Size(256, 356));
+        await tester.pump(const Duration(milliseconds: 60));
+        expect(env.getBox(tester).size, const Size(254, 354));
         await tester.pump(const Duration(milliseconds: 60));
         expect(env.getBox(tester).size, const Size(240, 340));
         await tester.pump(const Duration(milliseconds: 60));
-        expect(env.getBox(tester).size, const Size(230, 330));
-        await tester.pump(const Duration(milliseconds: 60));
         expect(env.getBox(tester).size, const Size(220, 320));
-        await tester.pump(const Duration(milliseconds: 60));
-        expect(env.getBox(tester).size, const Size(210, 310));
         await tester.pumpAndSettle();
         expect(env.getBox(tester).size, const Size(200, 300));
       },
@@ -940,15 +976,19 @@ void main() {
     boilerplate() {
       final navigatorKey = GlobalKey<NavigatorState>();
       final navigatorResizableKey = UniqueKey();
-      const pageA = ResizableMaterialPage(
+      const pageA = MaterialPage<void>(
         name: 'a',
         key: ValueKey('a'),
-        child: _TestRouteWidget(initialSize: Size(100, 200)),
+        child: ResizableNavigatorRouteContentBoundary(
+          child: _TestRouteWidget(initialSize: Size(100, 200)),
+        ),
       );
-      const pageB = ResizableMaterialPage(
+      const pageB = MaterialPage<void>(
         name: 'b',
         key: ValueKey('b'),
-        child: _TestRouteWidget(initialSize: Size(200, 300)),
+        child: ResizableNavigatorRouteContentBoundary(
+          child: _TestRouteWidget(initialSize: Size(200, 300)),
+        ),
       );
 
       var location = '/a';
@@ -1078,7 +1118,7 @@ void main() {
 
   group(
     'Android predictive back gesture test with '
-    'declarative navigator API and ResizableMaterialPage',
+    'declarative navigator API and MaterialPage',
     () {
       ({
         GlobalKey<NavigatorState> navigatorKey,
@@ -1088,15 +1128,19 @@ void main() {
       boilerplate() {
         final navigatorKey = GlobalKey<NavigatorState>();
         final navigatorResizableKey = UniqueKey();
-        const pageA = ResizableMaterialPage(
+        const pageA = MaterialPage<void>(
           name: 'a',
           key: ValueKey('a'),
-          child: _TestRouteWidget(initialSize: Size(100, 200)),
+          child: ResizableNavigatorRouteContentBoundary(
+            child: _TestRouteWidget(initialSize: Size(100, 200)),
+          ),
         );
-        const pageB = ResizableMaterialPage(
+        const pageB = MaterialPage<void>(
           name: 'b',
           key: ValueKey('b'),
-          child: _TestRouteWidget(initialSize: Size(200, 300)),
+          child: ResizableNavigatorRouteContentBoundary(
+            child: _TestRouteWidget(initialSize: Size(200, 300)),
+          ),
         );
 
         var location = '/a';
@@ -1292,12 +1336,15 @@ void main() {
         child: Navigator(
           onGenerateInitialRoutes: (navigator, initialRoute) {
             return [
-              ResizablePageRouteBuilder(
+              PageRouteBuilder(
                 settings: const RouteSettings(name: 'a'),
-                pageBuilder: (_, _, _) => _TestRouteWidget(
-                  key: routeContentKey,
-                  initialSize: initialContentSize,
-                ),
+                pageBuilder: (_, _, _) =>
+                    ResizableNavigatorRouteContentBoundary(
+                      child: _TestRouteWidget(
+                        key: routeContentKey,
+                        initialSize: initialContentSize,
+                      ),
+                    ),
                 transitionsBuilder: _testTransitionsBuilder,
               ),
             ];
@@ -1453,15 +1500,18 @@ void main() {
               child: NavigatorResizable(
                 child: Navigator(
                   onGenerateRoute: (settings) {
-                    return ResizablePageRouteBuilder(
+                    return PageRouteBuilder(
                       settings: settings,
                       transitionsBuilder: _testTransitionsBuilder,
-                      pageBuilder: (_, _, _) => GestureDetector(
-                        onTap: () => isRouteContentTapped = true,
-                        child: const _TestRouteWidget(
-                          initialSize: Size(200, 200),
-                        ),
-                      ),
+                      pageBuilder: (_, _, _) =>
+                          ResizableNavigatorRouteContentBoundary(
+                            child: GestureDetector(
+                              onTap: () => isRouteContentTapped = true,
+                              child: const _TestRouteWidget(
+                                initialSize: Size(200, 200),
+                              ),
+                            ),
+                          ),
                     );
                   },
                 ),
@@ -1563,6 +1613,233 @@ void main() {
       },
     );
   });
+  group('Routes without a content boundary', () {
+    late GlobalKey<NavigatorState> navigatorKey;
+    late Key navigatorResizableKey;
+    late Widget testWidget;
+
+    setUp(() {
+      navigatorKey = GlobalKey<NavigatorState>();
+      navigatorResizableKey = UniqueKey();
+      testWidget = MaterialApp(
+        home: Align(
+          child: NavigatorResizable(
+            key: navigatorResizableKey,
+            child: Navigator(
+              key: navigatorKey,
+              onGenerateInitialRoutes: (_, _) => [
+                MaterialPageRoute<void>(
+                  builder: (_) => const ResizableNavigatorRouteContentBoundary(
+                    child: _TestRouteWidget(initialSize: Size(100, 200)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+
+    Size navigatorSize(WidgetTester tester) {
+      return tester
+          .renderObject<RenderBox>(find.byKey(navigatorResizableKey))
+          .size;
+    }
+
+    testWidgets('Do not change the size of the navigator', (tester) async {
+      await tester.pumpWidget(testWidget);
+      expect(navigatorSize(tester), const Size(100, 200));
+
+      navigatorKey.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (_) => const _TestRouteWidget(initialSize: Size(300, 400)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        navigatorSize(tester),
+        const Size(100, 200),
+        reason:
+            'The size should remain unchanged while a route without '
+            'a content boundary is the top-most route.',
+      );
+
+      navigatorKey.currentState!.pop();
+      await tester.pumpAndSettle();
+      expect(navigatorSize(tester), const Size(100, 200));
+    });
+
+    testWidgets('Do not prevent the routes below from being observed', (
+      tester,
+    ) async {
+      await tester.pumpWidget(testWidget);
+      navigatorKey.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (_) => const _TestRouteWidget(initialSize: Size(300, 400)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      navigatorKey.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (_) => const ResizableNavigatorRouteContentBoundary(
+            child: _TestRouteWidget(initialSize: Size(200, 300)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(navigatorSize(tester), const Size(200, 300));
+    });
+  });
+
+  testWidgets('The size follows a route with maintainState: false', (
+    tester,
+  ) async {
+    final navigatorKey = GlobalKey<NavigatorState>();
+    final navigatorResizableKey = UniqueKey();
+    Size navigatorSize() {
+      return tester
+          .renderObject<RenderBox>(find.byKey(navigatorResizableKey))
+          .size;
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Align(
+          child: NavigatorResizable(
+            key: navigatorResizableKey,
+            child: Navigator(
+              key: navigatorKey,
+              onGenerateInitialRoutes: (_, _) => [
+                MaterialPageRoute<void>(
+                  maintainState: false,
+                  builder: (_) => const ResizableNavigatorRouteContentBoundary(
+                    child: _TestRouteWidget(initialSize: Size(100, 200)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(navigatorSize(), const Size(100, 200));
+
+    navigatorKey.currentState!.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const ResizableNavigatorRouteContentBoundary(
+          child: _TestRouteWidget(initialSize: Size(200, 300)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(navigatorSize(), const Size(200, 300));
+    expect(
+      find.byType(_TestRouteWidget),
+      findsOneWidget,
+      reason: 'The content of the first route should have been removed.',
+    );
+
+    navigatorKey.currentState!.pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final midTransitionSize = navigatorSize();
+    expect(midTransitionSize.width, greaterThan(100));
+    expect(midTransitionSize.width, lessThan(200));
+
+    await tester.pumpAndSettle();
+    expect(navigatorSize(), const Size(100, 200));
+  });
+
+  testWidgets('Nested NavigatorResizables do not interfere with each other', (
+    tester,
+  ) async {
+    final innerNavigatorKey = GlobalKey<NavigatorState>();
+    final outerNavigatorResizableKey = UniqueKey();
+    final innerNavigatorResizableKey = UniqueKey();
+
+    Size sizeOf(Key key) {
+      return tester.renderObject<RenderBox>(find.byKey(key)).size;
+    }
+
+    Widget buildInnerNavigator() {
+      return Align(
+        child: NavigatorResizable(
+          key: innerNavigatorResizableKey,
+          child: Navigator(
+            key: innerNavigatorKey,
+            onGenerateInitialRoutes: (_, _) => [
+              MaterialPageRoute<void>(
+                builder: (_) => const ResizableNavigatorRouteContentBoundary(
+                  child: _TestRouteWidget(initialSize: Size(100, 200)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Align(
+          child: NavigatorResizable(
+            key: outerNavigatorResizableKey,
+            child: Navigator(
+              onGenerateInitialRoutes: (_, _) => [
+                // The content of this route has no boundary, so the outer
+                // NavigatorResizable must not adopt the size of the routes
+                // in the inner navigator.
+                MaterialPageRoute<void>(
+                  builder: (_) => buildInnerNavigator(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(sizeOf(innerNavigatorResizableKey), const Size(100, 200));
+    expect(sizeOf(outerNavigatorResizableKey), const Size(800, 600));
+
+    innerNavigatorKey.currentState!.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const ResizableNavigatorRouteContentBoundary(
+          child: _TestRouteWidget(initialSize: Size(300, 400)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(sizeOf(innerNavigatorResizableKey), const Size(300, 400));
+    expect(sizeOf(outerNavigatorResizableKey), const Size(800, 600));
+  });
+}
+
+/// A [Page] that creates a [PageRouteBuilder] in terms of callbacks.
+class _TestPage extends Page<void> {
+  const _TestPage({
+    required LocalKey super.key,
+    required String super.name,
+    required this.transitionDuration,
+    required this.transitionsBuilder,
+    required this.child,
+  });
+
+  final Duration transitionDuration;
+  final RouteTransitionsBuilder transitionsBuilder;
+  final Widget child;
+
+  @override
+  Route<void> createRoute(BuildContext context) {
+    return PageRouteBuilder<void>(
+      settings: this,
+      transitionDuration: transitionDuration,
+      reverseTransitionDuration: transitionDuration,
+      pageBuilder: (_, _, _) => child,
+      transitionsBuilder: transitionsBuilder,
+    );
+  }
 }
 
 class _TestRouteWidget extends StatefulWidget {

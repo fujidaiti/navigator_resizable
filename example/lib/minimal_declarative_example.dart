@@ -13,40 +13,49 @@ class ExampleHome extends StatefulWidget {
 }
 
 class _ExampleHomeState extends State<ExampleHome> {
-  // IMPORTANT: Use ResizableMaterialPage instead of MaterialPage.
-  late final ResizableMaterialPage _pageA = ResizableMaterialPage(
+  // IMPORTANT: Wrap the content of each page in
+  // a ResizableNavigatorRouteContentBoundary.
+  late final MaterialPage<void> _pageA = MaterialPage<void>(
     key: const ValueKey('a'),
-    child: const _ExampleRouteContent(
-      title: 'Page A',
-      size: Size(280, 160),
-      color: Colors.blue,
+    child: const ResizableNavigatorRouteContentBoundary(
+      child: _ExampleRouteContent(
+        title: 'Page A',
+        size: Size(280, 160),
+        color: Colors.blue,
+      ),
     ),
   );
 
-  late final ResizableMaterialPage _pageB = ResizableMaterialPage(
+  late final MaterialPage<void> _pageB = MaterialPage<void>(
     key: const ValueKey('b'),
-    child: const _ExampleRouteContent(
-      title: 'Page B',
-      size: Size(320, 220),
-      color: Colors.green,
+    child: const ResizableNavigatorRouteContentBoundary(
+      child: _ExampleRouteContent(
+        title: 'Page B',
+        size: Size(360, 280),
+        color: Colors.green,
+      ),
     ),
   );
 
-  late final ResizableMaterialPage _pageC = ResizableMaterialPage(
+  late final MaterialPage<void> _pageC = MaterialPage<void>(
     key: const ValueKey('c'),
-    child: const _ExampleRouteContent(
-      title: 'Page C',
-      size: Size(360, 280),
-      color: Colors.red,
+    child: const ResizableNavigatorRouteContentBoundary(
+      child: _ExampleRouteContent(
+        title: 'Page C',
+        size: Size(320, 220),
+        color: Colors.red,
+      ),
     ),
   );
 
-  late final ResizableMaterialPage _pageD = ResizableMaterialPage(
+  late final MaterialPage<void> _pageD = MaterialPage<void>(
     key: const ValueKey('d'),
-    child: const _ExampleRouteContent(
-      title: 'Page D',
-      size: Size(300, 200),
-      color: Colors.yellow,
+    child: const ResizableNavigatorRouteContentBoundary(
+      child: _ExampleRouteContent(
+        title: 'Page D',
+        size: Size(300, 200),
+        color: Colors.yellow,
+      ),
     ),
   );
 

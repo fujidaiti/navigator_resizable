@@ -5,7 +5,6 @@ import 'package:example/src/variable_height_page.dart';
 import 'package:example/src/welcome_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:navigator_resizable/navigator_resizable.dart';
 
 void main() {
   runApp(MaterialApp.router(routerConfig: _router));
@@ -23,7 +22,7 @@ final _router = GoRouter(
           routes: [
             GoRoute(
               path: 'a',
-              pageBuilder: (context, state) => ResizableMaterialPage(
+              pageBuilder: (context, state) => MaterialPage<void>(
                 key: state.pageKey,
                 child: WelcomePage(
                   onNext: () => context.go('/a/b'),
@@ -33,7 +32,7 @@ final _router = GoRouter(
               routes: [
                 GoRoute(
                   path: 'b',
-                  pageBuilder: (context, state) => ResizableMaterialPage(
+                  pageBuilder: (context, state) => MaterialPage<void>(
                     key: state.pageKey,
                     child: VariableHeightPage(
                       onNext: () => context.go('/a/b/c'),
@@ -42,7 +41,7 @@ final _router = GoRouter(
                   routes: [
                     GoRoute(
                       path: 'c',
-                      pageBuilder: (context, state) => ResizableMaterialPage(
+                      pageBuilder: (context, state) => MaterialPage<void>(
                         key: state.pageKey,
                         child: FormPage(
                           autoFocus: false,
@@ -55,22 +54,21 @@ final _router = GoRouter(
                       routes: [
                         GoRoute(
                           path: 'd',
-                          pageBuilder: (context, state) =>
-                              ResizableMaterialPage(
-                                key: state.pageKey,
-                                child: FormPage(
-                                  autoFocus: true,
-                                  submitButton: FilledButton(
-                                    onPressed: () => context.go('/a/b/c/d/e'),
-                                    child: Text('Next'),
-                                  ),
-                                ),
+                          pageBuilder: (context, state) => MaterialPage<void>(
+                            key: state.pageKey,
+                            child: FormPage(
+                              autoFocus: true,
+                              submitButton: FilledButton(
+                                onPressed: () => context.go('/a/b/c/d/e'),
+                                child: Text('Next'),
                               ),
+                            ),
+                          ),
                           routes: [
                             GoRoute(
                               path: 'e',
                               pageBuilder: (context, state) =>
-                                  ResizableMaterialPage(
+                                  MaterialPage<void>(
                                     key: state.pageKey,
                                     child: PortalPage(
                                       destinations: [
@@ -94,7 +92,7 @@ final _router = GoRouter(
             ),
             GoRoute(
               path: 'x',
-              pageBuilder: (context, state) => ResizableMaterialPage(
+              pageBuilder: (context, state) => MaterialPage<void>(
                 key: state.pageKey,
                 child: PortalPage(
                   destinations: ['/a/b/c/d', '/a/b/c', '/a/b', '/a'],
