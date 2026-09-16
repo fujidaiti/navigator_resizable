@@ -237,6 +237,7 @@ laying the content out. One pass cannot produce it, so the boundary measures
 first and re-lays out second:
 
 ```dart
+// Or child.getDryLayout(bypassedConstraints)
 child.layout(bypassedConstraints, parentUsesSize: true);
 child.layout(
   BoxConstraints.loose(Size.copy(child.size)),
