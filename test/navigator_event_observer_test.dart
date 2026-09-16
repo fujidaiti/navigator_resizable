@@ -835,6 +835,137 @@ void main() {
     });
 
     testWidgets(
+      'When iOS swipe back gesture is dragged to the end '
+      'without lifting the finger',
+      (tester) async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
+        env.navigatorKey.currentState!.pushNamed('b');
+        await tester.pumpAndSettle();
+        expect(find.text('Page:a'), findsNothing);
+        expect(find.text('Page:b'), findsOneWidget);
+
+        reset(env.listener);
+        // Start a swipe back gesture.
+        final gesture = await tester.startGesture(const Offset(0, 200));
+        await gesture.moveBy(const Offset(50, 0));
+        await tester.pumpAndSettle();
+
+        final verification = verify(
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'a')),
+            captureAny,
+            isUserGestureInProgress: true,
+          ),
+        )..called(1);
+        final capturedAnimation =
+            verification.captured.single as Animation<double>;
+        startTrackingTransitionProgress(capturedAnimation);
+
+        // Drag the finger across the entire width of the screen (800px)
+        // so that the transition progress reaches its end, but do not
+        // lift the finger yet.
+        for (var i = 0; i < 8; i++) {
+          await gesture.moveBy(const Offset(100, 0));
+          await tester.pumpAndSettle();
+        }
+        expect(capturedAnimation.value, isZero);
+        // The route 'b' has not been popped yet, since the gesture
+        // is still in progress.
+        expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
+        expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
+        verifyNoMoreInteractions(env.listener);
+
+        // End the swipe back gesture.
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Page:a'), findsOneWidget);
+        expect(find.text('Page:b'), findsNothing);
+        expect(transitionProgressHistory, isMonotonicallyDecreasing);
+        expect(env.getObserver().lastSettledRoute, isRoute(name: 'a'));
+        verifyInOrder([
+          env.listener.didComplete(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didPop(
+            argThat(isRoute(name: 'b')),
+            argThat(isNull),
+          ),
+          env.listener.didPopNext(
+            argThat(isRoute(name: 'a')),
+            argThat(isRoute(name: 'b')),
+          ),
+          env.listener.didEndTransition(
+            argThat(isRoute(name: 'a')),
+          ),
+        ]);
+        verifyNoMoreInteractions(env.listener);
+      },
+    );
+
+    testWidgets(
+      'When iOS swipe back gesture is dragged to the end and then back '
+      'to the start without lifting the finger',
+      (tester) async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
+        env.navigatorKey.currentState!.pushNamed('b');
+        await tester.pumpAndSettle();
+        expect(find.text('Page:a'), findsNothing);
+        expect(find.text('Page:b'), findsOneWidget);
+
+        reset(env.listener);
+        // Start a swipe back gesture.
+        final gesture = await tester.startGesture(const Offset(0, 200));
+        await gesture.moveBy(const Offset(50, 0));
+        await tester.pumpAndSettle();
+
+        final verification = verify(
+          env.listener.didStartTransition(
+            argThat(isRoute(name: 'a')),
+            captureAny,
+            isUserGestureInProgress: true,
+          ),
+        )..called(1);
+        final capturedAnimation =
+            verification.captured.single as Animation<double>;
+
+        // Drag the finger to the end of the screen and then drag it back
+        // to the start position, without lifting the finger.
+        for (var i = 0; i < 8; i++) {
+          await gesture.moveBy(const Offset(100, 0));
+          await tester.pumpAndSettle();
+        }
+        expect(capturedAnimation.value, isZero);
+        for (var i = 0; i < 8; i++) {
+          await gesture.moveBy(const Offset(-100, 0));
+          await tester.pumpAndSettle();
+        }
+        // Lift the finger, which cancels the gesture.
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Page:a'), findsNothing);
+        expect(find.text('Page:b'), findsOneWidget);
+        expect(env.getObserver().lastSettledRoute, isRoute(name: 'b'));
+        verify(
+          env.listener.didEndTransition(
+            argThat(isRoute(name: 'b')),
+          ),
+        ).called(1);
+        verifyNoMoreInteractions(env.listener);
+      },
+    );
+
+    testWidgets(
       'When Android predictive back gesture is performed',
       variant: TargetPlatformVariant.only(TargetPlatform.android),
       (tester) async {

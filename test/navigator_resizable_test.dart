@@ -402,6 +402,46 @@ void main() {
         expect(env.getBox(tester).size, const Size(200, 300));
       },
     );
+
+    testWidgets(
+      'When iOS swipe back gesture is dragged to the end '
+      'without lifting the finger',
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
+
+        env.navigatorKey.currentState!.pushNamed('b');
+        await tester.pumpAndSettle();
+
+        final transitionProgress =
+            env.navigatorKey.currentState!.currentRoute.animation!;
+
+        // Start a swipe back gesture.
+        final gesture = await tester.startGesture(const Offset(300, 300));
+        await gesture.moveBy(const Offset(20, 0));
+        await tester.pump();
+        expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
+        expect(transitionProgress.value, moreOrLessEquals(0.9));
+        expect(env.getBox(tester).size, const Size(190, 290));
+
+        // Drag the finger until the transition progress reaches its end,
+        // but do not lift the finger yet. The navigator's width is 200,
+        // which equals the width of the current route b, so a drag delta
+        // of 180 more is enough to complete the transition.
+        await gesture.moveBy(const Offset(180, 0));
+        await tester.pump();
+        expect(transitionProgress.value, isZero);
+        expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
+        expect(env.getBox(tester).size, const Size(100, 200));
+
+        // End the swipe back gesture.
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
+        expect(env.getBox(tester).size, const Size(100, 200));
+      },
+    );
   });
 
   group(
