@@ -1599,6 +1599,102 @@ void main() {
       },
     );
   });
+
+  // Regression tests for the overlay compatibility issue introduced by
+  // df6c212 ("Fix one-frame delay in NavigatorResizable's size updates").
+  //
+  // Since that commit, the Navigator under a NavigatorResizable is laid out
+  // with an unbounded constraint. As a result, the Overlay's _RenderTheater
+  // also receives an unbounded constraint, which breaks OverlayPortal:
+  // _RenderLayoutSurrogateProxyBox.performLayout reads _RenderTheater.size
+  // while the theater is still laying out, which trips the
+  // 'sizeAccessAllowed' assertion in RenderBox.size.
+  group('Overlay entry compatibility test', () {
+    Widget boilerplate(WidgetBuilder routeContentBuilder) {
+      return MaterialApp(
+        home: Align(
+          alignment: Alignment.center,
+          child: NavigatorResizable(
+            child: Navigator(
+              onGenerateRoute: (settings) {
+                return ResizableMaterialPageRoute<void>(
+                  settings: settings,
+                  builder: routeContentBuilder,
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('Inserting a plain OverlayEntry from a route', (tester) async {
+      late BuildContext routeContentContext;
+      await tester.pumpWidget(
+        boilerplate((context) {
+          routeContentContext = context;
+          return const _TestRouteWidget(initialSize: Size(100, 200));
+        }),
+      );
+
+      Overlay.of(routeContentContext).insert(
+        OverlayEntry(
+          builder: (_) => const Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(width: 10, height: 10),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Showing an OverlayPortal from a route', (tester) async {
+      final controller = OverlayPortalController();
+      await tester.pumpWidget(
+        boilerplate(
+          (context) => SizedBox(
+            width: 100,
+            height: 200,
+            child: OverlayPortal(
+              controller: controller,
+              overlayChildBuilder: (_) => const Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(width: 10, height: 10),
+              ),
+              child: const SizedBox.shrink(),
+            ),
+          ),
+        ),
+      );
+
+      controller.show();
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Showing a Tooltip from a route', (tester) async {
+      await tester.pumpWidget(
+        boilerplate(
+          (context) => const SizedBox(
+            width: 200,
+            height: 200,
+            child: Tooltip(
+              message: 'tooltip message',
+              child: Icon(Icons.info),
+            ),
+          ),
+        ),
+      );
+
+      tester.state<TooltipState>(find.byType(Tooltip)).ensureTooltipVisible();
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+    });
+  });
 }
 
 class _TestRouteWidget extends StatefulWidget {
