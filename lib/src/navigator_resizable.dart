@@ -2,9 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart' as physics;
 import 'package:flutter/rendering.dart';
-
-import 'navigator_event_observer.dart';
-import 'resizable_navigator_routes.dart';
+import 'package:flutter/services.dart';
 
 /// A widget that resizes the child [Navigator] to match the intrinsic size of
 /// the current [Route]'s content.
@@ -29,22 +27,50 @@ import 'resizable_navigator_routes.dart';
 /// ### Routes and Pages
 ///
 /// The [NavigatorResizable] can respect the content size of a route
-/// only if the route mixes in the [ObservableRouteMixin] and its content
-/// is wrapped in a [ResizableNavigatorRouteContentBoundary].
+/// only if the route's content is wrapped in a [ResizableRouteContent].
+/// Any standard route or page class can be used, as long as this holds.
 /// This is especially important during route transitions, as the
 /// [NavigatorResizable] can animate its size in sync with the transition
 /// animation only when both the current route and the next route satisfy
-/// those requirements. Otherwise, the navigator's size changes abruptly
+/// that requirement. Otherwise, the navigator's size changes abruptly
 /// without any animation.
 ///
-/// For convenience, the following built-in route and page classes are provided,
-/// all of which satisfy the requirements of [NavigatorResizable]:
+/// ```dart
+/// Navigator.push(
+///   context,
+///   MaterialPageRoute(
+///     builder: (context) => ResizableRouteContent(child: MyPage()),
+///   ),
+/// );
+/// ```
 ///
-/// - [ResizableMaterialPageRoute]: A replacement for [MaterialPageRoute].
-/// - [ResizableMaterialPage]: A replacement for [MaterialPage].
-/// - [ResizablePageRouteBuilder]: A replacement for [PageRouteBuilder].
-/// - [ResizablePageRoutePageBuilder]: Similar to [ResizablePageRouteBuilder],
-///   but creates a [Page].
+/// ### Android's predictive back gesture
+///
+/// Flutter's [PredictiveBackPageTransitionsBuilder], which is the default page
+/// transition for Android, drives the route's transition animation as the back
+/// gesture progresses, and resets that animation to 1.0 at the moment the
+/// gesture is committed. The navigator's size therefore follows the gesture
+/// and then jumps back to the size of the route being popped before it
+/// animates to the target size.
+///
+/// Which page transition to use is the application's decision, so the
+/// [NavigatorResizable] does not interfere with it. If you prefer a size
+/// transition that runs only after the gesture is committed, choose a page
+/// transition that does not support the predictive back gesture, such as
+/// [FadeForwardsPageTransitionsBuilder]:
+///
+/// ```dart
+/// MaterialApp(
+///   theme: ThemeData(
+///     pageTransitionsTheme: const PageTransitionsTheme(
+///       builders: {
+///         TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+///       },
+///     ),
+///   ),
+///   ...
+/// );
+/// ```
 ///
 /// Note that the [child] navigator and its routes are constrained by the
 /// constraints imposed by the parent widget of the [NavigatorResizable].
@@ -53,35 +79,32 @@ import 'resizable_navigator_routes.dart';
 /// to [double.infinity].
 ///
 /// ```dart
-/// ResizableMaterialPageRoute(
+/// MaterialPageRoute(
 ///   builder: (context) {
-///     return Container(
-///       color: Colors.white,
-///       width: double.infinity,
-///       height: double.infinity,
+///     return ResizableRouteContent(
+///       child: Container(
+///         color: Colors.white,
+///         width: double.infinity,
+///         height: double.infinity,
+///       ),
 ///     );
 ///   },
 /// );
 /// ```
 ///
-/// For more advanced use cases, you can create a custom route
-/// compatible with [NavigatorResizable] by mixing in
-/// the [ObservableRouteMixin] and returning a
-/// [_RenderRouteContentBoundaryWidget] in [ModalRoute.buildPage].
+/// For more advanced use cases, you can create a custom route compatible with
+/// [NavigatorResizable] by returning a [ResizableRouteContent] from
+/// [ModalRoute.buildPage].
 ///
 /// ```dart
-/// class CustomResizableRoute<T> extends ModalRoute<T>
-///   with ObservableRouteMixin<T>{
-///   CustomResizableRoute({
-///     required super.builder,
-///     ...
-///   });
-///
+/// class CustomRoute<T> extends ModalRoute<T> {
 ///   @override
-///   Widget buildContent(BuildContext context) {
-///     return ResizableNavigatorRouteContentBoundary(
-///       child: builder(context),
-///     );
+///   Widget buildPage(
+///     BuildContext context,
+///     Animation<double> animation,
+///     Animation<double> secondaryAnimation,
+///   ) {
+///     return ResizableRouteContent(child: builder(context));
 ///   }
 /// }
 /// ```
@@ -124,12 +147,14 @@ import 'resizable_navigator_routes.dart';
 /// ```dart
 /// Navigator.push(
 ///   context,
-///   ResizableMaterialPageRoute(
+///   MaterialPageRoute(
 ///     builder: (context) {
-///       return Container(
-///         color: Colors.red,
-///         width: 300,
-///         height: 300,
+///       return ResizableRouteContent(
+///         child: Container(
+///           color: Colors.red,
+///           width: 300,
+///           height: 300,
+///         ),
 ///       );
 ///     },
 ///   ),
@@ -238,51 +263,286 @@ class NavigatorResizable extends StatefulWidget {
 /// completes. That is, the navigator may be bigger or smaller than the
 /// [NavigatorResizable]'s boundary box while transitioning, and the overflowing
 /// portions, if any, are visually clipped out.
-class _NavigatorResizableState extends State<NavigatorResizable>
-    with NavigatorEventListener {
+class _NavigatorResizableState extends State<NavigatorResizable> {
   /// Represents an interpolated size of the navigator during a transition.
   /// The value is available only when the transition is running; otherwise
   /// it reports null.
   late final _SizeProxyAnimation _sizeInterpolation;
 
-  Route<dynamic>? _lastSettledRoute;
+  /// The content boundary of every route that is currently installed in the
+  /// child navigator, keyed by the route it belongs to.
+  ///
+  /// A route enters this map when its [ResizableRouteContent] is mounted,
+  /// which happens after [Route.install], and leaves it when that widget is
+  /// disposed. Routes that the navigator has announced but not yet installed,
+  /// and routes that have already been disposed, are therefore never in it.
+  final _routeContents = <ModalRoute<dynamic>, _ResizableRouteContentState>{};
+
+  /// The navigator that owns the tracked routes.
+  ///
+  /// Obtained from the routes themselves, since the navigator is a descendant
+  /// of this widget and cannot be looked up from this context.
+  NavigatorState? _navigator;
+
+  /// The route this widget is sized to while no transition is running.
+  ModalRoute<dynamic>? _settledRoute;
+
+  /// The route the running transition is heading to, if any.
+  ModalRoute<dynamic>? _destinationRoute;
+
+  /// The animation that drives the progress of the running transition, if any.
+  Animation<double>? _transitionDriver;
+
+  /// Whether the running transition is driven by a user's back gesture.
+  bool _isGestureDrivenTransition = false;
+
+  /// The most recent non-null value of [_sizeInterpolation] within the running
+  /// transition.
+  ///
+  /// [_sizeInterpolation] reports null as soon as one of the routes it
+  /// interpolates between leaves the tracked set, which happens when a
+  /// transition is replaced by another one that removes the route the previous
+  /// transition was heading to. This keeps the size the user last saw
+  /// available as the origin of the new transition.
+  Size? _lastInterpolatedSize;
 
   @override
   void initState() {
     super.initState();
-    _sizeInterpolation = _SizeProxyAnimation();
+    _sizeInterpolation = _SizeProxyAnimation()
+      ..addListener(_handleSizeInterpolationChange);
+  }
+
+  void _handleSizeInterpolationChange() {
+    _lastInterpolatedSize = _sizeInterpolation.value ?? _lastInterpolatedSize;
+  }
+
+  /// The size to start the next transition from, which is the size currently
+  /// displayed.
+  Size? get _originSize {
+    return _sizeInterpolation.value ??
+        _lastInterpolatedSize ??
+        _sizeOf(_settledRoute);
   }
 
   @override
   void dispose() {
-    _sizeInterpolation.dispose();
+    _navigator?.userGestureInProgressNotifier.removeListener(
+      _handleStateChange,
+    );
+    _navigator = null;
+    _sizeInterpolation
+      ..removeListener(_handleSizeInterpolationChange)
+      ..dispose();
     super.dispose();
   }
 
-  @override
-  VoidCallback? didInstall(Route<dynamic> route) {
-    void onDispose() {
-      if (route == _lastSettledRoute) {
-        _lastSettledRoute = null;
-      }
+  void _registerRouteContent(
+    ModalRoute<dynamic> route,
+    _ResizableRouteContentState content,
+  ) {
+    assert(!_routeContents.containsKey(route));
+    _routeContents[route] = content;
+    route.animation?.addStatusListener(_handleAnimationStatusChange);
+
+    final navigator = route.navigator;
+    if (navigator != null && navigator != _navigator) {
+      _navigator?.userGestureInProgressNotifier.removeListener(
+        _handleStateChange,
+      );
+      _navigator = navigator
+        ..userGestureInProgressNotifier.addListener(_handleStateChange);
     }
 
-    return onDispose;
+    _handleStateChange();
   }
 
-  @override
-  void didStartTransition(
-    Route<dynamic> targetRoute,
-    Animation<double> animation, {
-    bool isUserGestureInProgress = false,
-  }) {
-    if (isUserGestureInProgress) {
-      _startUserGestureTransition(targetRoute, animation);
-    } else if (animation.status == AnimationStatus.forward) {
-      _startPushTransition(targetRoute, animation);
+  void _unregisterRouteContent(ModalRoute<dynamic> route) {
+    if (_routeContents.remove(route) == null) {
+      return;
+    }
+    route.animation?.removeStatusListener(_handleAnimationStatusChange);
+    if (route == _settledRoute && route.navigator == null) {
+      // The route has been disposed. A route that still has a navigator is
+      // only temporarily detached from the tree, for example when the
+      // framework reparents the route's content as a back gesture starts, and
+      // it registers itself again in the same frame.
+      _settledRoute = null;
+    }
+    _handleStateChange();
+  }
+
+  void _handleAnimationStatusChange(AnimationStatus status) {
+    _handleStateChange();
+  }
+
+  Size? _sizeOf(ModalRoute<dynamic>? route) {
+    return route == null ? null : _routeContents[route]?.contentSize;
+  }
+
+  /// The tracked route that is on top of the navigator's stack and visible to
+  /// the user, or null if no tracked route is current.
+  ModalRoute<dynamic>? get _currentRoute {
+    for (final route in _routeContents.keys) {
+      if (route.isCurrent) {
+        return route;
+      }
+    }
+    return null;
+  }
+
+  /// The tracked route that is visually on top, which is the topmost route
+  /// that is animating out if there is one, and [_currentRoute] otherwise.
+  ///
+  /// A route that has been popped or removed stays tracked until its exit
+  /// animation completes, and it is always above every active route: a removal
+  /// in the middle of the stack completes within the same frame and never
+  /// animates. The topmost one is the one with nothing above it, which is
+  /// the one whose [TransitionRoute.secondaryAnimation] is dismissed.
+  ModalRoute<dynamic>? get _topRoute {
+    ModalRoute<dynamic>? anyExitingRoute;
+    for (final route in _routeContents.keys) {
+      if (!route.isActive) {
+        anyExitingRoute ??= route;
+        if (route.secondaryAnimation?.status == AnimationStatus.dismissed) {
+          return route;
+        }
+      }
+    }
+    return anyExitingRoute ?? _currentRoute;
+  }
+
+  /// The tracked route directly below [route], or null if there is none.
+  ///
+  /// Neither [Route] nor [NavigatorState] exposes the navigator's stack, but
+  /// [TransitionRoute] wires the `secondaryAnimation` of a route to the
+  /// `animation` of the route directly above it, so the relation is
+  /// recoverable by comparing the animations those proxies ultimately point
+  /// at.
+  ModalRoute<dynamic>? _routeBelow(ModalRoute<dynamic> route) {
+    final target = _unwrapAnimation(route.animation);
+    if (target == null) {
+      return null;
+    }
+    for (final other in _routeContents.keys) {
+      if (other != route &&
+          identical(_unwrapAnimation(other.secondaryAnimation), target)) {
+        return other;
+      }
+    }
+    return null;
+  }
+
+  /// Follows [ProxyAnimation.parent] and [TrainHoppingAnimation.currentTrain]
+  /// until neither applies, to obtain the animation object that [animation]
+  /// ultimately reports the value of.
+  static Animation<double>? _unwrapAnimation(Animation<double>? animation) {
+    var result = animation;
+    while (true) {
+      switch (result) {
+        case final ProxyAnimation it when it.parent != null:
+          result = it.parent;
+        case final TrainHoppingAnimation it:
+          result = it.currentTrain;
+        case _:
+          return result;
+      }
+    }
+  }
+
+  static bool _isAnimating(Animation<double>? animation) {
+    return animation != null &&
+        (animation.status == AnimationStatus.forward ||
+            animation.status == AnimationStatus.reverse);
+  }
+
+  /// Recomputes the transition state from the tracked routes.
+  ///
+  /// This is the only entry point for state changes. It is called whenever a
+  /// route is registered or unregistered, whenever a route's content is
+  /// rebuilt because its `isCurrent` or `isActive` changed, whenever the
+  /// animation of a tracked route changes its status, and whenever the
+  /// navigator starts or stops a user gesture.
+  ///
+  /// It must never mark an ancestor element as dirty, since it may run during
+  /// the build phase; assigning [_SizeProxyAnimation.parent] only marks
+  /// [_RenderNavigatorResizable] as needing layout, which is legal at any
+  /// point before the layout phase.
+  void _handleStateChange() {
+    if (!mounted) {
+      return;
+    }
+
+    final currentRoute = _currentRoute;
+    if (currentRoute == null) {
+      // No tracked route is current. This happens for a moment during a
+      // transition, when the previous route has been notified that it is no
+      // longer current but the new one has not been installed yet.
+      return;
+    }
+
+    final isUserGestureInProgress = _navigator?.userGestureInProgress ?? false;
+
+    final topRoute = _topRoute;
+    final exitAnimation =
+        topRoute != null &&
+            topRoute != currentRoute &&
+            _isAnimating(topRoute.animation)
+        ? topRoute.animation
+        : null;
+
+    final ModalRoute<dynamic> destinationRoute;
+    final Animation<double>? driver;
+    final bool isGestureDriven;
+    if (exitAnimation != null) {
+      // A route is animating out. This is also the case while a back gesture
+      // is still reported as in progress but has already been committed, which
+      // is what Android's predictive back gesture does.
+      destinationRoute = currentRoute;
+      driver = exitAnimation;
+      isGestureDriven = false;
+    } else if (isUserGestureInProgress) {
+      // The stack does not change until a back gesture is committed, so the
+      // route being dragged is still the current one and the destination is
+      // the route below it.
+      destinationRoute = _routeBelow(currentRoute) ?? currentRoute;
+      driver = currentRoute.animation;
+      isGestureDriven = true;
+    } else if (_isAnimating(currentRoute.animation)) {
+      destinationRoute = currentRoute;
+      driver = currentRoute.animation;
+      isGestureDriven = false;
     } else {
-      assert(animation.status == AnimationStatus.reverse);
-      _startPopTransition(targetRoute, animation);
+      destinationRoute = currentRoute;
+      driver = null;
+      isGestureDriven = false;
+    }
+
+    if (driver == null && !isUserGestureInProgress) {
+      _endTransition(destinationRoute);
+      return;
+    }
+
+    if (driver == null ||
+        (destinationRoute == _destinationRoute &&
+            driver == _transitionDriver &&
+            isGestureDriven == _isGestureDrivenTransition)) {
+      // Either a gesture is in progress but nothing is animating, which is the
+      // case while the dragged route is held at either end of its animation,
+      // or the running transition is unchanged. In both cases the current size
+      // interpolation stays as it is.
+      return;
+    }
+
+    _destinationRoute = destinationRoute;
+    _transitionDriver = driver;
+    _isGestureDrivenTransition = isGestureDriven;
+    if (isGestureDriven) {
+      _startUserGestureTransition(destinationRoute, driver);
+    } else if (driver == currentRoute.animation) {
+      _startPushTransition(destinationRoute, driver);
+    } else {
+      _startPopTransition(destinationRoute, driver);
     }
   }
 
@@ -291,11 +551,9 @@ class _NavigatorResizableState extends State<NavigatorResizable>
     Animation<double> animation,
   ) {
     assert(animation.isForwardOrCompleted);
-    final initialSize =
-        _sizeInterpolation.value ??
-        ResizableNavigatorRouteContentBoundary._sizeFor(_lastSettledRoute);
+    final initialSize = _originSize;
     _sizeInterpolation.parent = _LazySizeTween(
-      start: () => ResizableNavigatorRouteContentBoundary._sizeFor(targetRoute),
+      start: () => _sizeOf(targetRoute as ModalRoute<dynamic>),
       end: () => initialSize,
     ).animate(animation);
   }
@@ -305,12 +563,10 @@ class _NavigatorResizableState extends State<NavigatorResizable>
     Animation<double> animation,
   ) {
     assert(animation.isForwardOrCompleted);
-    final initialSize =
-        _sizeInterpolation.value ??
-        ResizableNavigatorRouteContentBoundary._sizeFor(_lastSettledRoute);
+    final initialSize = _originSize;
     _sizeInterpolation.parent = _LazySizeTween(
       start: () => initialSize,
-      end: () => ResizableNavigatorRouteContentBoundary._sizeFor(targetRoute),
+      end: () => _sizeOf(targetRoute as ModalRoute<dynamic>),
     ).chain(CurveTween(curve: widget.interpolationCurve)).animate(animation);
   }
 
@@ -319,13 +575,9 @@ class _NavigatorResizableState extends State<NavigatorResizable>
     Animation<double> animation,
   ) {
     assert(!animation.isForwardOrCompleted);
-    final initialSize =
-        _sizeInterpolation.value ??
-        ResizableNavigatorRouteContentBoundary._sizeFor(_lastSettledRoute);
+    final initialSize = _originSize;
 
-    Size? targetRouteSize() {
-      return ResizableNavigatorRouteContentBoundary._sizeFor(targetRoute);
-    }
+    Size? targetRouteSize() => _sizeOf(targetRoute as ModalRoute<dynamic>);
 
     if (animation.value == 1) {
       _sizeInterpolation.parent = _LazySizeTween(
@@ -355,23 +607,26 @@ class _NavigatorResizableState extends State<NavigatorResizable>
     }
   }
 
-  @override
-  void didEndTransition(Route<dynamic> route) {
-    if (_lastSettledRoute == null ||
+  void _endTransition(ModalRoute<dynamic> destinationRoute) {
+    _destinationRoute = null;
+    _transitionDriver = null;
+    _isGestureDrivenTransition = false;
+    if (_settledRoute == null ||
         // Ignore routes that are added but not displayed.
-        // For example, when jumping from /a to /a/b/c, this callback is called
+        // For example, when jumping from /a to /a/b/c, this can be called
         // with route b before the transition animation starts, but it has no
         // geometry information since it's not laid out.
-        ResizableNavigatorRouteContentBoundary._sizeFor(route) != null) {
-      _lastSettledRoute = route;
+        _sizeOf(destinationRoute) != null) {
+      _settledRoute = destinationRoute;
       _sizeInterpolation.parent = null;
+      _lastInterpolatedSize = null;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return NavigatorEventObserver(
-      listeners: [this],
+    return _NavigatorResizableScope(
+      state: this,
       child: LayoutBuilder(
         builder: (_, constraints) {
           return _BypassedNavigatorConstraints(
@@ -385,6 +640,27 @@ class _NavigatorResizableState extends State<NavigatorResizable>
       ),
     );
   }
+}
+
+/// Exposes the [_NavigatorResizableState] to the [ResizableRouteContent]
+/// widgets in the route contents below it.
+class _NavigatorResizableScope extends InheritedWidget {
+  const _NavigatorResizableScope({
+    required this.state,
+    required super.child,
+  });
+
+  final _NavigatorResizableState state;
+
+  static _NavigatorResizableState? of(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<_NavigatorResizableScope>()
+        ?.state;
+  }
+
+  @override
+  bool updateShouldNotify(_NavigatorResizableScope oldWidget) =>
+      state != oldWidget.state;
 }
 
 class _BypassedNavigatorConstraints extends InheritedWidget {
@@ -517,16 +793,27 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
   }
 }
 
-/// This widget is supposed to be the outermost parent of the [Route]'s content
-/// managed by the [Navigator] under a [NavigatorResizable].
+/// Wraps the content of a [Route] managed by the [Navigator] under a
+/// [NavigatorResizable].
 ///
-/// This is rarely used directly. Instead, use built-in route classes that
-/// satisfy the above requirements, such as [ResizableMaterialPageRoute]
-/// and [ResizablePageRouteBuilder].
-class ResizableNavigatorRouteContentBoundary extends StatelessWidget {
-  /// Creates a container for the [Route]'s content managed by the [Navigator]
-  /// under a [NavigatorResizable].
-  const ResizableNavigatorRouteContentBoundary({
+/// This is the only requirement the [NavigatorResizable] imposes on a route:
+/// the route's content must be wrapped in this widget. Any standard route or
+/// page class, such as [MaterialPageRoute] and [MaterialPage], can be used as
+/// long as this widget is the outermost parent of its content.
+///
+/// ```dart
+/// Navigator.push(
+///   context,
+///   MaterialPageRoute(
+///     builder: (context) => ResizableRouteContent(child: MyPage()),
+///   ),
+/// );
+/// ```
+///
+class ResizableRouteContent extends StatefulWidget {
+  /// Creates a container for the content of a [Route] managed by the
+  /// [Navigator] under a [NavigatorResizable].
+  const ResizableRouteContent({
     super.key,
     required this.child,
   });
@@ -535,30 +822,188 @@ class ResizableNavigatorRouteContentBoundary extends StatelessWidget {
   final Widget child;
 
   @override
+  State<ResizableRouteContent> createState() => _ResizableRouteContentState();
+}
+
+class _ResizableRouteContentState extends State<ResizableRouteContent> {
+  final _boundaryKey = GlobalKey();
+
+  _NavigatorResizableState? _resizable;
+  ModalRoute<dynamic>? _route;
+  bool _isRegistered = false;
+
+  /// The natural size of the route content, measured in the last layout pass,
+  /// or null if the content has not been laid out yet.
+  Size? get contentSize {
+    final renderObject =
+        _boundaryKey.currentContext?.findRenderObject()
+            as _RenderRouteContentBoundary?;
+    return renderObject?.lastMeasuredChildSize;
+  }
+
+  void _register() {
+    if (!_isRegistered && _route != null && _resizable != null) {
+      _isRegistered = true;
+      _resizable!._registerRouteContent(_route!, this);
+    }
+  }
+
+  void _unregister() {
+    if (_isRegistered) {
+      _isRegistered = false;
+      _resizable!._unregisterRouteContent(_route!);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Depending on ModalRoute.of makes this widget rebuild whenever the route's
+    // isCurrent changes, which is how the NavigatorResizable is notified of
+    // stack changes that involve no animation at all, such as Navigator.replace
+    // and a route with a zero transition duration.
+    final route = ModalRoute.of(context);
+    assert(
+      route != null,
+      'ResizableRouteContent must be used within a ModalRoute.',
+    );
+    final resizable = _NavigatorResizableScope.of(context);
+    assert(
+      resizable != null,
+      'ResizableRouteContent must be used within a Navigator '
+      'that is a descendant of a NavigatorResizable.',
+    );
+
+    if (route != _route || resizable != _resizable) {
+      _unregister();
+      _route = route;
+      _resizable = resizable;
+      _register();
+    } else if (!_isRegistered) {
+      // The element was reactivated after having been deactivated.
+      _register();
+    } else {
+      // The route's isCurrent or isActive may have changed.
+      _resizable!._handleStateChange();
+    }
+  }
+
+  @override
+  void deactivate() {
+    // Unregistering here rather than in dispose() keeps the registry free of
+    // routes whose content has already been detached from the tree, whose
+    // render object can no longer be read.
+    _unregister();
+    super.deactivate();
+  }
+
+  @override
+  void dispose() {
+    _unregister();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return _RenderRouteContentBoundaryWidget(
-      key: _globalKeyFor(ModalRoute.of(context)),
+    final result = _RenderRouteContentBoundaryWidget(
+      key: _boundaryKey,
       bypassedConstraints: context
           .dependOnInheritedWidgetOfExactType<_BypassedNavigatorConstraints>()!
           .value,
-      child: child,
+      child: widget.child,
     );
+
+    return switch (Theme.of(context).platform) {
+      TargetPlatform.android => _AnimationLessAndroidBackGestureHandler(
+        child: result,
+      ),
+      _ => result,
+    };
+  }
+}
+
+/// A deprecated alias of [ResizableRouteContent].
+@Deprecated('Use ResizableRouteContent instead.')
+typedef ResizableNavigatorRouteContentBoundary = ResizableRouteContent;
+
+/// Enables Android's predictive back gesture to pop routes within the
+/// nested [Navigator], without modifying route transition progress during
+/// the gesture.
+///
+/// This is a workaround for the issue where [TransitionRoute.animation]
+/// jumps from a mid-transition value to 1.0 when the back gesture is committed,
+/// causing an abrupt pop-transition animation.
+///
+/// The root cause is that [TransitionRoute.handleUpdateBackGestureProgress]
+/// updates the [TransitionRoute.controller]'s value as the gesture progresses,
+/// but [TransitionRoute.handleCommitBackGesture] triggers the transition
+/// animation via [AnimationController.reverse] with 1.0 as the starting point,
+/// regardless of the current [TransitionRoute.controller]'s value.
+///
+/// The default back gesture handler behaves this way, but is incompatible with
+/// [NavigatorResizable]'s size transition. This handler therefore suppresses
+/// gesture-driven transition progress while still allowing the gesture to
+/// commit a route pop.
+class _AnimationLessAndroidBackGestureHandler extends StatefulWidget {
+  const _AnimationLessAndroidBackGestureHandler({
+    required this.child,
+  });
+
+  final Widget child;
+
+  @override
+  State<_AnimationLessAndroidBackGestureHandler> createState() =>
+      _AnimationLessAndroidBackGestureHandlerState();
+}
+
+class _AnimationLessAndroidBackGestureHandlerState
+    extends State<_AnimationLessAndroidBackGestureHandler>
+    with WidgetsBindingObserver {
+  late ModalRoute<dynamic> _route;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
   }
 
-  static final _globalKeyRegistry = Expando<GlobalKey>('boundaryKeyRegistry');
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
-  static GlobalKey? _globalKeyFor(Route<dynamic>? route) {
-    if (route == null) {
-      return null;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _route = ModalRoute.of(context)!;
+  }
+
+  @override
+  bool handleStartBackGesture(PredictiveBackEvent backEvent) {
+    return !backEvent.isButtonEvent && _route.isCurrent && !_route.isFirst;
+  }
+
+  @override
+  void handleCancelBackGesture() {
+    _handleEndBackGesture(isCommitted: false);
+  }
+
+  @override
+  void handleCommitBackGesture() {
+    _handleEndBackGesture(isCommitted: true);
+  }
+
+  void _handleEndBackGesture({required bool isCommitted}) {
+    if (isCommitted && _route.isCurrent) {
+      _route.navigator?.pop();
     }
-    return _globalKeyRegistry[route] ??= GlobalKey();
   }
 
-  static Size? _sizeFor(Route<dynamic>? route) {
-    final key = _globalKeyFor(route);
-    final element = (key?.currentContext as SingleChildRenderObjectElement?);
-    final renderObj = (element?.renderObject as _RenderRouteContentBoundary?);
-    return renderObj?.lastMeasuredChildSize;
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }
 

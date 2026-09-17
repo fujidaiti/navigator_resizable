@@ -11,6 +11,7 @@ class ExampleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: _theme,
       home: Scaffold(
         body: Align(
           // Try changing the alignment for fun!
@@ -21,11 +22,13 @@ class ExampleApp extends StatelessWidget {
             child: NavigatorResizable(
               child: Navigator(
                 onGenerateInitialRoutes: (_, __) => [
-                  // STEP2: Use ResizableMaterialPageRoute instead of MaterialPageRoute.
+                  // STEP2: Wrap the content of every route in a
+                  // ResizableRouteContent.
                   //
                   // That's it!
-                  ResizableMaterialPageRoute(
-                    builder: (context) => const SmallPage(),
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ResizableRouteContent(child: const SmallPage()),
                   ),
                 ],
               ),
@@ -51,8 +54,9 @@ class SmallPage extends StatelessWidget {
             onPressed: () {
               Navigator.push(
                 context,
-                ResizableMaterialPageRoute(
-                  builder: (context) => const MediumPage(),
+                MaterialPageRoute(
+                  builder: (context) =>
+                      ResizableRouteContent(child: const MediumPage()),
                 ),
               );
             },
@@ -80,8 +84,9 @@ class MediumPage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  ResizableMaterialPageRoute(
-                    builder: (context) => const LargePage(),
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ResizableRouteContent(child: const LargePage()),
                   ),
                 );
               },
@@ -120,3 +125,13 @@ class LargePage extends StatelessWidget {
     );
   }
 }
+
+final _theme = ThemeData(
+  // The default Android page transition supports the predictive back gesture,
+  // which makes the navigator size follow the gesture and then jump back when
+  // the gesture is committed. This page transition does not support it, so the
+  // size animation runs only after the gesture is committed.
+  pageTransitionsTheme: const PageTransitionsTheme(
+    builders: {TargetPlatform.android: FadeForwardsPageTransitionsBuilder()},
+  ),
+);
