@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:navigator_resizable/navigator_resizable.dart';
 
 void main() {
-  runApp(const MaterialApp(home: ExampleHome()));
+  runApp(MaterialApp(home: const ExampleHome(), theme: _theme));
 }
 
 class ExampleHome extends StatefulWidget {
@@ -13,40 +13,48 @@ class ExampleHome extends StatefulWidget {
 }
 
 class _ExampleHomeState extends State<ExampleHome> {
-  // IMPORTANT: Use ResizableMaterialPage instead of MaterialPage.
-  late final ResizableMaterialPage _pageA = ResizableMaterialPage(
+  // IMPORTANT: Wrap the content of every page in a ResizableRouteContent.
+  late final MaterialPage _pageA = MaterialPage(
     key: const ValueKey('a'),
-    child: const _ExampleRouteContent(
-      title: 'Page A',
-      size: Size(280, 160),
-      color: Colors.blue,
+    child: ResizableRouteContent(
+      child: const _ExampleRouteContent(
+        title: 'Page A',
+        size: Size(280, 160),
+        color: Colors.blue,
+      ),
     ),
   );
 
-  late final ResizableMaterialPage _pageB = ResizableMaterialPage(
+  late final MaterialPage _pageB = MaterialPage(
     key: const ValueKey('b'),
-    child: const _ExampleRouteContent(
-      title: 'Page B',
-      size: Size(320, 220),
-      color: Colors.green,
+    child: ResizableRouteContent(
+      child: const _ExampleRouteContent(
+        title: 'Page B',
+        size: Size(320, 220),
+        color: Colors.green,
+      ),
     ),
   );
 
-  late final ResizableMaterialPage _pageC = ResizableMaterialPage(
+  late final MaterialPage _pageC = MaterialPage(
     key: const ValueKey('c'),
-    child: const _ExampleRouteContent(
-      title: 'Page C',
-      size: Size(360, 280),
-      color: Colors.red,
+    child: ResizableRouteContent(
+      child: const _ExampleRouteContent(
+        title: 'Page C',
+        size: Size(360, 280),
+        color: Colors.red,
+      ),
     ),
   );
 
-  late final ResizableMaterialPage _pageD = ResizableMaterialPage(
+  late final MaterialPage _pageD = MaterialPage(
     key: const ValueKey('d'),
-    child: const _ExampleRouteContent(
-      title: 'Page D',
-      size: Size(300, 200),
-      color: Colors.yellow,
+    child: ResizableRouteContent(
+      child: const _ExampleRouteContent(
+        title: 'Page D',
+        size: Size(300, 200),
+        color: Colors.yellow,
+      ),
     ),
   );
 
@@ -157,3 +165,13 @@ class _ExampleRouteContent extends StatelessWidget {
     );
   }
 }
+
+final _theme = ThemeData(
+  // The default Android page transition supports the predictive back gesture,
+  // which makes the navigator size follow the gesture and then jump back when
+  // the gesture is committed. This page transition does not support it, so the
+  // size animation runs only after the gesture is committed.
+  pageTransitionsTheme: const PageTransitionsTheme(
+    builders: {TargetPlatform.android: FadeForwardsPageTransitionsBuilder()},
+  ),
+);

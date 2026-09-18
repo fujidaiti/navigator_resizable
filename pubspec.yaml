@@ -2,7 +2,7 @@ name: navigator_resizable
 description: >
   A thin wrapper around Navigator that *visually* resizes the child navigator
   to match the size of the content displayed in the current route.
-version: 3.2.0-wip
+version: 4.0.0-wip
 homepage: https://github.com/fujidaiti/navigator_resizable
 topics:
   - ui
@@ -22,5 +22,3 @@ dev_dependencies:
     sdk: flutter
   pedantic_mono: ^1.29.0
   flutter_lints: ">=5.0.0 <7.0.0"
-  mockito: ^5.4.5
-  build_runner: ^2.4.14

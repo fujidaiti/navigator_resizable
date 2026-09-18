@@ -1,10 +1,48 @@
 # Changelog
 
-## 3.2.0-wip
+## 4.0.0-wip
 
 - Fix a one-frame delay issue
+- Any standard route and page class, such as `MaterialPageRoute` and `MaterialPage`, can now be used with `NavigatorResizable`
+- Fix: the size transition was reported as finished while an iOS back gesture was still in progress ([#57](https://github.com/fujidaiti/navigator_resizable/issues/57))
 
-Note that `BuildContext.size` for widgets below the `NavigatorResizable` now returns the intrinsic size of the navigator's current route. Previously, it returned the size of the parent render object for the `NavigatorResizable`, which was typically the screen size.
+### Breaking changes
+
+`NavigatorEventObserver`, `NavigatorEventListener` and `ObservableRouteMixin` have been removed, together with the `ResizableMaterialPageRoute`, `ResizableMaterialPage`, `ResizablePageRouteBuilder` and `ResizablePageRoutePageBuilder` classes. The `NavigatorResizable` no longer observes navigator events; it discovers routes through the widget that wraps their content instead. Consequently, no route class is special any more, and the only remaining requirement is that the route's content is wrapped in a `ResizableRouteContent`:
+
+```dart
+Navigator.push(
+  context,
+  MaterialPageRoute(
+    builder: (context) => ResizableRouteContent(child: MyPage()),
+  ),
+);
+```
+
+and, with the Pages API:
+
+```dart
+MaterialPage(child: ResizableRouteContent(child: MyPage()));
+```
+
+`ResizableNavigatorRouteContentBoundary` has been renamed to `ResizableRouteContent`. The old name remains as a deprecated alias.
+
+### Android's predictive back gesture
+
+`ResizableMaterialPageRoute` used to force `FadeForwardsPageTransitionsBuilder` on Android, which suppressed the size animation while a predictive back gesture was in progress. Since that class is gone, the page transition is now entirely the application's decision. With Flutter's default Android page transition, the navigator size follows the back gesture and then jumps back to the size of the route being popped when the gesture is committed, because the framework resets the route's transition animation at that moment. To get the previous behavior, choose a page transition that does not support the predictive back gesture:
+
+```dart
+MaterialApp(
+  theme: ThemeData(
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+      },
+    ),
+  ),
+  ...
+);
+```
 
 ## 3.1.0
 
