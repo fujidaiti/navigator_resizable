@@ -284,27 +284,7 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
   /// of this widget and cannot be looked up from this context.
   NavigatorState? _navigator;
 
-  /// The route this widget is sized to while no transition is running.
-  ModalRoute<dynamic>? _settledRoute;
-
-  /// The route the running transition is heading to, if any.
-  ModalRoute<dynamic>? _destinationRoute;
-
-  /// The animation that drives the progress of the running transition, if any.
-  Animation<double>? _transitionDriver;
-
-  /// Whether the running transition is driven by a user's back gesture.
-  bool _isGestureDrivenTransition = false;
-
-  /// The most recent non-null value of [_sizeInterpolation] within the running
-  /// transition.
-  ///
-  /// [_sizeInterpolation] reports null as soon as one of the routes it
-  /// interpolates between leaves the tracked set, which happens when a
-  /// transition is replaced by another one that removes the route the previous
-  /// transition was heading to. This keeps the size the user last saw
-  /// available as the origin of the new transition.
-  Size? _lastInterpolatedSize;
+  _TransitionState _state = const _Settled(null);
 
   @override
   void initState() {
@@ -314,15 +294,21 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
   }
 
   void _handleSizeInterpolationChange() {
-    _lastInterpolatedSize = _sizeInterpolation.value ?? _lastInterpolatedSize;
+    if (_state case final _InTransition state) {
+      state.lastInterpolatedSize =
+          _sizeInterpolation.value ?? state.lastInterpolatedSize;
+    }
   }
 
   /// The size to start the next transition from, which is the size currently
   /// displayed.
   Size? get _originSize {
     return _sizeInterpolation.value ??
-        _lastInterpolatedSize ??
-        _sizeOf(_settledRoute);
+        switch (_state) {
+          _Settled(:final route) => _sizeOf(route),
+          final _InTransition state =>
+            state.lastInterpolatedSize ?? _sizeOf(state.settledRoute),
+        };
   }
 
   @override
@@ -362,12 +348,19 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
       return;
     }
     route.animation?.removeStatusListener(_handleAnimationStatusChange);
-    if (route == _settledRoute && route.navigator == null) {
-      // The route has been disposed. A route that still has a navigator is
-      // only temporarily detached from the tree, for example when the
-      // framework reparents the route's content as a back gesture starts, and
-      // it registers itself again in the same frame.
-      _settledRoute = null;
+    // A route that still has a navigator is only temporarily detached from
+    // the tree, for example when the framework reparents the route's content
+    // as a back gesture starts, and it registers itself again in the same
+    // frame. Only a disposed route is forgotten.
+    if (route.navigator == null) {
+      switch (_state) {
+        case _Settled(route: final settledRoute) when settledRoute == route:
+          _state = const _Settled(null);
+        case final _InTransition state when state.settledRoute == route:
+          state.settledRoute = null;
+        case _:
+          break;
+      }
     }
     _handleStateChange();
   }
@@ -523,10 +516,12 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
       return;
     }
 
+    final previousState = _state;
     if (driver == null ||
-        (destinationRoute == _destinationRoute &&
-            driver == _transitionDriver &&
-            isGestureDriven == _isGestureDrivenTransition)) {
+        (previousState is _InTransition &&
+            destinationRoute == previousState.destinationRoute &&
+            driver == previousState.driver &&
+            isGestureDriven == (previousState is _GestureDriven))) {
       // Either a gesture is in progress but nothing is animating, which is the
       // case while the dragged route is held at either end of its animation,
       // or the running transition is unchanged. In both cases the current size
@@ -534,9 +529,28 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
       return;
     }
 
-    _destinationRoute = destinationRoute;
-    _transitionDriver = driver;
-    _isGestureDrivenTransition = isGestureDriven;
+    // A transition that replaces another one inherits its settled route and
+    // its last interpolated size, which are the fallbacks for the origin size.
+    final (settledRoute, lastInterpolatedSize) = switch (previousState) {
+      _Settled(:final route) => (route, null),
+      _InTransition() => (
+        previousState.settledRoute,
+        previousState.lastInterpolatedSize,
+      ),
+    };
+    _state = isGestureDriven
+        ? _GestureDriven(
+            settledRoute: settledRoute,
+            destinationRoute: destinationRoute,
+            driver: driver,
+            lastInterpolatedSize: lastInterpolatedSize,
+          )
+        : _AnimationDriven(
+            settledRoute: settledRoute,
+            destinationRoute: destinationRoute,
+            driver: driver,
+            lastInterpolatedSize: lastInterpolatedSize,
+          );
     if (isGestureDriven) {
       _startUserGestureTransition(destinationRoute, driver);
     } else if (driver == currentRoute.animation) {
@@ -608,18 +622,20 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
   }
 
   void _endTransition(ModalRoute<dynamic> destinationRoute) {
-    _destinationRoute = null;
-    _transitionDriver = null;
-    _isGestureDrivenTransition = false;
-    if (_settledRoute == null ||
+    final settledRoute = switch (_state) {
+      _Settled(:final route) => route,
+      _InTransition(:final settledRoute) => settledRoute,
+    };
+    if (settledRoute == null ||
         // Ignore routes that are added but not displayed.
         // For example, when jumping from /a to /a/b/c, this can be called
         // with route b before the transition animation starts, but it has no
         // geometry information since it's not laid out.
         _sizeOf(destinationRoute) != null) {
-      _settledRoute = destinationRoute;
+      _state = _Settled(destinationRoute);
       _sizeInterpolation.parent = null;
-      _lastInterpolatedSize = null;
+    } else {
+      _state = _Settled(settledRoute);
     }
   }
 
@@ -640,6 +656,68 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
       ),
     );
   }
+}
+
+/// The state of the size transition of a [NavigatorResizable].
+sealed class _TransitionState {
+  const _TransitionState();
+}
+
+/// No transition is running, and the navigator is sized to [route].
+final class _Settled extends _TransitionState {
+  const _Settled(this.route);
+
+  final ModalRoute<dynamic>? route;
+}
+
+/// A transition towards [destinationRoute] is running.
+sealed class _InTransition extends _TransitionState {
+  _InTransition({
+    required this.settledRoute,
+    required this.destinationRoute,
+    required this.driver,
+    required this.lastInterpolatedSize,
+  });
+
+  /// The route the navigator was sized to before the transition started.
+  ///
+  /// This becomes null if the route is disposed during the transition.
+  ModalRoute<dynamic>? settledRoute;
+
+  final ModalRoute<dynamic> destinationRoute;
+
+  /// The animation that drives the progress of the transition.
+  final Animation<double> driver;
+
+  /// The most recent non-null value of the size interpolation within the
+  /// transition.
+  ///
+  /// The size interpolation reports null as soon as one of the routes it
+  /// interpolates between leaves the tracked set, which happens when a
+  /// transition is replaced by another one that removes the route the previous
+  /// transition was heading to. This keeps the size the user last saw
+  /// available as the origin of the new transition.
+  Size? lastInterpolatedSize;
+}
+
+/// A transition driven by a route's animation, such as a push or a pop.
+final class _AnimationDriven extends _InTransition {
+  _AnimationDriven({
+    required super.settledRoute,
+    required super.destinationRoute,
+    required super.driver,
+    required super.lastInterpolatedSize,
+  });
+}
+
+/// A transition driven by a user's back gesture.
+final class _GestureDriven extends _InTransition {
+  _GestureDriven({
+    required super.settledRoute,
+    required super.destinationRoute,
+    required super.driver,
+    required super.lastInterpolatedSize,
+  });
 }
 
 /// Exposes the [_NavigatorResizableState] to the [ResizableRouteContent]
