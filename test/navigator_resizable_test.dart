@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:navigator_resizable/src/navigator_resizable.dart';
-import 'package:navigator_resizable/src/resizable_navigator_routes.dart';
 
 import 'src/matchers.dart';
 import 'src/widget_tester_x.dart';
@@ -33,7 +32,7 @@ void main() {
               key: navigatorKey,
               initialRoute: 'a',
               onGenerateRoute: (settings) {
-                return ResizablePageRouteBuilder(
+                return _testPageRoute(
                   settings: settings,
                   transitionDuration: const Duration(milliseconds: 300),
                   pageBuilder: (_, _, _) => routes[settings.name]!(),
@@ -253,7 +252,7 @@ void main() {
 
       final routeB = env.navigatorKey.currentState!.currentRoute;
       final navigator = env.navigatorKey.currentState!;
-      final newRoute = ResizablePageRouteBuilder(
+      final newRoute = _testPageRoute<void>(
         settings: const RouteSettings(name: 'c'),
         transitionDuration: const Duration(milliseconds: 300),
         pageBuilder: (_, _, _) =>
@@ -297,7 +296,7 @@ void main() {
               key: navigatorKey,
               initialRoute: 'a',
               onGenerateRoute: (settings) {
-                return ResizableMaterialPageRoute(
+                return _testMaterialPageRoute(
                   settings: settings,
                   builder: (_) => routes[settings.name]!(),
                 );
@@ -402,11 +401,83 @@ void main() {
         expect(env.getBox(tester).size, const Size(200, 300));
       },
     );
+
+    // https://github.com/fujidaiti/navigator_resizable/issues/57
+    testWidgets(
+      'Regression test for #57: dragging to both ends of the screen',
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
+
+        env.navigatorKey.currentState!.pushNamed('b');
+        await tester.pumpAndSettle();
+
+        final transitionProgress =
+            env.navigatorKey.currentState!.currentRoute.animation!;
+
+        final gesture = await tester.startGesture(const Offset(300, 300));
+        // Drag all the way to the right edge. This drives the transition
+        // progress to 0, although the gesture has not been committed yet.
+        await gesture.moveBy(const Offset(200, 0));
+        await tester.pump();
+        expect(transitionProgress.value, moreOrLessEquals(0));
+        expect(tester.takeException(), isNull);
+        expect(
+          env.getBox(tester).size,
+          const Size(100, 200),
+          reason:
+              'The transition must not be treated as finished while the '
+              'gesture is still in progress.',
+        );
+
+        // Drag back to where the gesture started, which drives the transition
+        // progress back to 1.
+        await gesture.moveBy(const Offset(-200, 0));
+        await tester.pump();
+        expect(transitionProgress.value, moreOrLessEquals(1));
+        expect(tester.takeException(), isNull);
+        expect(env.getBox(tester).size, const Size(200, 300));
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
+        expect(env.getBox(tester).size, const Size(200, 300));
+      },
+    );
+
+    // https://github.com/fujidaiti/navigator_resizable/issues/57
+    testWidgets(
+      'Regression test for #57: dragging to the far end and releasing',
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
+
+        env.navigatorKey.currentState!.pushNamed('b');
+        await tester.pumpAndSettle();
+
+        final gesture = await tester.startGesture(const Offset(300, 300));
+        await gesture.moveBy(const Offset(200, 0));
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        expect(env.getBox(tester).size, const Size(100, 200));
+
+        // The route is already at the end of its exit animation, so the pop
+        // happens with no exit animation at all.
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
+        expect(env.getBox(tester).size, const Size(100, 200));
+      },
+    );
   });
 
   group(
-    'Android predictive back gesture test with '
-    'imperative navigator API and ResizableMaterialPageRoute',
+    'Android predictive back gesture test with imperative navigator API '
+    'and a page transition without predictive back support',
     () {
       ({
         GlobalKey<NavigatorState> navigatorKey,
@@ -420,6 +491,16 @@ void main() {
           'b': () => const _TestRouteWidget(initialSize: Size(200, 300)),
         };
         final testWidget = MaterialApp(
+          theme: ThemeData(
+            // A page transition that does not support Android's predictive
+            // back gesture, so that the gesture does not drive the route's
+            // transition animation.
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+              },
+            ),
+          ),
           home: Align(
             alignment: Alignment.center,
             child: NavigatorResizable(
@@ -428,7 +509,7 @@ void main() {
                 key: navigatorKey,
                 initialRoute: 'a',
                 onGenerateRoute: (settings) {
-                  return ResizableMaterialPageRoute(
+                  return _testMaterialPageRoute<void>(
                     settings: settings,
                     builder: (_) => routes[settings.name]!(),
                   );
@@ -584,28 +665,28 @@ void main() {
       String initialLocation = '/a',
       Curve interpolationCurve = Curves.easeInOut,
     }) {
-      const pageA = ResizablePageRoutePageBuilder(
+      const pageA = _TestPage<void>(
         name: 'a',
         key: ValueKey('a'),
         transitionDuration: Duration(milliseconds: 300),
         transitionsBuilder: _testTransitionsBuilder,
         child: _TestRouteWidget(initialSize: Size(100, 200)),
       );
-      const pageB = ResizablePageRoutePageBuilder(
+      const pageB = _TestPage<void>(
         name: 'b',
         key: ValueKey('b'),
         transitionDuration: Duration(milliseconds: 300),
         transitionsBuilder: _testTransitionsBuilder,
         child: _TestRouteWidget(initialSize: Size(200, 300)),
       );
-      const pageC = ResizablePageRoutePageBuilder(
+      const pageC = _TestPage<void>(
         name: 'c',
         key: ValueKey('c'),
         transitionDuration: Duration(milliseconds: 300),
         transitionsBuilder: _testTransitionsBuilder,
         child: _TestRouteWidget(initialSize: Size.infinite),
       );
-      const pageD = ResizablePageRoutePageBuilder(
+      const pageD = _TestPage<void>(
         name: 'd',
         key: ValueKey('d'),
         transitionDuration: Duration(milliseconds: 300),
@@ -983,12 +1064,12 @@ void main() {
     boilerplate() {
       final navigatorKey = GlobalKey<NavigatorState>();
       final navigatorResizableKey = UniqueKey();
-      const pageA = ResizableMaterialPage(
+      const pageA = _TestMaterialPage<void>(
         name: 'a',
         key: ValueKey('a'),
         child: _TestRouteWidget(initialSize: Size(100, 200)),
       );
-      const pageB = ResizableMaterialPage(
+      const pageB = _TestMaterialPage<void>(
         name: 'b',
         key: ValueKey('b'),
         child: _TestRouteWidget(initialSize: Size(200, 300)),
@@ -1122,8 +1203,8 @@ void main() {
   });
 
   group(
-    'Android predictive back gesture test with '
-    'declarative navigator API and ResizableMaterialPage',
+    'Android predictive back gesture test with declarative navigator API '
+    'and a page transition without predictive back support',
     () {
       ({
         GlobalKey<NavigatorState> navigatorKey,
@@ -1133,12 +1214,12 @@ void main() {
       boilerplate() {
         final navigatorKey = GlobalKey<NavigatorState>();
         final navigatorResizableKey = UniqueKey();
-        const pageA = ResizableMaterialPage(
+        const pageA = _TestMaterialPage<void>(
           name: 'a',
           key: ValueKey('a'),
           child: _TestRouteWidget(initialSize: Size(100, 200)),
         );
-        const pageB = ResizableMaterialPage(
+        const pageB = _TestMaterialPage<void>(
           name: 'b',
           key: ValueKey('b'),
           child: _TestRouteWidget(initialSize: Size(200, 300)),
@@ -1152,6 +1233,16 @@ void main() {
         }
 
         final testWidget = MaterialApp(
+          theme: ThemeData(
+            // A page transition that does not support Android's predictive
+            // back gesture, so that the gesture does not drive the route's
+            // transition animation.
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+              },
+            ),
+          ),
           home: Center(
             child: NavigatorResizable(
               key: navigatorResizableKey,
@@ -1337,7 +1428,7 @@ void main() {
         child: Navigator(
           onGenerateInitialRoutes: (navigator, initialRoute) {
             return [
-              ResizablePageRouteBuilder(
+              _testPageRoute(
                 settings: const RouteSettings(name: 'a'),
                 pageBuilder: (_, _, _) => _TestRouteWidget(
                   key: routeContentKey,
@@ -1489,7 +1580,7 @@ void main() {
               child: NavigatorResizable(
                 child: Navigator(
                   onGenerateRoute: (settings) {
-                    return ResizablePageRouteBuilder(
+                    return _testPageRoute(
                       settings: settings,
                       transitionsBuilder: _testTransitionsBuilder,
                       pageBuilder: (_, _, _) => GestureDetector(
@@ -1599,6 +1690,139 @@ void main() {
       },
     );
   });
+
+  group('Android predictive back gesture test with the default page '
+      'transition', () {
+    ({
+      GlobalKey<NavigatorState> navigatorKey,
+      RenderBox Function(WidgetTester) getBox,
+      Widget testWidget,
+    })
+    boilerplate() {
+      final navigatorKey = GlobalKey<NavigatorState>();
+      final navigatorResizableKey = UniqueKey();
+      final routes = {
+        'a': () => const _TestRouteWidget(initialSize: Size(100, 200)),
+        'b': () => const _TestRouteWidget(initialSize: Size(200, 300)),
+      };
+      final testWidget = MaterialApp(
+        home: Align(
+          alignment: Alignment.center,
+          child: NavigatorResizable(
+            key: navigatorResizableKey,
+            child: Navigator(
+              key: navigatorKey,
+              initialRoute: 'a',
+              onGenerateRoute: (settings) {
+                return _testMaterialPageRoute<void>(
+                  settings: settings,
+                  builder: (_) => routes[settings.name]!(),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      RenderBox getBox(WidgetTester tester) {
+        return tester.renderObject(find.byKey(navigatorResizableKey));
+      }
+
+      return (
+        navigatorKey: navigatorKey,
+        getBox: getBox,
+        testWidget: testWidget,
+      );
+    }
+
+    // Flutter's default page transition for Android supports the predictive
+    // back gesture, which drives the route's transition animation as the
+    // gesture progresses. The size therefore follows the gesture, and, since
+    // the framework resets the animation to 1.0 when the gesture is
+    // committed, the size jumps back to the size of the route being popped
+    // before animating to the target size. Choose a page transition without
+    // predictive back support to avoid this.
+    testWidgets(
+      'The size follows the gesture and jumps back when it is committed',
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
+
+        env.navigatorKey.currentState!.pushNamed('b');
+        await tester.pumpAndSettle();
+        expect(env.getBox(tester).size, const Size(200, 300));
+
+        await tester.startAndroidBackGesture(touchOffset: [5.0, 300.0]);
+        await tester.pump();
+        expect(env.getBox(tester).size, const Size(200, 300));
+
+        await tester.updateAndroidBackGestureProgress(
+          x: 30.0,
+          y: 300.0,
+          progress: 0.3,
+        );
+        await tester.pump();
+        expect(env.getBox(tester).size, const Size(170, 270));
+
+        await tester.updateAndroidBackGestureProgress(
+          x: 60.0,
+          y: 300.0,
+          progress: 0.6,
+        );
+        await tester.pump();
+        expect(env.getBox(tester).size, const Size(140, 240));
+
+        await tester.commitAndroidBackGesture();
+        await tester.pump();
+        expect(
+          env.getBox(tester).size,
+          const Size(200, 300),
+          reason:
+              'The framework resets the transition animation to 1.0 when the '
+              'gesture is committed, so the size jumps back to the size of '
+              'the route being popped.',
+        );
+
+        final sizeHistory = <Size>[];
+        for (var i = 0; i < 6; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+          sizeHistory.add(env.getBox(tester).size);
+        }
+        await tester.pumpAndSettle();
+        expect(sizeHistory.map((s) => s.width), isMonotonicallyDecreasing);
+        expect(sizeHistory.map((s) => s.height), isMonotonicallyDecreasing);
+        expect(env.getBox(tester).size, const Size(100, 200));
+      },
+    );
+
+    testWidgets(
+      'The size returns to the current route when the gesture is canceled',
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
+
+        env.navigatorKey.currentState!.pushNamed('b');
+        await tester.pumpAndSettle();
+
+        await tester.startAndroidBackGesture(touchOffset: [5.0, 300.0]);
+        await tester.pump();
+        await tester.updateAndroidBackGestureProgress(
+          x: 30.0,
+          y: 300.0,
+          progress: 0.3,
+        );
+        await tester.pump();
+        expect(env.getBox(tester).size, const Size(170, 270));
+
+        await tester.cancelAndroidBackGesture();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(env.getBox(tester).size, const Size(200, 300));
+      },
+    );
+  });
 }
 
 class _TestRouteWidget extends StatefulWidget {
@@ -1654,4 +1878,81 @@ Widget _testTransitionsBuilder(
   Widget child,
 ) {
   return FadeTransition(opacity: animation, child: child);
+}
+
+/// A standard [PageRouteBuilder] whose content is wrapped in a
+/// [ResizableRouteContent].
+///
+/// The tests use standard route and page classes exclusively, to verify that
+/// the [NavigatorResizable] works with any route as long as its content is
+/// wrapped in a [ResizableRouteContent].
+PageRoute<T> _testPageRoute<T>({
+  RouteSettings? settings,
+  Duration transitionDuration = const Duration(milliseconds: 300),
+  required RoutePageBuilder pageBuilder,
+  required RouteTransitionsBuilder transitionsBuilder,
+}) {
+  return PageRouteBuilder<T>(
+    settings: settings,
+    transitionDuration: transitionDuration,
+    reverseTransitionDuration: transitionDuration,
+    pageBuilder: (context, animation, secondaryAnimation) {
+      return ResizableRouteContent(
+        child: pageBuilder(context, animation, secondaryAnimation),
+      );
+    },
+    transitionsBuilder: transitionsBuilder,
+  );
+}
+
+/// A standard [MaterialPageRoute] whose content is wrapped in a
+/// [ResizableRouteContent].
+PageRoute<T> _testMaterialPageRoute<T>({
+  RouteSettings? settings,
+  required WidgetBuilder builder,
+}) {
+  return MaterialPageRoute<T>(
+    settings: settings,
+    builder: (context) => ResizableRouteContent(child: builder(context)),
+  );
+}
+
+/// A standard [MaterialPage] whose content is wrapped in a
+/// [ResizableRouteContent].
+class _TestMaterialPage<T> extends MaterialPage<T> {
+  const _TestMaterialPage({
+    super.key,
+    super.name,
+    required super.child,
+  });
+
+  @override
+  Widget get child => ResizableRouteContent(child: super.child);
+}
+
+/// A [Page] backed by a standard [PageRouteBuilder], whose content is wrapped
+/// in a [ResizableRouteContent].
+class _TestPage<T> extends Page<T> {
+  const _TestPage({
+    super.key,
+    super.name,
+    required this.child,
+    required this.transitionsBuilder,
+    this.transitionDuration = const Duration(milliseconds: 300),
+  });
+
+  final Widget child;
+  final RouteTransitionsBuilder transitionsBuilder;
+  final Duration transitionDuration;
+
+  @override
+  Route<T> createRoute(BuildContext context) {
+    return PageRouteBuilder<T>(
+      settings: this,
+      transitionDuration: transitionDuration,
+      reverseTransitionDuration: transitionDuration,
+      pageBuilder: (_, _, _) => ResizableRouteContent(child: child),
+      transitionsBuilder: transitionsBuilder,
+    );
+  }
 }
