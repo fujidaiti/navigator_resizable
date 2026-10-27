@@ -329,7 +329,7 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
   ) {
     assert(!_routeContents.containsKey(route));
     _routeContents[route] = content;
-    route.animation?.addStatusListener(_handleAnimationStatusChange);
+    route.animation?.addStatusListener(_handleRouteAnimationStatusChange);
 
     final navigator = route.navigator;
     if (navigator != null && navigator != _navigator) {
@@ -347,7 +347,7 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
     if (_routeContents.remove(route) == null) {
       return;
     }
-    route.animation?.removeStatusListener(_handleAnimationStatusChange);
+    route.animation?.removeStatusListener(_handleRouteAnimationStatusChange);
     // A route that still has a navigator is only temporarily detached from
     // the tree, for example when the framework reparents the route's content
     // as a back gesture starts, and it registers itself again in the same
@@ -365,7 +365,7 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
     _handleStateChange();
   }
 
-  void _handleAnimationStatusChange(AnimationStatus status) {
+  void _handleRouteAnimationStatusChange(AnimationStatus status) {
     _handleStateChange();
   }
 
