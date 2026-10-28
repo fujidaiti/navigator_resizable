@@ -8,7 +8,7 @@
 
 ### Breaking changes
 
-`NavigatorEventObserver`, `NavigatorEventListener` and `ObservableRouteMixin` have been removed, together with the `ResizableMaterialPageRoute`, `ResizableMaterialPage`, `ResizablePageRouteBuilder` and `ResizablePageRoutePageBuilder` classes. The `NavigatorResizable` no longer observes navigator events; it discovers routes through the widget that wraps their content instead. Consequently, no route class is special any more, and the only remaining requirement is that the route's content is wrapped in a `ResizableRouteContent`:
+`NavigatorEventObserver`, `NavigatorEventListener`, `ObservableRouteMixin`, and `ResizableNavigatorRouteContentBoundary` have been removed, together with the `ResizableMaterialPageRoute`, `ResizableMaterialPage`, `ResizablePageRouteBuilder` and `ResizablePageRoutePageBuilder` classes. The `NavigatorResizable` no longer observes navigator events; it discovers routes through the widget that wraps their content instead. Consequently, no route class is special any more, and the only remaining requirement is that the route's content is wrapped in a `ResizableRouteContent`:
 
 ```dart
 Navigator.push(
@@ -24,8 +24,6 @@ and, with the Pages API:
 ```dart
 MaterialPage(child: ResizableRouteContent(child: MyPage()));
 ```
-
-`ResizableNavigatorRouteContentBoundary` has been renamed to `ResizableRouteContent`. The old name remains as a deprecated alias.
 
 ### Android's predictive back gesture
 
