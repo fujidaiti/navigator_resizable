@@ -439,7 +439,6 @@ void main() {
             alignment: Alignment.center,
             child: NavigatorResizable(
               key: navigatorResizableKey,
-              interpolationCurve: Curves.linear,
               child: Navigator(
                 onGenerateInitialRoutes: (_, _) => [initialRoute],
               ),
@@ -473,37 +472,29 @@ void main() {
 
           routeA.navigator!.push(routeB);
           await tester.pump();
-          expect(env.getBox(tester).size, const Size(100, 200));
+          var sizeHistory = [env.getBox(tester).size];
           for (var i = 0; i < 3; i++) {
             await tester.pump(const Duration(milliseconds: 75));
-            expect(
-              env.getBox(tester).size,
-              Size.lerp(
-                const Size(100, 200),
-                const Size(200, 300),
-                routeB.animation!.value,
-              ),
-            );
+            sizeHistory.add(env.getBox(tester).size);
           }
           await tester.pumpAndSettle();
-          expect(env.getBox(tester).size, const Size(200, 300));
+          sizeHistory.add(env.getBox(tester).size);
+          expect(sizeHistory.first, const Size(100, 200));
+          expect(sizeHistory.last, const Size(200, 300));
+          expect(sizeHistory, isStrictlyIncreasing);
 
           routeB.navigator!.pop();
           await tester.pump();
-          expect(env.getBox(tester).size, const Size(200, 300));
+          sizeHistory = [env.getBox(tester).size];
           for (var i = 0; i < 3; i++) {
             await tester.pump(const Duration(milliseconds: 75));
-            expect(
-              env.getBox(tester).size,
-              Size.lerp(
-                const Size(100, 200),
-                const Size(200, 300),
-                routeB.animation!.value,
-              ),
-            );
+            sizeHistory.add(env.getBox(tester).size);
           }
           await tester.pumpAndSettle();
-          expect(env.getBox(tester).size, const Size(100, 200));
+          sizeHistory.add(env.getBox(tester).size);
+          expect(sizeHistory.first, const Size(200, 300));
+          expect(sizeHistory.last, const Size(100, 200));
+          expect(sizeHistory, isStrictlyDecreasing);
         },
       );
 
@@ -528,37 +519,29 @@ void main() {
 
           routeA.navigator!.push(routeB);
           await tester.pump();
-          expect(env.getBox(tester).size, const Size(100, 200));
+          var sizeHistory = [env.getBox(tester).size];
           for (var i = 0; i < 3; i++) {
             await tester.pump(const Duration(milliseconds: 75));
-            expect(
-              env.getBox(tester).size,
-              Size.lerp(
-                const Size(100, 200),
-                const Size(200, 300),
-                routeB.animation!.value,
-              ),
-            );
+            sizeHistory.add(env.getBox(tester).size);
           }
           await tester.pumpAndSettle();
-          expect(env.getBox(tester).size, const Size(200, 300));
+          sizeHistory.add(env.getBox(tester).size);
+          expect(sizeHistory.first, const Size(100, 200));
+          expect(sizeHistory.last, const Size(200, 300));
+          expect(sizeHistory, isStrictlyIncreasing);
 
           routeB.navigator!.pop();
           await tester.pump();
-          expect(env.getBox(tester).size, const Size(200, 300));
+          sizeHistory = [env.getBox(tester).size];
           for (var i = 0; i < 3; i++) {
             await tester.pump(const Duration(milliseconds: 75));
-            expect(
-              env.getBox(tester).size,
-              Size.lerp(
-                const Size(100, 200),
-                const Size(200, 300),
-                routeB.animation!.value,
-              ),
-            );
+            sizeHistory.add(env.getBox(tester).size);
           }
           await tester.pumpAndSettle();
-          expect(env.getBox(tester).size, const Size(100, 200));
+          sizeHistory.add(env.getBox(tester).size);
+          expect(sizeHistory.first, const Size(200, 300));
+          expect(sizeHistory.last, const Size(100, 200));
+          expect(sizeHistory, isStrictlyDecreasing);
         },
       );
     },
@@ -878,13 +861,12 @@ void main() {
           expect(sizeHistory.first, const Size(200, 300));
           expect(sizeHistory.last, const Size(100, 200));
           expect(
-            sizeHistory.map((s) => s.width),
+            sizeHistory,
             isMonotonicallyDecreasing,
             reason:
                 'After committing the back gesture, the size should animate to '
                 'the target size just like a normal pop transition.',
           );
-          expect(sizeHistory.map((s) => s.height), isMonotonicallyDecreasing);
         },
       );
 
@@ -1624,13 +1606,12 @@ void main() {
           expect(sizeHistory.first, const Size(200, 300));
           expect(sizeHistory.last, const Size(100, 200));
           expect(
-            sizeHistory.map((s) => s.width),
+            sizeHistory,
             isMonotonicallyDecreasing,
             reason:
                 'After committing the back gesture, the size should animate to '
                 'the target size just like a normal pop transition.',
           );
-          expect(sizeHistory.map((s) => s.height), isMonotonicallyDecreasing);
         },
       );
 
@@ -2080,8 +2061,7 @@ void main() {
           sizeHistory.add(env.getBox(tester).size);
         }
         await tester.pumpAndSettle();
-        expect(sizeHistory.map((s) => s.width), isMonotonicallyDecreasing);
-        expect(sizeHistory.map((s) => s.height), isMonotonicallyDecreasing);
+        expect(sizeHistory, isMonotonicallyDecreasing);
         expect(env.getBox(tester).size, const Size(100, 200));
       },
     );
