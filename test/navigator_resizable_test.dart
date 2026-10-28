@@ -281,7 +281,7 @@ void main() {
       RenderBox Function(WidgetTester) getNavigatorBox,
       Widget testWidget,
     })
-    boilerplate() {
+    boilerplate({required String initialRoute}) {
       final navigatorKey = GlobalKey<NavigatorState>();
       final navigatorResizableKey = UniqueKey();
       final testWidget = MaterialApp(
@@ -289,10 +289,9 @@ void main() {
           alignment: Alignment.center,
           child: NavigatorResizable(
             key: navigatorResizableKey,
-            interpolationCurve: Curves.linear,
             child: Navigator(
               key: navigatorKey,
-              initialRoute: 'a',
+              initialRoute: initialRoute,
               onGenerateRoute: (settings) {
                 return switch (settings.name) {
                   'a' => _testPageRoute<void>(
@@ -309,7 +308,7 @@ void main() {
                   ),
                   // The content of this route is not wrapped in
                   // a ResizableRouteContent.
-                  'untracked' => PageRouteBuilder<void>(
+                  'u' => PageRouteBuilder<void>(
                     settings: settings,
                     transitionDuration: const Duration(milliseconds: 300),
                     reverseTransitionDuration: const Duration(
@@ -337,127 +336,81 @@ void main() {
       );
     }
 
-    testWidgets('When pushing a route without ResizableRouteContent', (
-      tester,
-    ) async {
-      final env = boilerplate();
+    testWidgets('When pushing u over a', (tester) async {
+      final env = boilerplate(initialRoute: 'a');
       await tester.pumpWidget(env.testWidget);
       expect(env.getBox(tester).size, const Size(100, 200));
 
-      env.navigatorKey.currentState!.pushNamed('untracked');
+      env.navigatorKey.currentState!.pushNamed('u');
       await tester.pump();
-      expect(env.getNavigatorBox(tester).size, const Size(300, 400));
-      expect(
-        env.getBox(tester).size,
-        const Size(300, 400),
-        reason:
-            'The navigator shrink-wraps to the new current route immediately, '
-            'and the resizable follows it without animation.',
-      );
-
+      expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
       for (var i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 75));
-        expect(env.getBox(tester).size, const Size(300, 400));
+        expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
       }
-
       await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
       expect(env.getBox(tester).size, const Size(300, 400));
     });
 
-    testWidgets('When popping a route without ResizableRouteContent', (
-      tester,
-    ) async {
-      final env = boilerplate();
+    testWidgets('When popping u over a', (tester) async {
+      final env = boilerplate(initialRoute: 'a');
       await tester.pumpWidget(env.testWidget);
-      env.navigatorKey.currentState!.pushNamed('untracked');
+      env.navigatorKey.currentState!.pushNamed('u');
       await tester.pumpAndSettle();
       expect(env.getBox(tester).size, const Size(300, 400));
 
       env.navigatorKey.currentState!.pop();
       await tester.pump();
-      expect(env.getBox(tester).size, const Size(300, 400));
-
+      expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
       for (var i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 75));
-        expect(env.getNavigatorBox(tester).size, const Size(300, 400));
-        expect(
-          env.getBox(tester).size,
-          const Size(300, 400),
-          reason:
-              'The size should not change until the navigator resizes '
-              'itself, since the exiting route is not observable.',
-        );
+        expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
       }
-
       await tester.pumpAndSettle();
-      expect(env.getNavigatorBox(tester).size, const Size(100, 200));
+      expect(tester.takeException(), isNull);
       expect(env.getBox(tester).size, const Size(100, 200));
     });
 
-    testWidgets(
-      'When popping multiple routes simultaneously, '
-      'with a route without ResizableRouteContent on top',
-      (tester) async {
-        final env = boilerplate();
-        await tester.pumpWidget(env.testWidget);
-        env.navigatorKey.currentState!.pushNamed('b');
-        await tester.pumpAndSettle();
-        env.navigatorKey.currentState!.pushNamed('untracked');
-        await tester.pumpAndSettle();
-        expect(env.getBox(tester).size, const Size(300, 400));
+    testWidgets('When pushing a over u', (tester) async {
+      final env = boilerplate(initialRoute: 'b');
+      await tester.pumpWidget(env.testWidget);
+      env.navigatorKey.currentState!.pushNamed('u');
+      await tester.pumpAndSettle();
+      expect(env.getBox(tester).size, const Size(300, 400));
 
-        env.navigatorKey.currentState!.popUntil((r) => r.isFirst);
-        await tester.pump();
-        expect(env.getBox(tester).size, const Size(300, 400));
+      env.navigatorKey.currentState!.pushNamed('a');
+      await tester.pump();
+      expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 75));
+        expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
+      }
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(env.getBox(tester).size, const Size(100, 200));
+    });
 
-        for (var i = 0; i < 4; i++) {
-          await tester.pump(const Duration(milliseconds: 75));
-          expect(env.getNavigatorBox(tester).size, const Size(300, 400));
-          expect(
-            env.getBox(tester).size,
-            const Size(300, 400),
-            reason:
-                'The size should not change until the navigator resizes '
-                'itself, since the visible exiting route is not observable.',
-          );
-        }
+    testWidgets('When popping a over u', (tester) async {
+      final env = boilerplate(initialRoute: 'b');
+      await tester.pumpWidget(env.testWidget);
+      env.navigatorKey.currentState!.pushNamed('u');
+      await tester.pumpAndSettle();
+      env.navigatorKey.currentState!.pushNamed('a');
+      await tester.pumpAndSettle();
+      expect(env.getBox(tester).size, const Size(100, 200));
 
-        await tester.pumpAndSettle();
-        expect(env.getNavigatorBox(tester).size, const Size(100, 200));
-        expect(env.getBox(tester).size, const Size(100, 200));
-      },
-    );
-
-    testWidgets(
-      'When pushing a route over a route without ResizableRouteContent',
-      (tester) async {
-        final env = boilerplate();
-        await tester.pumpWidget(env.testWidget);
-        env.navigatorKey.currentState!.pushNamed('untracked');
-        await tester.pumpAndSettle();
-        expect(env.getBox(tester).size, const Size(300, 400));
-
-        env.navigatorKey.currentState!.pushNamed('b');
-        await tester.pump();
-        expect(env.getNavigatorBox(tester).size, const Size(200, 300));
-        expect(
-          env.getBox(tester).size,
-          const Size(200, 300),
-          reason:
-              'The navigator shrink-wraps to the new current route immediately '
-              'since the route below the new route is not observable.',
-        );
-
-        for (var i = 0; i < 4; i++) {
-          await tester.pump(const Duration(milliseconds: 75));
-          expect(env.getNavigatorBox(tester).size, const Size(200, 300));
-          expect(env.getBox(tester).size, const Size(200, 300));
-        }
-
-        await tester.pumpAndSettle();
-        expect(env.getBox(tester).size, const Size(200, 300));
-      },
-    );
+      env.navigatorKey.currentState!.pop();
+      await tester.pump();
+      expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 75));
+        expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
+      }
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(env.getBox(tester).size, const Size(300, 400));
+    });
   });
 
   group('iOS swipe back gesture test with imperative navigator API', () {

@@ -501,7 +501,10 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
       destinationRoute = _routeBelow(currentRoute) ?? currentRoute;
       driver = currentRoute.animation;
       isGestureDriven = true;
-    } else if (_isAnimating(currentRoute.animation)) {
+    } else if (_isAnimating(currentRoute.animation) &&
+        // A route pushed over a route without a ResizableRouteContent has no
+        // origin size to animate from, so the size follows the navigator.
+        (currentRoute.isFirst || _routeBelow(currentRoute) != null)) {
       destinationRoute = currentRoute;
       driver = currentRoute.animation;
       isGestureDriven = false;
