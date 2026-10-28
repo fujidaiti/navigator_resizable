@@ -684,7 +684,7 @@ void main() {
 
     // https://github.com/fujidaiti/navigator_resizable/issues/57
     testWidgets(
-      'Edge case: dragging to both ends of the screen',
+      'Edge case: hold gesture at either end of the transition, then cancel it',
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
       (tester) async {
         final env = boilerplate();
@@ -692,6 +692,7 @@ void main() {
 
         env.navigatorKey.currentState!.pushNamed('b');
         await tester.pumpAndSettle();
+        expect(env.getBox(tester).size, const Size(200, 300));
 
         final transitionProgress =
             env.navigatorKey.currentState!.currentRoute.animation!;
@@ -701,10 +702,13 @@ void main() {
         // progress to 0, although the gesture has not been committed yet.
         await gesture.moveBy(const Offset(200, 0));
         await tester.pump();
+        expect(env.getBox(tester).size, const Size(100, 200));
+        await tester.pumpAndSettle();
         expect(transitionProgress.value, moreOrLessEquals(0));
+        expect(env.getBox(tester).size, const Size(100, 200));
         expect(
-          env.getBox(tester).size,
-          const Size(100, 200),
+          env.navigatorKey.currentState!.userGestureInProgress,
+          isTrue,
           reason:
               'The transition must not be treated as finished while the '
               'gesture is still in progress.',
@@ -714,10 +718,29 @@ void main() {
         // progress back to 1.
         await gesture.moveBy(const Offset(-200, 0));
         await tester.pump();
+        expect(env.getBox(tester).size, const Size(200, 300));
+        await tester.pumpAndSettle();
         expect(transitionProgress.value, moreOrLessEquals(1));
         expect(env.getBox(tester).size, const Size(200, 300));
+        expect(
+          env.navigatorKey.currentState!.userGestureInProgress,
+          isTrue,
+          reason:
+              'The transition must not be treated as finished while the '
+              'gesture is still in progress.',
+        );
 
         await gesture.up();
+        for (var i = 0; i < 4; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+          expect(
+            env.getBox(tester).size,
+            const Size(200, 300),
+            reason:
+                'The route is back at the start of its exit animation, '
+                'so the gesture is canceled with no animation at all.',
+          );
+        }
         await tester.pumpAndSettle();
         expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
         expect(env.getBox(tester).size, const Size(200, 300));
@@ -726,7 +749,8 @@ void main() {
 
     // https://github.com/fujidaiti/navigator_resizable/issues/57
     testWidgets(
-      'Edge case: dragging to the far end and releasing',
+      'Edge case: comit gesture at end of transition, which pops the route '
+      'without exit animation',
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
       (tester) async {
         final env = boilerplate();
@@ -739,10 +763,26 @@ void main() {
         await gesture.moveBy(const Offset(200, 0));
         await tester.pump();
         expect(env.getBox(tester).size, const Size(100, 200));
+        expect(env.navigatorKey.currentState!.currentRoute.animation!.value, 0);
+        expect(
+          env.navigatorKey.currentState!.userGestureInProgress,
+          isTrue,
+          reason:
+              'The transition must not be treated as finished '
+              'until the finger is on the screen.',
+        );
 
-        // The route is already at the end of its exit animation, so the pop
-        // happens with no exit animation at all.
         await gesture.up();
+        for (var i = 0; i < 4; i++) {
+          await tester.pump(const Duration(milliseconds: 50));
+          expect(
+            env.getBox(tester).size,
+            const Size(100, 200),
+            reason:
+                'The route is already at the end of its exit animation, '
+                'so the pop happens with no exit animation at all.',
+          );
+        }
         await tester.pumpAndSettle();
         expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
         expect(env.getBox(tester).size, const Size(100, 200));
