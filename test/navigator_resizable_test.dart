@@ -289,6 +289,7 @@ void main() {
           alignment: Alignment.center,
           child: NavigatorResizable(
             key: navigatorResizableKey,
+            interpolationCurve: Curves.easeInOut,
             child: Navigator(
               key: navigatorKey,
               initialRoute: initialRoute,
@@ -381,11 +382,22 @@ void main() {
 
       env.navigatorKey.currentState!.pushNamed('a');
       await tester.pump();
-      expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
-      for (var i = 0; i < 4; i++) {
-        await tester.pump(const Duration(milliseconds: 75));
-        expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
+      expect(env.getBox(tester).size, const Size(300, 400));
+
+      Size interpolatedSize(double progress) {
+        return Size.lerp(
+          const Size(300, 400),
+          const Size(100, 200),
+          Curves.easeInOut.transform(progress),
+        )!;
       }
+
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(env.getBox(tester).size, interpolatedSize(0.25));
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(env.getBox(tester).size, interpolatedSize(0.5));
+      await tester.pump(const Duration(milliseconds: 75));
+      expect(env.getBox(tester).size, interpolatedSize(0.75));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(env.getBox(tester).size, const Size(100, 200));
@@ -412,6 +424,145 @@ void main() {
       expect(env.getBox(tester).size, const Size(300, 400));
     });
   });
+
+  group(
+    'Size transition test with routes that cannot transition to each other',
+    () {
+      ({
+        RenderBox Function(WidgetTester) getBox,
+        Widget testWidget,
+      })
+      boilerplate(Route<void> initialRoute) {
+        final navigatorResizableKey = UniqueKey();
+        final testWidget = MaterialApp(
+          home: Align(
+            alignment: Alignment.center,
+            child: NavigatorResizable(
+              key: navigatorResizableKey,
+              interpolationCurve: Curves.linear,
+              child: Navigator(
+                onGenerateInitialRoutes: (_, _) => [initialRoute],
+              ),
+            ),
+          ),
+        );
+
+        return (
+          getBox: (tester) =>
+              tester.renderObject(find.byKey(navigatorResizableKey)),
+          testWidget: testWidget,
+        );
+      }
+
+      testWidgets(
+        'When pushing and popping a PageRouteBuilder over a MaterialPageRoute',
+        (tester) async {
+          final routeA = _testMaterialPageRoute<void>(
+            builder: (_) => const _TestRouteWidget(initialSize: Size(100, 200)),
+          );
+          final routeB = _testPageRoute<void>(
+            pageBuilder: (_, _, _) =>
+                const _TestRouteWidget(initialSize: Size(200, 300)),
+            transitionsBuilder: _testTransitionsBuilder,
+          );
+          expect(routeA.canTransitionTo(routeB), isFalse);
+
+          final env = boilerplate(routeA);
+          await tester.pumpWidget(env.testWidget);
+          expect(env.getBox(tester).size, const Size(100, 200));
+
+          routeA.navigator!.push(routeB);
+          await tester.pump();
+          expect(env.getBox(tester).size, const Size(100, 200));
+          for (var i = 0; i < 3; i++) {
+            await tester.pump(const Duration(milliseconds: 75));
+            expect(
+              env.getBox(tester).size,
+              Size.lerp(
+                const Size(100, 200),
+                const Size(200, 300),
+                routeB.animation!.value,
+              ),
+            );
+          }
+          await tester.pumpAndSettle();
+          expect(env.getBox(tester).size, const Size(200, 300));
+
+          routeB.navigator!.pop();
+          await tester.pump();
+          expect(env.getBox(tester).size, const Size(200, 300));
+          for (var i = 0; i < 3; i++) {
+            await tester.pump(const Duration(milliseconds: 75));
+            expect(
+              env.getBox(tester).size,
+              Size.lerp(
+                const Size(100, 200),
+                const Size(200, 300),
+                routeB.animation!.value,
+              ),
+            );
+          }
+          await tester.pumpAndSettle();
+          expect(env.getBox(tester).size, const Size(100, 200));
+        },
+      );
+
+      testWidgets(
+        'When pushing and popping a fullscreen dialog MaterialPageRoute '
+        'over a MaterialPageRoute',
+        (tester) async {
+          final routeA = _testMaterialPageRoute<void>(
+            builder: (_) => const _TestRouteWidget(initialSize: Size(100, 200)),
+          );
+          final routeB = MaterialPageRoute<void>(
+            fullscreenDialog: true,
+            builder: (_) => const ResizableRouteContent(
+              child: _TestRouteWidget(initialSize: Size(200, 300)),
+            ),
+          );
+          expect(routeB.canTransitionFrom(routeA), isFalse);
+
+          final env = boilerplate(routeA);
+          await tester.pumpWidget(env.testWidget);
+          expect(env.getBox(tester).size, const Size(100, 200));
+
+          routeA.navigator!.push(routeB);
+          await tester.pump();
+          expect(env.getBox(tester).size, const Size(100, 200));
+          for (var i = 0; i < 3; i++) {
+            await tester.pump(const Duration(milliseconds: 75));
+            expect(
+              env.getBox(tester).size,
+              Size.lerp(
+                const Size(100, 200),
+                const Size(200, 300),
+                routeB.animation!.value,
+              ),
+            );
+          }
+          await tester.pumpAndSettle();
+          expect(env.getBox(tester).size, const Size(200, 300));
+
+          routeB.navigator!.pop();
+          await tester.pump();
+          expect(env.getBox(tester).size, const Size(200, 300));
+          for (var i = 0; i < 3; i++) {
+            await tester.pump(const Duration(milliseconds: 75));
+            expect(
+              env.getBox(tester).size,
+              Size.lerp(
+                const Size(100, 200),
+                const Size(200, 300),
+                routeB.animation!.value,
+              ),
+            );
+          }
+          await tester.pumpAndSettle();
+          expect(env.getBox(tester).size, const Size(100, 200));
+        },
+      );
+    },
+  );
 
   group('iOS swipe back gesture test with imperative navigator API', () {
     ({

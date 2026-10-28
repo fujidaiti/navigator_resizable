@@ -302,12 +302,19 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
 
   /// The size to start the next transition from, which is the size currently
   /// displayed.
+  ///
+  /// Unless a size interpolation is available, this is the size laid out in
+  /// the last frame, which is also known when the navigator is sized to
+  /// a route without a [ResizableRouteContent].
   Size? get _originSize {
     return _sizeInterpolation.value ??
         switch (_state) {
-          _Settled(:final route) => _sizeOf(route),
-          final _InTransition state =>
-            state.lastInterpolatedSize ?? _sizeOf(state.settledRoute),
+          _InTransition(:final lastInterpolatedSize) => lastInterpolatedSize,
+          _Settled() => null,
+        } ??
+        switch (context.findRenderObject()) {
+          final RenderBox box when box.hasSize => box.size,
+          _ => null,
         };
   }
 
@@ -470,7 +477,9 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
     if (currentRoute == null) {
       // No tracked route is current. This happens for a moment during a
       // transition, when the previous route has been notified that it is no
-      // longer current but the new one has not been installed yet.
+      // longer current but the new one has not been installed yet. Otherwise,
+      // the current route has no ResizableRouteContent, so its size is unknown
+      // and the size is not animated.
       return;
     }
 
@@ -501,10 +510,7 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
       destinationRoute = _routeBelow(currentRoute) ?? currentRoute;
       driver = currentRoute.animation;
       isGestureDriven = true;
-    } else if (_isAnimating(currentRoute.animation) &&
-        // A route pushed over a route without a ResizableRouteContent has no
-        // origin size to animate from, so the size follows the navigator.
-        (currentRoute.isFirst || _routeBelow(currentRoute) != null)) {
+    } else if (_isAnimating(currentRoute.animation)) {
       destinationRoute = currentRoute;
       driver = currentRoute.animation;
       isGestureDriven = false;
@@ -533,7 +539,7 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
     }
 
     // A transition that replaces another one inherits its settled route and
-    // its last interpolated size, which are the fallbacks for the origin size.
+    // its last interpolated size, which is the fallback for the origin size.
     final (settledRoute, lastInterpolatedSize) = switch (previousState) {
       _Settled(:final route) => (route, null),
       _InTransition() => (
