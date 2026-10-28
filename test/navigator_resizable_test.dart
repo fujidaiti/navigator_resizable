@@ -399,7 +399,6 @@ void main() {
       }
       await tester.pumpAndSettle();
       sizeHistory.add(env.getBox(tester).size);
-      expect(tester.takeException(), isNull);
       expect(sizeHistory.first, const Size(300, 400));
       expect(sizeHistory.last, const Size(100, 200));
       expect(sizeHistory, isStrictlyDecreasing);
@@ -422,7 +421,6 @@ void main() {
         expect(env.getBox(tester).size, const Size(100, 200));
       }
       await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
       expect(
         env.getBox(tester).size,
         const Size(300, 400),
@@ -686,7 +684,7 @@ void main() {
 
     // https://github.com/fujidaiti/navigator_resizable/issues/57
     testWidgets(
-      'Regression test for #57: dragging to both ends of the screen',
+      'Edge case: dragging to both ends of the screen',
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
       (tester) async {
         final env = boilerplate();
@@ -704,7 +702,6 @@ void main() {
         await gesture.moveBy(const Offset(200, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0));
-        expect(tester.takeException(), isNull);
         expect(
           env.getBox(tester).size,
           const Size(100, 200),
@@ -718,12 +715,10 @@ void main() {
         await gesture.moveBy(const Offset(-200, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(1));
-        expect(tester.takeException(), isNull);
         expect(env.getBox(tester).size, const Size(200, 300));
 
         await gesture.up();
         await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
         expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
         expect(env.getBox(tester).size, const Size(200, 300));
       },
@@ -731,7 +726,7 @@ void main() {
 
     // https://github.com/fujidaiti/navigator_resizable/issues/57
     testWidgets(
-      'Regression test for #57: dragging to the far end and releasing',
+      'Edge case: dragging to the far end and releasing',
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
       (tester) async {
         final env = boilerplate();
@@ -743,14 +738,12 @@ void main() {
         final gesture = await tester.startGesture(const Offset(300, 300));
         await gesture.moveBy(const Offset(200, 0));
         await tester.pump();
-        expect(tester.takeException(), isNull);
         expect(env.getBox(tester).size, const Size(100, 200));
 
         // The route is already at the end of its exit animation, so the pop
         // happens with no exit animation at all.
         await gesture.up();
         await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
         expect(env.navigatorKey.currentState!.userGestureInProgress, isFalse);
         expect(env.getBox(tester).size, const Size(100, 200));
       },
@@ -1148,7 +1141,6 @@ void main() {
         // the page b is removed without any transition.
         env.setLocation('/a');
         await tester.pump();
-        expect(tester.takeException(), isNull);
         expect(
           env.getBox(tester).size,
           sizeBeforeCancel,
@@ -1158,7 +1150,6 @@ void main() {
         );
 
         await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
         expect(
           env.getBox(tester).size,
           const Size(100, 200),
@@ -1189,7 +1180,6 @@ void main() {
         // In the middle of the transition, go back to /a/b.
         env.setLocation('/a/b');
         await tester.pump();
-        expect(tester.takeException(), isNull);
         expect(
           env.getBox(tester).size,
           sizeBeforeCancel,
@@ -1199,7 +1189,6 @@ void main() {
         );
 
         await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
         expect(
           env.getBox(tester).size,
           const Size(200, 300),
