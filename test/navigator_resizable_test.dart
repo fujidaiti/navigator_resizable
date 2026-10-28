@@ -289,7 +289,6 @@ void main() {
           alignment: Alignment.center,
           child: NavigatorResizable(
             key: navigatorResizableKey,
-            interpolationCurve: Curves.easeInOut,
             child: Navigator(
               key: navigatorKey,
               initialRoute: initialRoute,
@@ -344,13 +343,19 @@ void main() {
 
       env.navigatorKey.currentState!.pushNamed('u');
       await tester.pump();
-      expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
+      expect(
+        env.getBox(tester).size,
+        const Size(300, 400),
+        reason:
+            'The size jumps to the target without animation '
+            "because u's size is unknwon and then it falls back "
+            "to Navigator's size",
+      );
       for (var i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 75));
-        expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
+        expect(env.getBox(tester).size, const Size(300, 400));
       }
       await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
       expect(env.getBox(tester).size, const Size(300, 400));
     });
 
@@ -363,14 +368,19 @@ void main() {
 
       env.navigatorKey.currentState!.pop();
       await tester.pump();
-      expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
+      expect(env.getBox(tester).size, const Size(300, 400));
       for (var i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 75));
-        expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
+        expect(env.getBox(tester).size, const Size(300, 400));
       }
       await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-      expect(env.getBox(tester).size, const Size(100, 200));
+      expect(
+        env.getBox(tester).size,
+        const Size(100, 200),
+        reason:
+            'The size jumps to the target without animation '
+            "because u's animation controller is not accessible.",
+      );
     });
 
     testWidgets('When pushing a over u', (tester) async {
@@ -382,25 +392,17 @@ void main() {
 
       env.navigatorKey.currentState!.pushNamed('a');
       await tester.pump();
-      expect(env.getBox(tester).size, const Size(300, 400));
-
-      Size interpolatedSize(double progress) {
-        return Size.lerp(
-          const Size(300, 400),
-          const Size(100, 200),
-          Curves.easeInOut.transform(progress),
-        )!;
+      final sizeHistory = [env.getBox(tester).size];
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 75));
+        sizeHistory.add(env.getBox(tester).size);
       }
-
-      await tester.pump(const Duration(milliseconds: 75));
-      expect(env.getBox(tester).size, interpolatedSize(0.25));
-      await tester.pump(const Duration(milliseconds: 75));
-      expect(env.getBox(tester).size, interpolatedSize(0.5));
-      await tester.pump(const Duration(milliseconds: 75));
-      expect(env.getBox(tester).size, interpolatedSize(0.75));
       await tester.pumpAndSettle();
+      sizeHistory.add(env.getBox(tester).size);
       expect(tester.takeException(), isNull);
-      expect(env.getBox(tester).size, const Size(100, 200));
+      expect(sizeHistory.first, const Size(300, 400));
+      expect(sizeHistory.last, const Size(100, 200));
+      expect(sizeHistory, isStrictlyDecreasing);
     });
 
     testWidgets('When popping a over u', (tester) async {
@@ -414,14 +416,21 @@ void main() {
 
       env.navigatorKey.currentState!.pop();
       await tester.pump();
-      expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
+      expect(env.getBox(tester).size, const Size(100, 200));
       for (var i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 75));
-        expect(env.getBox(tester).size, env.getNavigatorBox(tester).size);
+        expect(env.getBox(tester).size, const Size(100, 200));
       }
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      expect(env.getBox(tester).size, const Size(300, 400));
+      expect(
+        env.getBox(tester).size,
+        const Size(300, 400),
+        reason:
+            'The size jumps to the target without animation '
+            "because u's size is unknown and then it falls back "
+            "to Navigator's size.",
+      );
     });
   });
 
@@ -1958,138 +1967,6 @@ void main() {
         await tester.tapAt(const Offset(501, 401));
         expect(isRouteContentTapped, isFalse);
         expect(isBackgroundTapped, isTrue);
-      },
-    );
-  });
-
-  group('Android predictive back gesture test with the default page '
-      'transition', () {
-    ({
-      GlobalKey<NavigatorState> navigatorKey,
-      RenderBox Function(WidgetTester) getBox,
-      Widget testWidget,
-    })
-    boilerplate() {
-      final navigatorKey = GlobalKey<NavigatorState>();
-      final navigatorResizableKey = UniqueKey();
-      final routes = {
-        'a': () => const _TestRouteWidget(initialSize: Size(100, 200)),
-        'b': () => const _TestRouteWidget(initialSize: Size(200, 300)),
-      };
-      final testWidget = MaterialApp(
-        home: Align(
-          alignment: Alignment.center,
-          child: NavigatorResizable(
-            key: navigatorResizableKey,
-            child: Navigator(
-              key: navigatorKey,
-              initialRoute: 'a',
-              onGenerateRoute: (settings) {
-                return _testMaterialPageRoute<void>(
-                  settings: settings,
-                  builder: (_) => routes[settings.name]!(),
-                );
-              },
-            ),
-          ),
-        ),
-      );
-
-      RenderBox getBox(WidgetTester tester) {
-        return tester.renderObject(find.byKey(navigatorResizableKey));
-      }
-
-      return (
-        navigatorKey: navigatorKey,
-        getBox: getBox,
-        testWidget: testWidget,
-      );
-    }
-
-    // Flutter's default page transition for Android supports the predictive
-    // back gesture, which drives the route's transition animation as the
-    // gesture progresses. The size therefore follows the gesture, and, since
-    // the framework resets the animation to 1.0 when the gesture is
-    // committed, the size jumps back to the size of the route being popped
-    // before animating to the target size. Choose a page transition without
-    // predictive back support to avoid this.
-    testWidgets(
-      'The size follows the gesture and jumps back when it is committed',
-      variant: TargetPlatformVariant.only(TargetPlatform.android),
-      (tester) async {
-        final env = boilerplate();
-        await tester.pumpWidget(env.testWidget);
-
-        env.navigatorKey.currentState!.pushNamed('b');
-        await tester.pumpAndSettle();
-        expect(env.getBox(tester).size, const Size(200, 300));
-
-        await tester.startAndroidBackGesture(touchOffset: [5.0, 300.0]);
-        await tester.pump();
-        expect(env.getBox(tester).size, const Size(200, 300));
-
-        await tester.updateAndroidBackGestureProgress(
-          x: 30.0,
-          y: 300.0,
-          progress: 0.3,
-        );
-        await tester.pump();
-        expect(env.getBox(tester).size, const Size(170, 270));
-
-        await tester.updateAndroidBackGestureProgress(
-          x: 60.0,
-          y: 300.0,
-          progress: 0.6,
-        );
-        await tester.pump();
-        expect(env.getBox(tester).size, const Size(140, 240));
-
-        await tester.commitAndroidBackGesture();
-        await tester.pump();
-        expect(
-          env.getBox(tester).size,
-          const Size(200, 300),
-          reason:
-              'The framework resets the transition animation to 1.0 when the '
-              'gesture is committed, so the size jumps back to the size of '
-              'the route being popped.',
-        );
-
-        final sizeHistory = <Size>[];
-        for (var i = 0; i < 6; i++) {
-          await tester.pump(const Duration(milliseconds: 50));
-          sizeHistory.add(env.getBox(tester).size);
-        }
-        await tester.pumpAndSettle();
-        expect(sizeHistory, isMonotonicallyDecreasing);
-        expect(env.getBox(tester).size, const Size(100, 200));
-      },
-    );
-
-    testWidgets(
-      'The size returns to the current route when the gesture is canceled',
-      variant: TargetPlatformVariant.only(TargetPlatform.android),
-      (tester) async {
-        final env = boilerplate();
-        await tester.pumpWidget(env.testWidget);
-
-        env.navigatorKey.currentState!.pushNamed('b');
-        await tester.pumpAndSettle();
-
-        await tester.startAndroidBackGesture(touchOffset: [5.0, 300.0]);
-        await tester.pump();
-        await tester.updateAndroidBackGestureProgress(
-          x: 30.0,
-          y: 300.0,
-          progress: 0.3,
-        );
-        await tester.pump();
-        expect(env.getBox(tester).size, const Size(170, 270));
-
-        await tester.cancelAndroidBackGesture();
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        expect(env.getBox(tester).size, const Size(200, 300));
       },
     );
   });

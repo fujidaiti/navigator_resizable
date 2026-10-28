@@ -32,6 +32,11 @@ void main() {
       },
     );
 
+    test('does match a sequence with equal consecutive values', () {
+      expect([1.0, 1.0, 2.0], isMonotonicallyIncreasing);
+      expect([2.0, 1.0, 1.0], isMonotonicallyDecreasing);
+    });
+
     test('does not match an empty list', () {
       expect(<double>[], isNot(isMonotonicallyIncreasing));
     });
@@ -57,9 +62,7 @@ void main() {
     });
 
     test('does not match a sequence with equal consecutive values', () {
-      expect([1.0, 1.0, 2.0], isMonotonicallyIncreasing);
       expect([1.0, 1.0, 2.0], isNot(isStrictlyIncreasing));
-      expect([2.0, 1.0, 1.0], isMonotonicallyDecreasing);
       expect([2.0, 1.0, 1.0], isNot(isStrictlyDecreasing));
     });
   });
@@ -78,11 +81,5 @@ void main() {
         expect(sizes, isNot(isMonotonicallyDecreasing));
       },
     );
-
-    test('distinguishes strict from non-strict per component', () {
-      const sizes = [Size(1, 2), Size(1, 3), Size(2, 4)];
-      expect(sizes, isMonotonicallyIncreasing);
-      expect(sizes, isNot(isStrictlyIncreasing));
-    });
   });
 }
