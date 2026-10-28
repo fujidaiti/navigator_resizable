@@ -8,7 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:navigator_resizable/navigator_resizable.dart';
 
 void main() {
-  runApp(MaterialApp.router(routerConfig: _router));
+  runApp(MaterialApp.router(routerConfig: _router, theme: _theme));
 }
 
 final _router = GoRouter(
@@ -23,66 +23,74 @@ final _router = GoRouter(
           routes: [
             GoRoute(
               path: 'a',
-              pageBuilder: (context, state) => ResizableMaterialPage(
+              pageBuilder: (context, state) => MaterialPage(
                 key: state.pageKey,
-                child: WelcomePage(
-                  onNext: () => context.go('/a/b'),
-                  onJumpToLast: () => context.go('/x'),
+                child: ResizableRouteContent(
+                  child: WelcomePage(
+                    onNext: () => context.go('/a/b'),
+                    onJumpToLast: () => context.go('/x'),
+                  ),
                 ),
               ),
               routes: [
                 GoRoute(
                   path: 'b',
-                  pageBuilder: (context, state) => ResizableMaterialPage(
+                  pageBuilder: (context, state) => MaterialPage(
                     key: state.pageKey,
-                    child: VariableHeightPage(
-                      onNext: () => context.go('/a/b/c'),
+                    child: ResizableRouteContent(
+                      child: VariableHeightPage(
+                        onNext: () => context.go('/a/b/c'),
+                      ),
                     ),
                   ),
                   routes: [
                     GoRoute(
                       path: 'c',
-                      pageBuilder: (context, state) => ResizableMaterialPage(
+                      pageBuilder: (context, state) => MaterialPage(
                         key: state.pageKey,
-                        child: FormPage(
-                          autoFocus: false,
-                          submitButton: FilledButton(
-                            onPressed: () => context.go('/a/b/c/d'),
-                            child: Text('Next'),
+                        child: ResizableRouteContent(
+                          child: FormPage(
+                            autoFocus: false,
+                            submitButton: FilledButton(
+                              onPressed: () => context.go('/a/b/c/d'),
+                              child: Text('Next'),
+                            ),
                           ),
                         ),
                       ),
                       routes: [
                         GoRoute(
                           path: 'd',
-                          pageBuilder: (context, state) =>
-                              ResizableMaterialPage(
-                                key: state.pageKey,
-                                child: FormPage(
-                                  autoFocus: true,
-                                  submitButton: FilledButton(
-                                    onPressed: () => context.go('/a/b/c/d/e'),
-                                    child: Text('Next'),
-                                  ),
+                          pageBuilder: (context, state) => MaterialPage(
+                            key: state.pageKey,
+                            child: ResizableRouteContent(
+                              child: FormPage(
+                                autoFocus: true,
+                                submitButton: FilledButton(
+                                  onPressed: () => context.go('/a/b/c/d/e'),
+                                  child: Text('Next'),
                                 ),
                               ),
+                            ),
+                          ),
                           routes: [
                             GoRoute(
                               path: 'e',
-                              pageBuilder: (context, state) =>
-                                  ResizableMaterialPage(
-                                    key: state.pageKey,
-                                    child: PortalPage(
-                                      destinations: [
-                                        '/a/b/c/d',
-                                        '/a/b/c',
-                                        '/a/b',
-                                        '/a',
-                                      ],
-                                      onGoToDestination: (destination) =>
-                                          context.go(destination),
-                                    ),
+                              pageBuilder: (context, state) => MaterialPage(
+                                key: state.pageKey,
+                                child: ResizableRouteContent(
+                                  child: PortalPage(
+                                    destinations: [
+                                      '/a/b/c/d',
+                                      '/a/b/c',
+                                      '/a/b',
+                                      '/a',
+                                    ],
+                                    onGoToDestination: (destination) =>
+                                        context.go(destination),
                                   ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -94,11 +102,13 @@ final _router = GoRouter(
             ),
             GoRoute(
               path: 'x',
-              pageBuilder: (context, state) => ResizableMaterialPage(
+              pageBuilder: (context, state) => MaterialPage(
                 key: state.pageKey,
-                child: PortalPage(
-                  destinations: ['/a/b/c/d', '/a/b/c', '/a/b', '/a'],
-                  onGoToDestination: (destination) => context.go(destination),
+                child: ResizableRouteContent(
+                  child: PortalPage(
+                    destinations: ['/a/b/c/d', '/a/b/c', '/a/b', '/a'],
+                    onGoToDestination: (destination) => context.go(destination),
+                  ),
                 ),
               ),
             ),
@@ -186,3 +196,13 @@ class PageBasedMultiPageDialogRoute extends PageRoute<void> {
     return FadeTransition(opacity: animation, child: child);
   }
 }
+
+final _theme = ThemeData(
+  // The default Android page transition supports the predictive back gesture,
+  // which makes the navigator size follow the gesture and then jump back when
+  // the gesture is committed. This page transition does not support it, so the
+  // size animation runs only after the gesture is committed.
+  pageTransitionsTheme: const PageTransitionsTheme(
+    builders: {TargetPlatform.android: FadeForwardsPageTransitionsBuilder()},
+  ),
+);

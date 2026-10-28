@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:navigator_resizable/navigator_resizable.dart';
 
 void main() {
-  runApp(const MaterialApp(home: Home()));
+  runApp(MaterialApp(home: const Home(), theme: _theme));
 }
 
 class Home extends StatelessWidget {
@@ -33,10 +33,12 @@ void showMultiPageDialog(BuildContext context) {
         navigator: Navigator(
           onGenerateInitialRoutes: (_, __) {
             return [
-              ResizableMaterialPageRoute(
-                builder: (context) => WelcomePage(
-                  onNext: () => pushVariableHeightPage(context),
-                  onJumpToLast: () {},
+              MaterialPageRoute(
+                builder: (context) => ResizableRouteContent(
+                  child: WelcomePage(
+                    onNext: () => pushVariableHeightPage(context),
+                    onJumpToLast: () {},
+                  ),
                 ),
               ),
             ];
@@ -50,9 +52,10 @@ void showMultiPageDialog(BuildContext context) {
 void pushVariableHeightPage(BuildContext context) {
   Navigator.push(
     context,
-    ResizableMaterialPageRoute(
-      builder: (context) =>
-          VariableHeightPage(onNext: () => pushFormPage(context)),
+    MaterialPageRoute(
+      builder: (context) => ResizableRouteContent(
+        child: VariableHeightPage(onNext: () => pushFormPage(context)),
+      ),
     ),
   );
 }
@@ -60,12 +63,14 @@ void pushVariableHeightPage(BuildContext context) {
 void pushFormPage(BuildContext context) {
   Navigator.push(
     context,
-    ResizableMaterialPageRoute(
-      builder: (context) => FormPage(
-        autoFocus: false,
-        submitButton: FilledButton(
-          onPressed: () => pushFormPageWithAutoFocus(context),
-          child: Text('Next'),
+    MaterialPageRoute(
+      builder: (context) => ResizableRouteContent(
+        child: FormPage(
+          autoFocus: false,
+          submitButton: FilledButton(
+            onPressed: () => pushFormPageWithAutoFocus(context),
+            child: Text('Next'),
+          ),
         ),
       ),
     ),
@@ -75,14 +80,26 @@ void pushFormPage(BuildContext context) {
 void pushFormPageWithAutoFocus(BuildContext context) {
   Navigator.push(
     context,
-    ResizableMaterialPageRoute(
-      builder: (_) => FormPage(
-        autoFocus: true,
-        submitButton: FilledButton(
-          onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
-          child: Text('Submit'),
+    MaterialPageRoute(
+      builder: (_) => ResizableRouteContent(
+        child: FormPage(
+          autoFocus: true,
+          submitButton: FilledButton(
+            onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+            child: Text('Submit'),
+          ),
         ),
       ),
     ),
   );
 }
+
+final _theme = ThemeData(
+  // The default Android page transition supports the predictive back gesture,
+  // which makes the navigator size follow the gesture and then jump back when
+  // the gesture is committed. This page transition does not support it, so the
+  // size animation runs only after the gesture is committed.
+  pageTransitionsTheme: const PageTransitionsTheme(
+    builders: {TargetPlatform.android: FadeForwardsPageTransitionsBuilder()},
+  ),
+);
