@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart' as physics;
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 
 /// A widget that resizes the child [Navigator] to match the intrinsic size of
 /// the current [Route]'s content.
@@ -993,104 +992,13 @@ class _ResizableRouteContentState extends State<ResizableRouteContent> {
 
   @override
   Widget build(BuildContext context) {
-    final result = _RenderRouteContentBoundaryWidget(
+    return _RenderRouteContentBoundaryWidget(
       key: _boundaryKey,
       bypassedConstraints: context
           .dependOnInheritedWidgetOfExactType<_BypassedNavigatorConstraints>()!
           .value,
       child: widget.child,
     );
-
-    return switch (Theme.of(context).platform) {
-      TargetPlatform.android => _AnimationLessAndroidBackGestureHandler(
-        child: result,
-      ),
-      _ => result,
-    };
-  }
-}
-
-/// A deprecated alias of [ResizableRouteContent].
-@Deprecated('Use ResizableRouteContent instead.')
-typedef ResizableNavigatorRouteContentBoundary = ResizableRouteContent;
-
-/// Enables Android's predictive back gesture to pop routes within the
-/// nested [Navigator], without modifying route transition progress during
-/// the gesture.
-///
-/// This is a workaround for the issue where [TransitionRoute.animation]
-/// jumps from a mid-transition value to 1.0 when the back gesture is committed,
-/// causing an abrupt pop-transition animation.
-///
-/// The root cause is that [TransitionRoute.handleUpdateBackGestureProgress]
-/// updates the [TransitionRoute.controller]'s value as the gesture progresses,
-/// but [TransitionRoute.handleCommitBackGesture] triggers the transition
-/// animation via [AnimationController.reverse] with 1.0 as the starting point,
-/// regardless of the current [TransitionRoute.controller]'s value.
-///
-/// The default back gesture handler behaves this way, but is incompatible with
-/// [NavigatorResizable]'s size transition. This handler therefore suppresses
-/// gesture-driven transition progress while still allowing the gesture to
-/// commit a route pop.
-class _AnimationLessAndroidBackGestureHandler extends StatefulWidget {
-  const _AnimationLessAndroidBackGestureHandler({
-    required this.child,
-  });
-
-  final Widget child;
-
-  @override
-  State<_AnimationLessAndroidBackGestureHandler> createState() =>
-      _AnimationLessAndroidBackGestureHandlerState();
-}
-
-class _AnimationLessAndroidBackGestureHandlerState
-    extends State<_AnimationLessAndroidBackGestureHandler>
-    with WidgetsBindingObserver {
-  late ModalRoute<dynamic> _route;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _route = ModalRoute.of(context)!;
-  }
-
-  @override
-  bool handleStartBackGesture(PredictiveBackEvent backEvent) {
-    return !backEvent.isButtonEvent && _route.isCurrent && !_route.isFirst;
-  }
-
-  @override
-  void handleCancelBackGesture() {
-    _handleEndBackGesture(isCommitted: false);
-  }
-
-  @override
-  void handleCommitBackGesture() {
-    _handleEndBackGesture(isCommitted: true);
-  }
-
-  void _handleEndBackGesture({required bool isCommitted}) {
-    if (isCommitted && _route.isCurrent) {
-      _route.navigator?.pop();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return widget.child;
   }
 }
 
