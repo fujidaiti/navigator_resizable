@@ -266,7 +266,7 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
   /// Represents an interpolated size of the navigator during a transition.
   /// The value is available only when the transition is running; otherwise
   /// it reports null.
-  late final _SizeProxyAnimation _sizeInterpolation;
+  final _sizeInterpolation = _SizeProxyAnimation();
 
   /// The content boundary of every route that is currently installed in the
   /// child navigator, keyed by the route it belongs to.
@@ -283,19 +283,28 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
   /// of this widget and cannot be looked up from this context.
   NavigatorState? _navigator;
 
-  _TransitionState _state = const _Settled(null);
+  _TransitionState _transition = const _Settled(null);
 
   @override
   void initState() {
     super.initState();
-    _sizeInterpolation = _SizeProxyAnimation()
-      ..addListener(_handleSizeInterpolationChange);
+    _sizeInterpolation.addListener(_handleSizeInterpolationChange);
+  }
+
+  /// Replaces [_transition] and points [_sizeInterpolation] to the size
+  /// interpolation of the new transition.
+  void _setTransition(_TransitionState transition) {
+    _transition = transition;
+    _sizeInterpolation.parent = switch (transition) {
+      final _InTransition tr => tr.sizeInterpolation,
+      _Settled() => null,
+    };
   }
 
   void _handleSizeInterpolationChange() {
-    if (_state case final _InTransition state) {
-      state.lastInterpolatedSize =
-          _sizeInterpolation.value ?? state.lastInterpolatedSize;
+    if (_transition case final _InTransition tr) {
+      tr.lastInterpolatedSize =
+          _sizeInterpolation.value ?? tr.lastInterpolatedSize;
     }
   }
 
@@ -307,8 +316,8 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
   /// a route without a [ResizableRouteContent].
   Size? get _originSize {
     return _sizeInterpolation.value ??
-        switch (_state) {
-          _InTransition(:final lastInterpolatedSize) => lastInterpolatedSize,
+        switch (_transition) {
+          final _InTransition tr => tr.lastInterpolatedSize,
           _Settled() => null,
         } ??
         switch (context.findRenderObject()) {
@@ -359,11 +368,12 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
     // as a back gesture starts, and it registers itself again in the same
     // frame. Only a disposed route is forgotten.
     if (route.navigator == null) {
-      switch (_state) {
+      switch (_transition) {
         case _Settled(route: final settledRoute) when settledRoute == route:
-          _state = const _Settled(null);
-        case final _InTransition state when state.settledRoute == route:
-          state.settledRoute = null;
+          _setTransition(const _Settled(null));
+        case final _InTransition transition
+            when transition.settledRoute == route:
+          transition.settledRoute = null;
         case _:
           break;
       }
@@ -524,12 +534,12 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
       return;
     }
 
-    final previousState = _state;
+    final previousTransition = _transition;
     if (driver == null ||
-        (previousState is _InTransition &&
-            destinationRoute == previousState.destinationRoute &&
-            driver == previousState.driver &&
-            isGestureDriven == (previousState is _GestureDriven))) {
+        (previousTransition is _InTransition &&
+            destinationRoute == previousTransition.destinationRoute &&
+            driver == previousTransition.driver &&
+            isGestureDriven == (previousTransition is _GestureDriven))) {
       // Either a gesture is in progress but nothing is animating, which is the
       // case while the dragged route is held at either end of its animation,
       // or the running transition is unchanged. In both cases the current size
@@ -539,60 +549,64 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
 
     // A transition that replaces another one inherits its settled route and
     // its last interpolated size, which is the fallback for the origin size.
-    final (settledRoute, lastInterpolatedSize) = switch (previousState) {
+    final (settledRoute, lastInterpolatedSize) = switch (previousTransition) {
       _Settled(:final route) => (route, null),
       _InTransition() => (
-        previousState.settledRoute,
-        previousState.lastInterpolatedSize,
+        previousTransition.settledRoute,
+        previousTransition.lastInterpolatedSize,
       ),
     };
-    _state = isGestureDriven
-        ? _GestureDriven(
-            settledRoute: settledRoute,
-            destinationRoute: destinationRoute,
-            driver: driver,
-            lastInterpolatedSize: lastInterpolatedSize,
-          )
-        : _AnimationDriven(
-            settledRoute: settledRoute,
-            destinationRoute: destinationRoute,
-            driver: driver,
-            lastInterpolatedSize: lastInterpolatedSize,
-          );
-    if (isGestureDriven) {
-      _startUserGestureTransition(destinationRoute, driver);
-    } else if (driver == currentRoute.animation) {
-      _startPushTransition(destinationRoute, driver);
-    } else {
-      _startPopTransition(destinationRoute, driver);
-    }
+    // The interpolation must be created before the new transition is set,
+    // since its origin size is read from the previous transition.
+    final sizeInterpolation = isGestureDriven
+        ? _userGestureSizeInterpolation(destinationRoute, driver)
+        : driver == currentRoute.animation
+        ? _pushSizeInterpolation(destinationRoute, driver)
+        : _popSizeInterpolation(destinationRoute, driver);
+    _setTransition(
+      isGestureDriven
+          ? _GestureDriven(
+              settledRoute: settledRoute,
+              destinationRoute: destinationRoute,
+              driver: driver,
+              sizeInterpolation: sizeInterpolation,
+              lastInterpolatedSize: lastInterpolatedSize,
+            )
+          : _AnimationDriven(
+              settledRoute: settledRoute,
+              destinationRoute: destinationRoute,
+              driver: driver,
+              sizeInterpolation: sizeInterpolation,
+              lastInterpolatedSize: lastInterpolatedSize,
+            ),
+    );
   }
 
-  void _startUserGestureTransition(
+  Animation<Size?> _userGestureSizeInterpolation(
     Route<dynamic> targetRoute,
     Animation<double> animation,
   ) {
     assert(animation.isForwardOrCompleted);
     final initialSize = _originSize;
-    _sizeInterpolation.parent = _LazySizeTween(
+    return _LazySizeTween(
       start: () => _sizeOf(targetRoute as ModalRoute<dynamic>),
       end: () => initialSize,
     ).animate(animation);
   }
 
-  void _startPushTransition(
+  Animation<Size?> _pushSizeInterpolation(
     Route<dynamic> targetRoute,
     Animation<double> animation,
   ) {
     assert(animation.isForwardOrCompleted);
     final initialSize = _originSize;
-    _sizeInterpolation.parent = _LazySizeTween(
+    return _LazySizeTween(
       start: () => initialSize,
       end: () => _sizeOf(targetRoute as ModalRoute<dynamic>),
     ).chain(CurveTween(curve: widget.interpolationCurve)).animate(animation);
   }
 
-  void _startPopTransition(
+  Animation<Size?> _popSizeInterpolation(
     Route<dynamic> targetRoute,
     Animation<double> animation,
   ) {
@@ -602,7 +616,7 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
     Size? targetRouteSize() => _sizeOf(targetRoute as ModalRoute<dynamic>);
 
     if (animation.value == 1) {
-      _sizeInterpolation.parent = _LazySizeTween(
+      return _LazySizeTween(
         start: targetRouteSize,
         end: () => initialSize,
       ).chain(CurveTween(curve: widget.interpolationCurve)).animate(animation);
@@ -618,7 +632,7 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
       // initialAnimationProgress, and it eventually reaches the target size
       // when animation.value is 1.
       final initialAnimationProgress = animation.value;
-      _sizeInterpolation.parent = _LazySizeTween(
+      return _LazySizeTween(
         start: targetRouteSize,
         end: () => _lerpEndSize(
           targetRouteSize()!,
@@ -630,7 +644,7 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
   }
 
   void _endTransition(ModalRoute<dynamic> destinationRoute) {
-    final settledRoute = switch (_state) {
+    final settledRoute = switch (_transition) {
       _Settled(:final route) => route,
       _InTransition(:final settledRoute) => settledRoute,
     };
@@ -640,10 +654,9 @@ class _NavigatorResizableState extends State<NavigatorResizable> {
         // with route b before the transition animation starts, but it has no
         // geometry information since it's not laid out.
         _sizeOf(destinationRoute) != null) {
-      _state = _Settled(destinationRoute);
-      _sizeInterpolation.parent = null;
+      _setTransition(_Settled(destinationRoute));
     } else {
-      _state = _Settled(settledRoute);
+      _setTransition(_Settled(settledRoute));
     }
   }
 
@@ -684,6 +697,7 @@ sealed class _InTransition extends _TransitionState {
     required this.settledRoute,
     required this.destinationRoute,
     required this.driver,
+    required this.sizeInterpolation,
     required this.lastInterpolatedSize,
   });
 
@@ -696,6 +710,12 @@ sealed class _InTransition extends _TransitionState {
 
   /// The animation that drives the progress of the transition.
   final Animation<double> driver;
+
+  /// The interpolated size of the navigator, which follows [driver].
+  ///
+  /// This reports null when the size of either route it interpolates between
+  /// is unknown.
+  final Animation<Size?> sizeInterpolation;
 
   /// The most recent non-null value of the size interpolation within the
   /// transition.
@@ -714,6 +734,7 @@ final class _AnimationDriven extends _InTransition {
     required super.settledRoute,
     required super.destinationRoute,
     required super.driver,
+    required super.sizeInterpolation,
     required super.lastInterpolatedSize,
   });
 }
@@ -724,6 +745,7 @@ final class _GestureDriven extends _InTransition {
     required super.settledRoute,
     required super.destinationRoute,
     required super.driver,
+    required super.sizeInterpolation,
     required super.lastInterpolatedSize,
   });
 }
