@@ -1,8 +1,8 @@
 # Changelog
 
-## 3.2.0-wip
+## 3.2.0
 
-- Fix a one-frame delay issue
+- Fix: `NavigatorResizable`'s size lags one frame behind when the current route's content changes size outside of a route transition (e.g., a route rebuilds at a taller height), which could cause a visible flicker in widgets whose layout depends on that size (#54)
 - Fix: assertion error when the iOS swipe back gesture is dragged to the end without lifting the finger (#57)
 
 Note that `BuildContext.size` for widgets below the `NavigatorResizable` now returns the intrinsic size of the navigator's current route. Previously, it returned the size of the parent render object for the `NavigatorResizable`, which was typically the screen size.
