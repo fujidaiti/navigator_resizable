@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.2.0-wip
+## 3.2.0
 
 - Migrate to [material_ui](https://pub.dev/packages/material_ui)
 - Bump minimum Flutter SDK version to 3.44.0 (and Dart SDK to 3.12.0), as required by material_ui
