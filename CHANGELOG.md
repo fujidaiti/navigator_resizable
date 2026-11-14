@@ -3,6 +3,7 @@
 ## 3.2.0-wip
 
 - Fix a one-frame delay issue
+- Fix: assertion error when the iOS swipe back gesture is dragged to the end without lifting the finger (#57)
 
 Note that `BuildContext.size` for widgets below the `NavigatorResizable` now returns the intrinsic size of the navigator's current route. Previously, it returned the size of the parent render object for the `NavigatorResizable`, which was typically the screen size.
 
