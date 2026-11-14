@@ -1,7 +1,10 @@
+/// @docImport 'package:material_ui/material_ui.dart';
+library;
+
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart' as physics;
 import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
 
 import 'navigator_event_observer.dart';
 import 'resizable_navigator_routes.dart';
