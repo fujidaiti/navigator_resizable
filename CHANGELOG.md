@@ -2,7 +2,11 @@
 
 ## 3.2.0-wip
 
+- Migrate to [material_ui](https://pub.dev/packages/material_ui)
+- Bump minimum Flutter SDK version to 3.44.0 (and Dart SDK to 3.12.0), as required by material_ui
 - Fix: assertion error when the iOS swipe back gesture is dragged to the end without lifting the finger (#57)
+
+Note that `ResizableMaterialPageRoute` and `ResizableMaterialPage` are now based on the Material widgets from material_ui instead of `package:flutter/material.dart`. If your app still uses `package:flutter/material.dart` from the SDK, you may encounter runtime errors due to incompatibilities between widgets from the two Material packages. Please follow [the material_ui migration guide](https://pub.dev/packages/material_ui#migrating-existing-code-to-this-package) to migrate your app.
 
 ## 3.1.0
 

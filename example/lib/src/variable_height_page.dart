@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:example/src/dialog_content_layout.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class VariableHeightPage extends StatefulWidget {
   const VariableHeightPage({super.key, required this.onNext});
