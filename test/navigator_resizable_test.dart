@@ -416,18 +416,19 @@ void main() {
             env.navigatorKey.currentState!.currentRoute.animation!;
 
         // Start a swipe back gesture.
+        // We assume that the screen size is 800x600.
         final gesture = await tester.startGesture(const Offset(300, 300));
-        await gesture.moveBy(const Offset(20, 0));
+        await gesture.moveBy(const Offset(80, 0));
         await tester.pump();
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
         expect(transitionProgress.value, moreOrLessEquals(0.9));
         expect(env.getBox(tester).size, const Size(190, 290));
 
         // Drag the finger until the transition progress reaches its end,
-        // but do not lift the finger yet. The navigator's width is 200,
-        // which equals the width of the current route b, so a drag delta
-        // of 180 more is enough to complete the transition.
-        await gesture.moveBy(const Offset(180, 0));
+        // but do not lift the finger yet. The navigator's width is 800,
+        // which equals the screen width, so a drag delta of 720 more is
+        // enough to complete the transition.
+        await gesture.moveBy(const Offset(720, 0));
         await tester.pump();
         expect(transitionProgress.value, isZero);
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
@@ -456,8 +457,9 @@ void main() {
             env.navigatorKey.currentState!.currentRoute.animation!;
 
         // Start a swipe back gesture.
+        // We assume that the screen size is 800x600.
         final gesture = await tester.startGesture(const Offset(300, 300));
-        await gesture.moveBy(const Offset(20, 0));
+        await gesture.moveBy(const Offset(80, 0));
         await tester.pump();
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
         expect(transitionProgress.value, moreOrLessEquals(0.9));
@@ -465,14 +467,14 @@ void main() {
 
         // Drag the finger until the transition progress reaches its end,
         // but do not lift the finger yet.
-        await gesture.moveBy(const Offset(180, 0));
+        await gesture.moveBy(const Offset(720, 0));
         await tester.pump();
         expect(transitionProgress.value, isZero);
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
         expect(env.getBox(tester).size, const Size(100, 200));
 
         // Drag the finger back toward the start position.
-        await gesture.moveBy(const Offset(-100, 0));
+        await gesture.moveBy(const Offset(-400, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(0.5));
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
@@ -480,7 +482,7 @@ void main() {
 
         // Drag the finger back to the start position, so that the
         // transition progress returns to its beginning.
-        await gesture.moveBy(const Offset(-100, 0));
+        await gesture.moveBy(const Offset(-400, 0));
         await tester.pump();
         expect(transitionProgress.value, moreOrLessEquals(1.0));
         expect(env.navigatorKey.currentState!.userGestureInProgress, isTrue);
