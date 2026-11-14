@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.2.0-wip
+
+- Fix: assertion error when the iOS swipe back gesture is dragged to the end without lifting the finger (#57)
+
 ## 3.1.0
 
 - Bump minimum Flutter SDK version to 3.41.0 to avoid a mid-transition crash

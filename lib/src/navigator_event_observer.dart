@@ -422,6 +422,9 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
     route.animation!.addStatusListener(notifyTransitionEnd);
   }
 
+  /// Finishes the iOS swipe back gesture in progress, if any.
+  VoidCallback? _endSwipeBackGesture;
+
   void _didUserGestureInProgressChange() {
     assert(_navigator != null);
     if (_isAndroidBackGestureInProgress) {
@@ -430,41 +433,52 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
       return;
     }
 
-    if (_navigator!.userGestureInProgress) {
-      final originRoute = _lastSettledRoute! as TransitionRoute<dynamic>;
-      assert(originRoute.animation!.status == AnimationStatus.completed);
-      final destinationRoute = _previousRouteOf[originRoute]!;
-
-      void statusListener(AnimationStatus status) {
-        switch (status) {
-          case AnimationStatus.forward:
-            _notifyListeners(
-              (it) => it.didStartTransition(
-                destinationRoute,
-                _TransitionProgress(animationOwner: originRoute),
-                isUserGestureInProgress: true,
-              ),
-            );
-
-          case AnimationStatus.completed:
-            assert(originRoute.isCurrent);
-            assert(_lastSettledRoute == originRoute);
-            originRoute.animation!.removeStatusListener(statusListener);
-            _notifyListeners((it) => it.didEndTransition(originRoute));
-
-          case AnimationStatus.dismissed:
-            assert(destinationRoute.isCurrent);
-            _lastSettledRoute = destinationRoute;
-            originRoute.animation!.removeStatusListener(statusListener);
-            _notifyListeners((it) => it.didEndTransition(destinationRoute));
-
-          case AnimationStatus.reverse:
-          // Do nothing.
-        }
-      }
-
-      originRoute.animation!.addStatusListener(statusListener);
+    if (!_navigator!.userGestureInProgress) {
+      _endSwipeBackGesture?.call();
+      _endSwipeBackGesture = null;
+      return;
     }
+
+    final originRoute = _lastSettledRoute! as TransitionRoute<dynamic>;
+    assert(originRoute.animation!.status == AnimationStatus.completed);
+    final destinationRoute = _previousRouteOf[originRoute]!;
+    var didStartTransition = false;
+
+    // The animation status cannot tell whether the gesture is finished,
+    // because the swipe back gesture sets the animation value directly
+    // from the finger position, so the status can become `completed` or
+    // `dismissed` while the finger is still on the screen. Therefore,
+    // the status is used only to detect the start of the transition,
+    // and the end of the transition is detected when
+    // `userGestureInProgress` becomes false.
+    void statusListener(AnimationStatus status) {
+      if (status == AnimationStatus.forward && !didStartTransition) {
+        didStartTransition = true;
+        _notifyListeners(
+          (it) => it.didStartTransition(
+            destinationRoute,
+            _TransitionProgress(animationOwner: originRoute),
+            isUserGestureInProgress: true,
+          ),
+        );
+      }
+    }
+
+    originRoute.animation!.addStatusListener(statusListener);
+    _endSwipeBackGesture = () {
+      originRoute.animation!.removeStatusListener(statusListener);
+      if (originRoute.isCurrent) {
+        // The gesture was canceled.
+        assert(_lastSettledRoute == originRoute);
+        if (didStartTransition) {
+          _notifyListeners((it) => it.didEndTransition(originRoute));
+        }
+      } else if (destinationRoute.isCurrent) {
+        // The gesture was committed and the origin route was popped.
+        _lastSettledRoute = destinationRoute;
+        _notifyListeners((it) => it.didEndTransition(destinationRoute));
+      }
+    };
   }
 }
 
