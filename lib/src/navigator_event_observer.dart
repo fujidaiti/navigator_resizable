@@ -92,26 +92,21 @@ mixin NavigatorEventListener {
 /// 2. By calling [NavigatorEventObserverState.addListener] to add a listener
 ///   dynamically. You can use [NavigatorEventObserver.of] to obtain the
 ///  [NavigatorEventObserverState] from the given [BuildContext].
-class NavigatorEventObserver extends StatefulWidget {
-  /// Creates a widget that observes the lifecycle of [Route]s.
-  const NavigatorEventObserver({
-    super.key,
-    this.listeners = const [],
-    required this.child,
-  });
+class const NavigatorEventObserver({
+  super.key,
 
   /// The listeners that observe the lifecycle of [Route]s.
   ///
   /// Even if this list is empty, listeners that are registered
   /// using [NavigatorEventObserverState.addListener] will be notified
   /// unless they are removed by [NavigatorEventObserverState.removeListener].
-  final List<NavigatorEventListener> listeners;
+  final List<NavigatorEventListener> listeners = const [],
 
   /// The widget below this widget in the tree.
   ///
   /// Typically a [Navigator] widget.
-  final Widget child;
-
+  required final Widget child,
+}) extends StatefulWidget {
   @override
   State<NavigatorEventObserver> createState() => NavigatorEventObserverState();
 
@@ -124,7 +119,7 @@ class NavigatorEventObserver extends StatefulWidget {
 }
 
 /// The state of [NavigatorEventObserver].
-class NavigatorEventObserverState extends State<NavigatorEventObserver> {
+class NavigatorEventObserverState() extends State<NavigatorEventObserver> {
   final Set<NavigatorEventListener> _listeners = {};
   final Map<Route<dynamic>, Route<dynamic>?> _nextRouteOf = {};
   final Map<Route<dynamic>, Route<dynamic>?> _previousRouteOf = {};
@@ -482,14 +477,10 @@ class NavigatorEventObserverState extends State<NavigatorEventObserver> {
   }
 }
 
-class _InheritedRouteTransitionObserver extends InheritedWidget {
-  const _InheritedRouteTransitionObserver({
-    required this.state,
-    required super.child,
-  });
-
-  final NavigatorEventObserverState state;
-
+class const _InheritedRouteTransitionObserver({
+  required final NavigatorEventObserverState state,
+  required super.child,
+}) extends InheritedWidget {
   @override
   bool updateShouldNotify(_) => true;
 }
@@ -600,11 +591,9 @@ mixin ObservableRouteMixin<T> on TransitionRoute<T> {
   }
 }
 
-class _TransitionProgress extends Animation<double>
-    with AnimationWithParentMixin<double> {
-  _TransitionProgress({required this.animationOwner});
-
-  final TransitionRoute<dynamic> animationOwner;
+class _TransitionProgress({
+  required final TransitionRoute<dynamic> animationOwner,
+}) extends Animation<double> with AnimationWithParentMixin<double> {
   @override
   Animation<double> get parent => animationOwner.animation!;
 

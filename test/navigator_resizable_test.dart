@@ -1694,19 +1694,15 @@ void main() {
   });
 }
 
-class _TestRouteWidget extends StatefulWidget {
-  const _TestRouteWidget({
-    super.key,
-    required this.initialSize,
-  });
-
-  final Size initialSize;
-
+class const _TestRouteWidget({
+  super.key,
+  required final Size initialSize,
+}) extends StatefulWidget {
   @override
   State<_TestRouteWidget> createState() => _TestRouteWidgetState();
 }
 
-class _TestRouteWidgetState extends State<_TestRouteWidget> {
+class _TestRouteWidgetState() extends State<_TestRouteWidget> {
   late Size _size;
   Size get size => _size;
   set size(Size value) {

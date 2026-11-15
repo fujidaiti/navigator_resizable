@@ -25,11 +25,7 @@ const Matcher isMonotonicallyIncreasing = _IsMonotonic(increasing: true);
 /// The matcher does not match if the sequence has less than two elements.
 const Matcher isMonotonicallyDecreasing = _IsMonotonic(increasing: false);
 
-class _IsMonotonic extends Matcher {
-  const _IsMonotonic({required this.increasing});
-
-  final bool increasing;
-
+class const _IsMonotonic({required final bool increasing}) extends Matcher {
   @override
   bool matches(Object? item, Map<dynamic, dynamic> matchState) {
     if (item is! Iterable<double>) {
