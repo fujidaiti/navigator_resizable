@@ -1693,10 +1693,6 @@ void main() {
     );
   });
 
-  // The Navigator under a NavigatorResizable is laid out with an unbounded
-  // constraint, so its Overlay is too. Before Flutter 3.50.0, showing an
-  // OverlayPortal child in such an Overlay threw a 'sizeAccessAllowed'
-  // assertion error (https://github.com/flutter/flutter/issues/192861).
   group('Overlay compatibility test', () {
     Widget boilerplate(WidgetBuilder routeContentBuilder) {
       return MaterialApp(
