@@ -1,10 +1,10 @@
 # Changelog
 
-## 3.2.0-wip
+## 4.0.0
 
 - Migrate to [material_ui](https://pub.dev/packages/material_ui)
 - Fix an assertion error when showing an `OverlayPortal`-based widget, such as `Tooltip`, from a route (#58)
--  Fix: `NavigatorResizable`'s size lags one frame behind when the current route's content changes size outside of a route transition (e.g., a route rebuilds at a taller height), which could cause a visible flicker in widgets whose layout depends on that size (#54)
+- Fix: `NavigatorResizable`'s size lags one frame behind when the current route's content changes size outside of a route transition (e.g., a route rebuilds at a taller height), which could cause a visible flicker in widgets whose layout depends on that size (#54)
 - Fix: assertion error when the iOS swipe back gesture is dragged to the end without lifting the finger (#57)
 
 The minimum required Flutter SDK version is now 3.50.0 (and Dart SDK to 3.14.0), which includes [a fix](https://github.com/flutter/flutter/pull/193079) for #58.
