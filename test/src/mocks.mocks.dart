@@ -34,10 +34,9 @@ class MockNavigatorEventListener extends _i1.Mock
   @override
   _i3.VoidCallback? didInstall(_i4.Route<dynamic>? route) =>
       (super.noSuchMethod(
-            Invocation.method(#didInstall, [route]),
-            returnValueForMissingStub: null,
-          )
-          as _i3.VoidCallback?);
+        Invocation.method(#didInstall, [route]),
+        returnValueForMissingStub: null,
+      ) as _i3.VoidCallback?);
 
   @override
   void didReplace(_i4.Route<dynamic>? route, _i4.Route<dynamic>? oldRoute) =>

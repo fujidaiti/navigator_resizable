@@ -2238,20 +2238,12 @@ void main() {
   });
 }
 
-class _TestMaterialPageRoute extends MaterialPageRoute<dynamic>
-    with ObservableRouteMixin<dynamic> {
-  _TestMaterialPageRoute({
-    super.settings,
-    required this.transitionDuration,
-    this.transitionsBuilder,
-    required super.builder,
-  });
-
-  @override
-  final Duration transitionDuration;
-
-  final PageTransitionsBuilder? transitionsBuilder;
-
+class _TestMaterialPageRoute({
+  super.settings,
+  @override required final Duration transitionDuration,
+  final PageTransitionsBuilder? transitionsBuilder,
+  required super.builder,
+}) extends MaterialPageRoute<dynamic> with ObservableRouteMixin<dynamic> {
   @override
   Widget buildTransitions(
     BuildContext context,
@@ -2277,28 +2269,23 @@ class _TestMaterialPageRoute extends MaterialPageRoute<dynamic>
   }
 }
 
-class _TestMaterialPage extends MaterialPage<dynamic> {
-  const _TestMaterialPage({
-    super.key,
-    super.name,
-    required this.transitionDuration,
-    this.transitionsBuilder,
-    required super.child,
-  });
-
-  final Duration transitionDuration;
-  final PageTransitionsBuilder? transitionsBuilder;
-
+class const _TestMaterialPage({
+  super.key,
+  super.name,
+  required final Duration transitionDuration,
+  final PageTransitionsBuilder? transitionsBuilder,
+  required super.child,
+}) extends MaterialPage<dynamic> {
   @override
   Route<dynamic> createRoute(BuildContext context) =>
       _TestPageBasedMaterialPageRoute(page: this);
 }
 
-class _TestPageBasedMaterialPageRoute extends PageRoute<dynamic>
+class _TestPageBasedMaterialPageRoute({
+  required _TestMaterialPage page,
+}) extends PageRoute<dynamic>
     with ObservableRouteMixin<dynamic>, MaterialRouteTransitionMixin<dynamic> {
-  _TestPageBasedMaterialPageRoute({
-    required _TestMaterialPage page,
-  }) : super(settings: page);
+  this : super(settings: page);
 
   @override
   bool get maintainState => (settings as _TestMaterialPage).maintainState;
@@ -2339,11 +2326,8 @@ class _TestPageBasedMaterialPageRoute extends PageRoute<dynamic>
   }
 }
 
-class _TestScaffold extends StatelessWidget {
-  const _TestScaffold({required this.title});
-
-  final String title;
-
+class const _TestScaffold({required final String title})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(

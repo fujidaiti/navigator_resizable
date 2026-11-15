@@ -3,7 +3,7 @@
 ## 3.2.0-wip
 
 - Migrate to [material_ui](https://pub.dev/packages/material_ui)
-- Bump minimum Flutter SDK version to 3.44.0 (and Dart SDK to 3.12.0), as required by material_ui
+- Bump minimum Flutter SDK version to 3.50.0 (and Dart SDK to 3.14.0)
 - Fix a one-frame delay issue
 - Fix: assertion error when the iOS swipe back gesture is dragged to the end without lifting the finger (#57)
 

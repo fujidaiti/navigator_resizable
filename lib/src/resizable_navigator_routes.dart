@@ -4,16 +4,14 @@ import 'package:material_ui/material_ui.dart';
 import 'navigator_event_observer.dart';
 import 'navigator_resizable.dart';
 
-abstract class _BaseResizableMaterialPageRoute<T> extends PageRoute<T>
+abstract class _BaseResizableMaterialPageRoute<T>({
+  super.settings,
+  super.requestFocus,
+  super.fullscreenDialog,
+  super.allowSnapshotting,
+  super.barrierDismissible,
+}) extends PageRoute<T>
     with ObservableRouteMixin<T>, MaterialRouteTransitionMixin<T> {
-  _BaseResizableMaterialPageRoute({
-    super.settings,
-    super.requestFocus,
-    super.fullscreenDialog,
-    super.allowSnapshotting,
-    super.barrierDismissible,
-  });
-
   Widget _buildContentInternal(BuildContext context);
 
   @override
@@ -62,23 +60,18 @@ abstract class _BaseResizableMaterialPageRoute<T> extends PageRoute<T>
 ///
 /// For a detailed explanation of each property, see [MaterialPageRoute].
 @optionalTypeArgs
-class ResizableMaterialPageRoute<T> extends _BaseResizableMaterialPageRoute<T> {
-  /// Creates a [MaterialPageRoute] compatible with [NavigatorResizable].
-  ResizableMaterialPageRoute({
-    required this.builder,
-    super.settings,
-    super.requestFocus,
-    super.fullscreenDialog,
-    super.allowSnapshotting,
-    super.barrierDismissible,
-    this.maintainState = true,
-  });
-
-  @override
-  final bool maintainState;
-
+class ResizableMaterialPageRoute<T>({
   /// Builds the primary contents of the route.
-  final WidgetBuilder builder;
+  required final WidgetBuilder builder,
+  super.settings,
+  super.requestFocus,
+  super.fullscreenDialog,
+  super.allowSnapshotting,
+  super.barrierDismissible,
+  @override final bool maintainState = true,
+}) extends _BaseResizableMaterialPageRoute<T> {
+  /// Creates a [MaterialPageRoute] compatible with [NavigatorResizable].
+  this;
 
   @override
   Widget _buildContentInternal(BuildContext context) {
@@ -90,20 +83,20 @@ class ResizableMaterialPageRoute<T> extends _BaseResizableMaterialPageRoute<T> {
 ///
 /// For a detailed explanation of each property, see [MaterialPage].
 @optionalTypeArgs
-class ResizableMaterialPage<T> extends MaterialPage<T> {
+class const ResizableMaterialPage<T>({
+  super.key,
+  super.canPop,
+  super.onPopInvoked,
+  super.name,
+  super.arguments,
+  super.restorationId,
+  super.maintainState,
+  super.fullscreenDialog,
+  super.allowSnapshotting,
+  required super.child,
+}) extends MaterialPage<T> {
   /// Creates a [MaterialPage] compatible with [NavigatorResizable].
-  const ResizableMaterialPage({
-    super.key,
-    super.canPop,
-    super.onPopInvoked,
-    super.name,
-    super.arguments,
-    super.restorationId,
-    super.maintainState,
-    super.fullscreenDialog,
-    super.allowSnapshotting,
-    required super.child,
-  });
+  this;
 
   @override
   Route<T> createRoute(BuildContext context) =>
@@ -113,12 +106,11 @@ class ResizableMaterialPage<T> extends MaterialPage<T> {
       );
 }
 
-class _PageBasedResizableMaterialPageRoute<T>
-    extends _BaseResizableMaterialPageRoute<T> {
-  _PageBasedResizableMaterialPageRoute({
-    required ResizableMaterialPage<T> page,
-    required super.allowSnapshotting,
-  }) : super(settings: page);
+class _PageBasedResizableMaterialPageRoute<T>({
+  required ResizableMaterialPage<T> page,
+  required super.allowSnapshotting,
+}) extends _BaseResizableMaterialPageRoute<T> {
+  this : super(settings: page);
 
   ResizableMaterialPage<T> get page =>
       super.settings as ResizableMaterialPage<T>;
@@ -156,19 +148,15 @@ class _PageBasedResizableMaterialPageRoute<T>
 /// [NavigatorResizable]'s size transition. This handler therefore suppresses
 /// gesture-driven transition progress while still allowing the gesture to
 /// commit a route pop.
-class _AnimationLessAndroidBackGestureHandler extends StatefulWidget {
-  const _AnimationLessAndroidBackGestureHandler({
-    required this.child,
-  });
-
-  final Widget child;
-
+class const _AnimationLessAndroidBackGestureHandler({
+  required final Widget child,
+}) extends StatefulWidget {
   @override
   State<_AnimationLessAndroidBackGestureHandler> createState() =>
       _AnimationLessAndroidBackGestureHandlerState();
 }
 
-class _AnimationLessAndroidBackGestureHandlerState
+class _AnimationLessAndroidBackGestureHandlerState()
     extends State<_AnimationLessAndroidBackGestureHandler>
     with WidgetsBindingObserver {
   late ModalRoute<dynamic> _route;
@@ -223,56 +211,34 @@ class _AnimationLessAndroidBackGestureHandlerState
 /// Almost identical to [PageRouteBuilder] but specialized for compatibility
 /// with [NavigatorResizable].
 @optionalTypeArgs
-class ResizablePageRouteBuilder<T> extends PageRoute<T>
-    with ObservableRouteMixin<T> {
-  /// Creates a route that delegates to builder callbacks.
-  ResizablePageRouteBuilder({
-    super.settings,
-    super.requestFocus,
-    required this.pageBuilder,
-    required this.transitionsBuilder,
-    this.transitionDuration = const Duration(milliseconds: 300),
-    this.reverseTransitionDuration = const Duration(milliseconds: 300),
-    this.opaque = true,
-    this.barrierDismissible = false,
-    this.barrierColor,
-    this.barrierLabel,
-    this.maintainState = true,
-    super.fullscreenDialog,
-    super.allowSnapshotting = true,
-  });
+class ResizablePageRouteBuilder<T>({
+  super.settings,
+  super.requestFocus,
 
   /// Used build the route's primary contents.
   ///
   /// See [ModalRoute.buildPage] for complete definition of the parameters.
-  final RoutePageBuilder pageBuilder;
+  required final RoutePageBuilder pageBuilder,
 
   /// Used to build the route's transitions.
   ///
   /// See [ModalRoute.buildTransitions] for complete definition
   /// of the parameters.
-  final RouteTransitionsBuilder transitionsBuilder;
-
+  required final RouteTransitionsBuilder transitionsBuilder,
   @override
-  final Duration transitionDuration;
-
+  final Duration transitionDuration = const Duration(milliseconds: 300),
   @override
-  final Duration reverseTransitionDuration;
-
-  @override
-  final bool opaque;
-
-  @override
-  final bool barrierDismissible;
-
-  @override
-  final Color? barrierColor;
-
-  @override
-  final String? barrierLabel;
-
-  @override
-  final bool maintainState;
+  final Duration reverseTransitionDuration = const Duration(milliseconds: 300),
+  @override final bool opaque = true,
+  @override final bool barrierDismissible = false,
+  @override final Color? barrierColor,
+  @override final String? barrierLabel,
+  @override final bool maintainState = true,
+  super.fullscreenDialog,
+  super.allowSnapshotting = true,
+}) extends PageRoute<T> with ObservableRouteMixin<T> {
+  /// Creates a route that delegates to builder callbacks.
+  this;
 
   @override
   Widget buildPage(
@@ -301,62 +267,50 @@ class ResizablePageRouteBuilder<T> extends PageRoute<T>
 ///
 /// Intended to be used with [NavigatorResizable].
 @optionalTypeArgs
-class ResizablePageRoutePageBuilder<T> extends Page<T> {
-  /// Creates a page that delegates to builder callbacks.
-  const ResizablePageRoutePageBuilder({
-    super.key,
-    super.name,
-    super.arguments,
-    super.restorationId,
-    required this.child,
-    required this.transitionsBuilder,
-    this.requestFocus = true,
-    this.transitionDuration = const Duration(milliseconds: 300),
-    this.reverseTransitionDuration = const Duration(milliseconds: 300),
-    this.opaque = true,
-    this.barrierDismissible = false,
-    this.barrierColor,
-    this.barrierLabel,
-    this.maintainState = true,
-    this.fullscreenDialog = false,
-    this.allowSnapshotting = true,
-  });
-
-  /// See [PageRouteBuilder.transitionsBuilder].
-  final RouteTransitionsBuilder transitionsBuilder;
-
-  /// See [PageRouteBuilder.requestFocus].
-  final bool? requestFocus;
-
-  /// See [PageRouteBuilder.transitionDuration].
-  final Duration transitionDuration;
-
-  /// See [PageRouteBuilder.reverseTransitionDuration].
-  final Duration reverseTransitionDuration;
-
-  /// See [PageRouteBuilder.opaque].
-  final bool opaque;
-
-  /// See [PageRouteBuilder.barrierDismissible].
-  final bool barrierDismissible;
-
-  /// See [PageRouteBuilder.barrierColor].
-  final Color? barrierColor;
-
-  /// See [PageRouteBuilder.barrierLabel].
-  final String? barrierLabel;
-
-  /// See [PageRouteBuilder.maintainState].
-  final bool maintainState;
-
-  /// See [PageRouteBuilder.fullscreenDialog].
-  final bool fullscreenDialog;
-
-  /// See [PageRouteBuilder.allowSnapshotting].
-  final bool allowSnapshotting;
+class const ResizablePageRoutePageBuilder<T>({
+  super.key,
+  super.name,
+  super.arguments,
+  super.restorationId,
 
   /// The content to be shown in the [PageRoute] created by this page.
-  final Widget child;
+  required final Widget child,
+
+  /// See [PageRouteBuilder.transitionsBuilder].
+  required final RouteTransitionsBuilder transitionsBuilder,
+
+  /// See [PageRouteBuilder.requestFocus].
+  final bool? requestFocus = true,
+
+  /// See [PageRouteBuilder.transitionDuration].
+  final Duration transitionDuration = const Duration(milliseconds: 300),
+
+  /// See [PageRouteBuilder.reverseTransitionDuration].
+  final Duration reverseTransitionDuration = const Duration(milliseconds: 300),
+
+  /// See [PageRouteBuilder.opaque].
+  final bool opaque = true,
+
+  /// See [PageRouteBuilder.barrierDismissible].
+  final bool barrierDismissible = false,
+
+  /// See [PageRouteBuilder.barrierColor].
+  final Color? barrierColor,
+
+  /// See [PageRouteBuilder.barrierLabel].
+  final String? barrierLabel,
+
+  /// See [PageRouteBuilder.maintainState].
+  final bool maintainState = true,
+
+  /// See [PageRouteBuilder.fullscreenDialog].
+  final bool fullscreenDialog = false,
+
+  /// See [PageRouteBuilder.allowSnapshotting].
+  final bool allowSnapshotting = true,
+}) extends Page<T> {
+  /// Creates a page that delegates to builder callbacks.
+  this;
 
   @override
   Route<T> createRoute(BuildContext context) {
@@ -370,15 +324,14 @@ class ResizablePageRoutePageBuilder<T> extends Page<T> {
   }
 }
 
-class _PageBasedResizablePageRoutePageBuilder<T> extends PageRoute<T>
-    with ObservableRouteMixin<T> {
-  _PageBasedResizablePageRoutePageBuilder({
-    required ResizablePageRoutePageBuilder<T> page,
-    super.requestFocus,
-    super.allowSnapshotting,
-    super.fullscreenDialog,
-    super.barrierDismissible,
-  }) : super(settings: page);
+class _PageBasedResizablePageRoutePageBuilder<T>({
+  required ResizablePageRoutePageBuilder<T> page,
+  super.requestFocus,
+  super.allowSnapshotting,
+  super.fullscreenDialog,
+  super.barrierDismissible,
+}) extends PageRoute<T> with ObservableRouteMixin<T> {
+  this : super(settings: page);
 
   ResizablePageRoutePageBuilder<T> get _page =>
       settings as ResizablePageRoutePageBuilder<T>;

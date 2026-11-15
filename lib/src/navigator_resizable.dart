@@ -144,20 +144,14 @@ import 'resizable_navigator_routes.dart';
 /// [1]: https://api.flutter.dev/flutter/widgets/Navigator-class.html#:~:text=Using%20named%20navigator%20routes
 /// [2]: https://api.flutter.dev/flutter/widgets/Navigator-class.html#:~:text=the%20current%20page.-,Using%20the%20Pages%20API,-The%20Navigator%20will
 /// [3]: https://github.com/fujidaiti/navigator_resizable/tree/main/example/lib
-class NavigatorResizable extends StatefulWidget {
-  /// Creates a widget that resizes the child [Navigator] to match the intrinsic
-  /// size of the current [Route]'s content.
-  const NavigatorResizable({
-    super.key,
-    this.interpolationCurve = Curves.easeInOutCubic,
-    required this.child,
-  });
+class const NavigatorResizable({
+  super.key,
 
   /// The [Curve] used to interpolate the size of this widget during
   /// route transitions.
   ///
   /// Defaults to [Curves.easeInOutCubic].
-  final Curve interpolationCurve;
+  final Curve interpolationCurve = Curves.easeInOutCubic,
 
   /// The [Navigator] to be resized.
   ///
@@ -165,7 +159,11 @@ class NavigatorResizable extends StatefulWidget {
   /// zero-sized widgets, such as [GestureDetector] and [ColoredBox], or widgets
   /// without render objects, such as [Theme] and [AnimatedBuilder], are all
   /// acceptable.
-  final Widget child;
+  required final Widget child,
+}) extends StatefulWidget {
+  /// Creates a widget that resizes the child [Navigator] to match the intrinsic
+  /// size of the current [Route]'s content.
+  this;
 
   @override
   State<NavigatorResizable> createState() => _NavigatorResizableState();
@@ -241,7 +239,8 @@ class NavigatorResizable extends StatefulWidget {
 /// completes. That is, the navigator may be bigger or smaller than the
 /// [NavigatorResizable]'s boundary box while transitioning, and the overflowing
 /// portions, if any, are visually clipped out.
-class _NavigatorResizableState extends State<NavigatorResizable>
+class _NavigatorResizableState()
+    extends State<NavigatorResizable>
     with NavigatorEventListener {
   /// Represents an interpolated size of the navigator during a transition.
   /// The value is available only when the transition is running; otherwise
@@ -390,40 +389,31 @@ class _NavigatorResizableState extends State<NavigatorResizable>
   }
 }
 
-class _BypassedNavigatorConstraints extends InheritedWidget {
-  const _BypassedNavigatorConstraints({
-    required this.value,
-    required super.child,
-  });
-
-  final BoxConstraints value;
-
+class const _BypassedNavigatorConstraints({
+  required final BoxConstraints value,
+  required super.child,
+}) extends InheritedWidget {
   @override
   bool updateShouldNotify(_BypassedNavigatorConstraints oldWidget) =>
       value != oldWidget.value;
 }
 
-class _RenderNavigatorResizableWidget extends SingleChildRenderObjectWidget {
-  const _RenderNavigatorResizableWidget({
-    required this.sizeTransition,
-    required super.child,
-  });
-
-  final ValueListenable<Size?> sizeTransition;
-
+class const _RenderNavigatorResizableWidget({
+  required final ValueListenable<Size?> sizeTransition,
+  required super.child,
+}) extends SingleChildRenderObjectWidget {
   @override
   RenderObject createRenderObject(BuildContext context) {
     return _RenderNavigatorResizable(sizeTransition: sizeTransition);
   }
 }
 
-class _RenderNavigatorResizable extends RenderAligningShiftedBox {
-  _RenderNavigatorResizable({required this.sizeTransition})
-    : super(alignment: Alignment.topLeft, textDirection: null) {
+class _RenderNavigatorResizable({
+  required final ValueListenable<Size?> sizeTransition,
+}) extends RenderAligningShiftedBox {
+  this : super(alignment: Alignment.topLeft, textDirection: null) {
     sizeTransition.addListener(markNeedsLayout);
   }
-
-  final ValueListenable<Size?> sizeTransition;
 
   /// The visible area of the descendant Navigator.
   ///
@@ -526,16 +516,15 @@ class _RenderNavigatorResizable extends RenderAligningShiftedBox {
 /// This is rarely used directly. Instead, use built-in route classes that
 /// satisfy the above requirements, such as [ResizableMaterialPageRoute]
 /// and [ResizablePageRouteBuilder].
-class ResizableNavigatorRouteContentBoundary extends StatelessWidget {
-  /// Creates a container for the [Route]'s content managed by the [Navigator]
-  /// under a [NavigatorResizable].
-  const ResizableNavigatorRouteContentBoundary({
-    super.key,
-    required this.child,
-  });
+class const ResizableNavigatorRouteContentBoundary({
+  super.key,
 
   /// The [Route]'s content.
-  final Widget child;
+  required final Widget child,
+}) extends StatelessWidget {
+  /// Creates a container for the [Route]'s content managed by the [Navigator]
+  /// under a [NavigatorResizable].
+  this;
 
   @override
   Widget build(BuildContext context) {
@@ -565,15 +554,11 @@ class ResizableNavigatorRouteContentBoundary extends StatelessWidget {
   }
 }
 
-class _RenderRouteContentBoundaryWidget extends SingleChildRenderObjectWidget {
-  const _RenderRouteContentBoundaryWidget({
-    super.key,
-    required this.bypassedConstraints,
-    required super.child,
-  });
-
-  final BoxConstraints bypassedConstraints;
-
+class const _RenderRouteContentBoundaryWidget({
+  super.key,
+  required final BoxConstraints bypassedConstraints,
+  required super.child,
+}) extends SingleChildRenderObjectWidget {
   @override
   RenderObject createRenderObject(BuildContext context) {
     return _RenderRouteContentBoundary(
@@ -588,12 +573,10 @@ class _RenderRouteContentBoundaryWidget extends SingleChildRenderObjectWidget {
   }
 }
 
-class _RenderRouteContentBoundary extends RenderShiftedBox {
-  _RenderRouteContentBoundary({
-    required this.bypassedConstraints,
-  }) : super(null);
-
-  BoxConstraints bypassedConstraints;
+class _RenderRouteContentBoundary({
+  required var BoxConstraints bypassedConstraints,
+}) extends RenderShiftedBox {
+  this : super(null);
 
   /// A cache of the [child]'s [size] determined in the previous call
   /// to [performLayout]. This allows objects to read that value outside
@@ -627,7 +610,8 @@ class _RenderRouteContentBoundary extends RenderShiftedBox {
   }
 }
 
-class _SizeProxyAnimation extends ChangeNotifier
+class _SizeProxyAnimation()
+    extends ChangeNotifier
     implements ValueListenable<Size?> {
   Animation<Size?>? get parent => _parent;
   Animation<Size?>? _parent;
@@ -647,15 +631,10 @@ class _SizeProxyAnimation extends ChangeNotifier
   }
 }
 
-class _LazySizeTween extends Animatable<Size?> {
-  _LazySizeTween({
-    required this.start,
-    required this.end,
-  });
-
-  final ValueGetter<Size?> start;
-  final ValueGetter<Size?> end;
-
+class _LazySizeTween({
+  required final ValueGetter<Size?> start,
+  required final ValueGetter<Size?> end,
+}) extends Animatable<Size?> {
   @override
   Size? transform(double t) {
     final start = this.start();
