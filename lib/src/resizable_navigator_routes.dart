@@ -70,9 +70,6 @@ class ResizableMaterialPageRoute<T>({
   super.barrierDismissible,
   @override final bool maintainState = true,
 }) extends _BaseResizableMaterialPageRoute<T> {
-  /// Creates a [MaterialPageRoute] compatible with [NavigatorResizable].
-  this;
-
   @override
   Widget _buildContentInternal(BuildContext context) {
     return builder(context);
@@ -95,9 +92,6 @@ class const ResizableMaterialPage<T>({
   super.allowSnapshotting,
   required super.child,
 }) extends MaterialPage<T> {
-  /// Creates a [MaterialPage] compatible with [NavigatorResizable].
-  this;
-
   @override
   Route<T> createRoute(BuildContext context) =>
       _PageBasedResizableMaterialPageRoute<T>(
@@ -237,9 +231,6 @@ class ResizablePageRouteBuilder<T>({
   super.fullscreenDialog,
   super.allowSnapshotting = true,
 }) extends PageRoute<T> with ObservableRouteMixin<T> {
-  /// Creates a route that delegates to builder callbacks.
-  this;
-
   @override
   Widget buildPage(
     BuildContext context,
@@ -309,9 +300,6 @@ class const ResizablePageRoutePageBuilder<T>({
   /// See [PageRouteBuilder.allowSnapshotting].
   final bool allowSnapshotting = true,
 }) extends Page<T> {
-  /// Creates a page that delegates to builder callbacks.
-  this;
-
   @override
   Route<T> createRoute(BuildContext context) {
     return _PageBasedResizablePageRoutePageBuilder<T>(

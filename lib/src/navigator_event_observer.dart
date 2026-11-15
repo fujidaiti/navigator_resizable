@@ -107,9 +107,6 @@ class const NavigatorEventObserver({
   /// Typically a [Navigator] widget.
   required final Widget child,
 }) extends StatefulWidget {
-  /// Creates a widget that observes the lifecycle of [Route]s.
-  this;
-
   @override
   State<NavigatorEventObserver> createState() => NavigatorEventObserverState();
 

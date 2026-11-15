@@ -161,10 +161,6 @@ class const NavigatorResizable({
   /// acceptable.
   required final Widget child,
 }) extends StatefulWidget {
-  /// Creates a widget that resizes the child [Navigator] to match the intrinsic
-  /// size of the current [Route]'s content.
-  this;
-
   @override
   State<NavigatorResizable> createState() => _NavigatorResizableState();
 }
@@ -522,10 +518,6 @@ class const ResizableNavigatorRouteContentBoundary({
   /// The [Route]'s content.
   required final Widget child,
 }) extends StatelessWidget {
-  /// Creates a container for the [Route]'s content managed by the [Navigator]
-  /// under a [NavigatorResizable].
-  this;
-
   @override
   Widget build(BuildContext context) {
     return _RenderRouteContentBoundaryWidget(
