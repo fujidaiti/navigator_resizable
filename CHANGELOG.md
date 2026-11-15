@@ -3,11 +3,13 @@
 ## 3.2.0-wip
 
 - Migrate to [material_ui](https://pub.dev/packages/material_ui)
-- Bump minimum Flutter SDK version to 3.50.0 (and Dart SDK to 3.14.0) to fix an assertion error when showing an `OverlayPortal`-based widget, such as `Tooltip`, from a route (#58)
-- Fix a one-frame delay issue
+- Fix an assertion error when showing an `OverlayPortal`-based widget, such as `Tooltip`, from a route (#58)
+-  Fix: `NavigatorResizable`'s size lags one frame behind when the current route's content changes size outside of a route transition (e.g., a route rebuilds at a taller height), which could cause a visible flicker in widgets whose layout depends on that size (#54)
 - Fix: assertion error when the iOS swipe back gesture is dragged to the end without lifting the finger (#57)
 
-Note that `BuildContext.size` for widgets below the `NavigatorResizable` now returns the intrinsic size of the navigator's current route. Previously, it returned the size of the parent render object for the `NavigatorResizable`, which was typically the screen size.
+The minimum required Flutter SDK version is now 3.50.0 (and Dart SDK to 3.14.0), which includes [a fix](https://github.com/flutter/flutter/pull/193079) for #58.
+
+`BuildContext.size` for widgets below the `NavigatorResizable` now returns the intrinsic size of the navigator's current route. Previously, it returned the size of the parent render object for the `NavigatorResizable`, which was typically the screen size.
 
 Also note that `ResizableMaterialPageRoute` and `ResizableMaterialPage` are now based on the Material widgets from material_ui instead of `package:flutter/material.dart`. If your app still uses `package:flutter/material.dart` from the SDK, you may encounter runtime errors due to incompatibilities between widgets from the two Material packages. Please follow [the material_ui migration guide](https://pub.dev/packages/material_ui#migrating-existing-code-to-this-package) to migrate your app.
 
