@@ -1780,6 +1780,107 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+
+  // Regression tests for https://github.com/fujidaiti/navigator_resizable/issues/76
+  group('HeroController compatibility test', () {
+    ({
+      GlobalKey<NavigatorState> navigatorKey,
+      ValueGetter<Size> getNavigatorSize,
+      ValueGetter<Size> getBoxSize,
+      Widget testWidget,
+    })
+    boilerplate() {
+      final navigatorKey = GlobalKey<NavigatorState>();
+      final navigatorResizableKey = GlobalKey();
+      final testWidget = MaterialApp(
+        home: Align(
+          alignment: Alignment.bottomCenter,
+          child: NavigatorResizable(
+            key: navigatorResizableKey,
+            child: HeroControllerScope(
+              controller: MaterialApp.createMaterialHeroController(),
+              child: Navigator(
+                key: navigatorKey,
+                onGenerateRoute: (_) => ResizableMaterialPageRoute<void>(
+                  builder: (_) => const _TestRouteWidget(
+                    initialSize: Size(100, 200),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      return (
+        navigatorKey: navigatorKey,
+        getNavigatorSize: () =>
+            (navigatorKey.currentContext!.findRenderObject()! as RenderBox)
+                .size,
+        getBoxSize: () =>
+            (navigatorResizableKey.currentContext!.findRenderObject()!
+                    as RenderBox)
+                .size,
+        testWidget: testWidget,
+      );
+    }
+
+    ResizableMaterialPageRoute<void> routeB() {
+      return ResizableMaterialPageRoute<void>(
+        builder: (_) => const _TestRouteWidget(initialSize: Size(200, 300)),
+      );
+    }
+
+    testWidgets(
+      'Navigator keeps its previous size while the pushed route is offstage',
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
+        expect(env.getNavigatorSize(), const Size(100, 200));
+
+        env.navigatorKey.currentState!.push(routeB());
+        // The HeroController puts the new route offstage in this frame.
+        await tester.pump();
+        expect(
+          env.getNavigatorSize(),
+          const Size(100, 200),
+          reason:
+              'Internal navigator should retain its previous size '
+              'if the size-driven route is offstage',
+        );
+        expect(env.getBoxSize(), const Size(100, 200));
+
+        // The new route goes back onstage in the next frame.
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(env.getNavigatorSize(), const Size(200, 300));
+
+        await tester.pumpAndSettle();
+        expect(env.getNavigatorSize(), const Size(200, 300));
+        expect(env.getBoxSize(), const Size(200, 300));
+      },
+    );
+
+    testWidgets(
+      'Navigator keeps its previous size while the replacing route is offstage',
+      (tester) async {
+        final env = boilerplate();
+        await tester.pumpWidget(env.testWidget);
+        expect(env.getNavigatorSize(), const Size(100, 200));
+
+        env.navigatorKey.currentState!.pushReplacement(routeB());
+        await tester.pump();
+        expect(env.getNavigatorSize(), const Size(100, 200));
+        expect(env.getBoxSize(), const Size(100, 200));
+
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(env.getNavigatorSize(), const Size(200, 300));
+
+        await tester.pumpAndSettle();
+        expect(env.getNavigatorSize(), const Size(200, 300));
+        expect(env.getBoxSize(), const Size(200, 300));
+      },
+    );
+  });
 }
 
 class const _TestRouteWidget({

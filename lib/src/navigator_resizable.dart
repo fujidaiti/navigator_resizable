@@ -245,6 +245,9 @@ class _NavigatorResizableState()
 
   Route<dynamic>? _lastSettledRoute;
 
+  /// The route that the most recent transition is heading to.
+  Route<dynamic>? _transitionTargetRoute;
+
   @override
   void initState() {
     super.initState();
@@ -263,6 +266,9 @@ class _NavigatorResizableState()
       if (route == _lastSettledRoute) {
         _lastSettledRoute = null;
       }
+      if (route == _transitionTargetRoute) {
+        _transitionTargetRoute = null;
+      }
     }
 
     return onDispose;
@@ -274,6 +280,7 @@ class _NavigatorResizableState()
     Animation<double> animation, {
     bool isUserGestureInProgress = false,
   }) {
+    _transitionTargetRoute = targetRoute;
     if (isUserGestureInProgress) {
       _startUserGestureTransition(targetRoute, animation);
     } else if (animation.status == AnimationStatus.forward) {
@@ -366,6 +373,13 @@ class _NavigatorResizableState()
     }
   }
 
+  bool _isTransitionTargetRouteOffstage() {
+    return switch (_transitionTargetRoute) {
+      ModalRoute(:final offstage) => offstage,
+      _ => false,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return NavigatorEventObserver(
@@ -376,6 +390,7 @@ class _NavigatorResizableState()
             value: constraints,
             child: _RenderNavigatorResizableWidget(
               sizeTransition: _sizeInterpolation,
+              isTopRouteOffstage: _isTransitionTargetRouteOffstage,
               child: widget.child,
             ),
           );
@@ -396,16 +411,21 @@ class const _BypassedNavigatorConstraints({
 
 class const _RenderNavigatorResizableWidget({
   required final ValueListenable<Size?> sizeTransition,
+  required final ValueGetter<bool> isTopRouteOffstage,
   required super.child,
 }) extends SingleChildRenderObjectWidget {
   @override
   RenderObject createRenderObject(BuildContext context) {
-    return _RenderNavigatorResizable(sizeTransition: sizeTransition);
+    return _RenderNavigatorResizable(
+      sizeTransition: sizeTransition,
+      isTopRouteOffstage: isTopRouteOffstage,
+    );
   }
 }
 
 class _RenderNavigatorResizable({
   required final ValueListenable<Size?> sizeTransition,
+  required final ValueGetter<bool> isTopRouteOffstage,
 }) extends RenderAligningShiftedBox {
   this : super(alignment: Alignment.topLeft, textDirection: null) {
     sizeTransition.addListener(markNeedsLayout);
@@ -469,16 +489,26 @@ class _RenderNavigatorResizable({
       '${parent?.parent.runtimeType}.',
     );
 
-    child!.layout(
-      const BoxConstraints(
-        maxWidth: double.infinity,
-        maxHeight: double.infinity,
-      ),
-      parentUsesSize: true,
-    );
+    final child = this.child!;
+    final childConstraints = switch (child) {
+      // With an unbounded constraint, the navigator's Overlay takes its size
+      // from the top-most opaque route. If that route is offstage, it is
+      // wrapped in an Offstage widget, which sizes itself to the smallest
+      // size allowed by the constraint (i.e., 0x0), so the Overlay and the
+      // navigator would also become 0x0, and nothing in the navigator would
+      // be painted. To prevent this, the navigator keeps its previous size
+      // while the route is offstage.
+      //
+      // The constraint is intentionally not tight, so that the layout of
+      // this render object is updated when the route goes back onstage.
+      RenderBox(hasSize: true, :final size) when isTopRouteOffstage() =>
+        BoxConstraints(minWidth: size.width, minHeight: size.height),
+      _ => const BoxConstraints(),
+    };
+    child.layout(childConstraints, parentUsesSize: true);
 
     size = switch (sizeTransition.value) {
-      null => constraints.constrain(Size.copy(child!.size)),
+      null => constraints.constrain(Size.copy(child.size)),
       final s => constraints.constrain(s),
     };
 
