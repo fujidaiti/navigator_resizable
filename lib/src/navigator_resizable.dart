@@ -373,12 +373,6 @@ class _NavigatorResizableState()
     }
   }
 
-  /// Whether the route that the most recent transition is heading to is
-  /// offstage (see [ModalRoute.offstage]).
-  ///
-  /// For example, a [HeroController] puts a newly pushed route offstage
-  /// for the first frame of the push transition, to measure the positions
-  /// of the heroes in that route.
   bool _isTransitionTargetRouteOffstage() {
     return switch (_transitionTargetRoute) {
       ModalRoute(:final offstage) => offstage,
@@ -431,8 +425,6 @@ class const _RenderNavigatorResizableWidget({
 
 class _RenderNavigatorResizable({
   required final ValueListenable<Size?> sizeTransition,
-
-  /// Whether the navigator's top-most route is currently offstage.
   required final ValueGetter<bool> isTopRouteOffstage,
 }) extends RenderAligningShiftedBox {
   this : super(alignment: Alignment.topLeft, textDirection: null) {

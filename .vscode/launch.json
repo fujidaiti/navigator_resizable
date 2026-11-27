@@ -31,6 +31,13 @@
       "type": "dart",
       "program": "lib/complex_go_router_example.dart",
       "cwd": "./example"
+    },
+    {
+      "name": "Issue #76 Repro",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/issue_76_repro.dart",
+      "cwd": "./example"
     }
   ]
 }

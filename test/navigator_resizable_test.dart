@@ -1841,7 +1841,13 @@ void main() {
         env.navigatorKey.currentState!.push(routeB());
         // The HeroController puts the new route offstage in this frame.
         await tester.pump();
-        expect(env.getNavigatorSize(), const Size(100, 200));
+        expect(
+          env.getNavigatorSize(),
+          const Size(100, 200),
+          reason:
+              'Internal navigator should retain its previous size '
+              'if the size-driven route is offstage',
+        );
         expect(env.getBoxSize(), const Size(100, 200));
 
         // The new route goes back onstage in the next frame.
