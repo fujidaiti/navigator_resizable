@@ -1,6 +1,6 @@
 # Changelog
 
-## 4.0.1-wip
+## 4.0.1
 
 - Fix: the navigator under `NavigatorResizable` becomes 0x0 on the first frame of a push transition when it has a `HeroController`, which makes the current route disappear for one frame (#76)
 
